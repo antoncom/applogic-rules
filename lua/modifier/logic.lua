@@ -1,56 +1,46 @@
 
 local util = require "luci.util"
-local log = require "openrules.util.log"
+local log = require "applogic.util.log"
 
 local logic = {}
 
-function logic:updateif(varname, setting) --[[
-	Updateif modifier realization.
-	Substitute values instead variables
-	and check logic expression
-	]]
+function logic:skip(varname, rule)
+	local debug = require "applogic.var.debug".init(rule)
+	local varlink = rule.setting[varname]
+	varlink.input = varlink.input or ""
+	varlink.output = varlink.ouput or ""
+	local logic_body = ""
+	local skip = false
+	noerror = true
+	debug(varname):input(varlink.input, noerror)
+	debug(varname):output(varlink.output, noerror)
 
-	local varlink = setting[varname] or {}
-	local logic_body, result, status = '', true, true
 
-    if not varlink.modifier then
-        return true
-    end
+    if not varlink.modifier or #util.keys(varlink.modifier) == 0 then
+        skip = false
+    else
+		for mdf_name, value in util.kspairs(varlink.modifier) do
+			if(mdf_name:sub(3) == "skip") then
+				logic_body = value
 
-	for name, value in util.kspairs(varlink.modifier) do
-		if(name:sub(3) == "updateif") then
-			logic_body = value
+				for name, _ in pairs(rule.setting) do
+					logic_body = logic_body:gsub('$'..name, rule.setting[name].output)
+				end
 
-			for name, _ in pairs(setting) do
-				if(type(setting[name].output) == "string") then
-					logic_body = logic_body:gsub('$'..name, setting[name].output)
+				local finalcode = logic_body and loadstring(logic_body)
+				if finalcode then
+					noerror, skip = pcall(finalcode)
+					if noerror == false then
+						skip = true
+					end
+				else
+					skip = true
+					noerror = false
 				end
 			end
-
-			local finalcode = logic_body and loadstring(logic_body)
-			if finalcode then
-				status, result = pcall(finalcode)
-				if status == false then
-					print("openrules: Error in [" .. varname .. "] updateif modifier pcall(finalcode): " .. result)
-					--log(varname, logic_body)
-					return false
-				end
-			else
-				print("openrules: Error in [" .. varname .. "] updateif modifier finalcode: " .. logic_body)
-				--log(varname, logic_body)
-				return false
-			end
-
-			if not (result == true or result == false) then
-				print("openrules: Error in [" .. varname .. "] updateif modifier returns NIL (but true/falce required): " .. logic_body)
-				--log(varname, logic_body)
-				result = false
-
-			end
-
+			debug(varname):modifier(mdf_name, logic_body, skip, noerror)
 		end
 	end
-	return result
+	return skip
 end
-
 return logic

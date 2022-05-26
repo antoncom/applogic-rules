@@ -4,8 +4,8 @@ require "ubus"
 local sys  = require "luci.sys"
 local uloop = require "uloop"
 local util = require "luci.util"
-local log = require "openrules.util.log"
-local flist = require "openrules.util.filelist"
+local log = require "applogic.util.log"
+local flist = require "applogic.util.filelist"
 local uci = require "luci.model.uci".cursor()
 local bit = require "bit"
 
@@ -75,16 +75,16 @@ function rules:make_ubus()
 end
 
 function rules:make()
-	local rules_path = "/usr/lib/lua/openrules/rule"
+	local rules_path = "/usr/lib/lua/applogic/rule"
 	local id, rules = '', self.setting.rules_list.target
 
 	local files = flist({path = rules_path, grep = ".lua"})
 	for i=1, #files do
 		id = util.split(files[i], '.lua')[1]
-		rules[id] = require("openrules.rule." .. id)
+		rules[id] = require("applogic.rule." .. id)
 	end
 
-	util.dumptable(rules)
+	--util.dumptable(rules)
 end
 
 
@@ -95,6 +95,7 @@ function rules:run_all(varlink)
 	for name, rule in util.kspairs(rules) do
 		-- Initiate rule with link to the present (parent) module
 		-- Then the rule can send notification on the ubus object of parent module
+		rule.iteration = self.iteration
 		state = rule(self)
 	end
 end
@@ -102,6 +103,7 @@ end
 local metatable = {
 	__call = function(table)
 		table.setting = rules_setting
+		table.iteration = 0
 		local tick = table.setting.tick_size_default
 
 		table:make_ubus()
@@ -113,6 +115,7 @@ local metatable = {
 		local timer
 		function t()
 			table:run_all()
+			table.iteration = table.iteration + 1
 			timer:set(tick)
 		end
 		timer = uloop.timer(t)
