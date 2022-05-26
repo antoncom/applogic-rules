@@ -22,18 +22,16 @@ local loadvar_metatable = {
 		varlink.output = varlink.output or ""
 
 		local initial = string.format("%s", varlink.input or "")
-		debug(varname):input(initial:gsub("\t", " "))
+		--debug(varname):input(initial:gsub("\t", " "))
 
-		if not logic:skip(varname, rule) then
-			if varlink.source and varlink.source.type and varlink.source.type == "uci" then
-				loadvar_uci:load(varname, rule)
-			end
-			if varlink.source ~= nil and varlink.source.type ~= nil and varlink.source.type == "ubus" then
-				loadvar_ubus:load(varname, rule)
-			end
-			if varlink.source and varlink.source.type and varlink.source.type == "bash" then
-				loadvar_bash:load(varname, rule)
-			end
+		if varlink.source and varlink.source.type and varlink.source.type == "uci" then
+			loadvar_uci:load(varname, rule)
+		end
+		if varlink.source ~= nil and varlink.source.type ~= nil and varlink.source.type == "ubus" then
+			loadvar_ubus:load(varname, rule)
+		end
+		if varlink.source and varlink.source.type and varlink.source.type == "bash" then
+			loadvar_bash:load(varname, rule)
 		end
 
 		-- Make function chaning like this:

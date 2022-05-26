@@ -48,16 +48,18 @@ end
 
 function debug:source_uci(config, section, option, result, noerror)
     if self.rule.setting[self.varname].source then
+        local sec = ((type(section) == "table") and util.serialize_json(section)) or section
+        local src = string.format([[
+            source = {
+                type = "uci",
+                config = "%s",
+                section = "%s",
+                option = "%s"
+            }
+        ]], config, section, (option or ""))
         report[self.varname].source = {
             ["type"] = "uci",
-            ["value"] = string.format([[
-                source = {
-                    type = "uci",
-                    config = "%s",
-                    section = "%s",
-                    option = "%s"
-                }
-            ]], config, section, option),
+            ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
             ["value"] = result,
             ["noerror"] = noerror
         }
@@ -69,7 +71,7 @@ function debug:input(val)
     local value = val or ""
     local noerror = (type(value) == "string")
     report[self.varname].input = {
-        ["value"] = value,
+        ["value"] = value:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
         ["noerror"] = noerror
     }
     report.noerror = noerror and report.noerror
@@ -79,7 +81,7 @@ function debug:output(val)
     local value = val or ""
     local noerror = (type(value) == "string")
     report[self.varname].output = {
-        ["value"] = value,
+        ["value"] = value:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
         ["noerror"] = noerror
     }
     report.noerror = noerror and report.noerror

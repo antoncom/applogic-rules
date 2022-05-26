@@ -58,14 +58,20 @@ local rule_setting = {
 	broker_alives = {
 		source = {
 			type = "bash",
-			--command = "/usr/lib/lua/applogic/sh/pingcheck.sh --host-list='$broker_hosts'"
-			command = "uci show wimark"
+			command = "/usr/lib/lua/applogic/sh/pingcheck.sh --host-list='$broker_hosts'"
 		},
 		modifier = {
-			["1_skip"] = [[ return ("$timer" == "0") ]],
+			["1_skip"] = [[ return (tonumber("$timer") > tonumber("$check_every")) ]],
 		},
-
 	},
+	network = {
+		source = {
+			type = "uci",
+			config = "network",
+			section = "lan",
+			option = "gateway"
+		}
+	}
 }
 
 function rule:make()
@@ -82,6 +88,7 @@ function rule:make()
 	self:load("broker_current"):modify():debug(only)
 	self:load("broker_hosts"):modify():debug(only)
 	self:load("broker_alives"):modify():debug(only)
+	self:load("network"):modify():debug(only)
 
 	-- All loaded from source variables are cached.
 	-- It reduces dublicate requests to ubus, uci, bash during the rule operating

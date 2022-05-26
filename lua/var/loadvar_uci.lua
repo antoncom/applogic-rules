@@ -15,46 +15,30 @@ function loadvar_uci:load(varname, rule)
 	local result = ""
 	local noerror = true
 
-
 	--[[ LOAD FROM UCI ]]
-	local config = varlink.source.config or ""
-	local section = string.sub(varlink.source.section, 1) or ""
-	local option = string.sub(varlink.source.option, 1) or ""
+	local config = varlink.source.config
+	local section = varlink.source.section
+	local option = varlink.source.option
 
-	-- Substitute variable value if uci section contains the variable name
-	for name, _ in pairs(setting) do
-		if(type(setting[name].output) == "string") then
-			section = section:gsub("$"..name, setting[name].output)
-		else
-			print(string.format("applogic: Loadvar can't substitute section name to uci command from [%s.output] as it's not a string value.", name))
+	noerror = config and section and option
+
+	if noerror then
+		-- Check cached value
+		cache_key = config..section..option
+		if not rule.cache_uci[cache_key] then
+			-- Cache result only if no error occures
+			if noerror then
+				rule.cache_uci[cache_key] = uci:get(config, section, option)
+			end
 		end
 	end
-
-	-- Substitute variable value if uci option contains the variable name
-	for name, _ in pairs(setting) do
-		if(type(setting[name].output) == "string") then
-			option = option:gsub("$"..name, setting[name].output)
-		else
-			print(string.format("cpeagent:rules Loadvar can't substitute option name to uci command from [%s.output] as it's not a string value.", name))
-		end
-	end
-
-	-- Check cached value
-	cache_key = config..section..option
-	if not loadvar_uci.cache[cache_key] then
-		noerror = uci:load(config)
-		-- Cache result only if no error occures
-		if noerror then
-			loadvar_uci.cache[cache_key] = uci:get(config, section, option)
-		end
-	end
-	result = noerror and loadvar_uci.cache[cache_key] or ""
-	debug(varname):source_uci(config, section, option, rule.cache_bash[cache_key] or "", noerror)
+	result = noerror and rule.cache_uci[cache_key] or ""
+	debug(varname):source_uci((config or ""), (section or ""), (option or ""), rule.cache_uci[cache_key] or "", noerror)
 
 
 	-- Loaded result is stored as the variable "input" param
-	varlink.input = result
-	debug(varname):input(result)
+	varlink.subtotal = result
+	debug(varname):input(string.format("%s", result))
 
 end
 

@@ -6,6 +6,7 @@ local logic = {}
 
 function logic:skip(varname, rule)
 	local debug = require "applogic.var.debug".init(rule)
+	local setting = rule.setting
 	local varlink = rule.setting[varname]
 	varlink.input = varlink.input or ""
 	varlink.output = varlink.ouput or ""
@@ -24,8 +25,16 @@ function logic:skip(varname, rule)
 				logic_body = value
 
 				for name, _ in pairs(rule.setting) do
-					logic_body = logic_body:gsub('$'..name, rule.setting[name].output)
+					if name ~= varname then
+						logic_body = logic_body:gsub('$'..name, tostring(setting[name].output))
+					else
+					--[[ If the Func has current variable name, substitute subtotal instead of output
+						 because output value will be set after all modifiers have been applied. ]]
+						chunk = logic_body:gsub('$'..logic_body, tostring(setting[name].subtotal))
+					end
 				end
+
+
 
 				local finalcode = logic_body and loadstring(logic_body)
 				if finalcode then
