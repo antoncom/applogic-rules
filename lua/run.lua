@@ -9,13 +9,14 @@ local flist = require "applogic.util.filelist"
 local uci = require "luci.model.uci".cursor()
 local bit = require "bit"
 
-local F = require "posix.fcntl"
-local U = require "posix.unistd"
+--local F = require "posix.fcntl"
+--local U = require "posix.unistd"
 
 local config = "wimark"
 
 
 local rules = {}
+rules.DEBUG = 1
 rules.ubus_object = {}
 rules.conn = 0
 
@@ -89,12 +90,13 @@ end
 
 
 function rules:run_all(varlink)
-	local rules = self.setting.rules_list.target
+	local rules_list = self.setting.rules_list.target
 	local state = ''
 
-	for name, rule in util.kspairs(rules) do
+	for name, rule in util.kspairs(rules_list) do
 		-- Initiate rule with link to the present (parent) module
 		-- Then the rule can send notification on the ubus object of parent module
+		rule.debug = (rules.DEBUG and rules.DEBUG == 1) or false
 		rule.iteration = self.iteration
 		state = rule(self)
 	end

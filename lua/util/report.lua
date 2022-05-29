@@ -26,10 +26,13 @@ local report = {
 ]]
 
 function report:print(varname, level, iteration)
-	if not (report[varname] and report[varname].input and report[varname].output) then
-		print(string.format("applogic: report:print() can't find var [%s] or its input/output attributes.", varname))
+	if not report[varname] then
+		print(string.format("applogic: report:print() can't find var [%s]", varname))
 		report.noerror = true
 		return
+	else
+		if not report[varname].input then report[varname].input = "empty" end
+		if not report[varname].output then report[varname].output = "empty" end
 	end
 
 	if (not report.noerror and level == "ERROR") or level == "INFO"  then
@@ -46,7 +49,7 @@ function report:print(varname, level, iteration)
 		ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_ROW_TYPE, ft.ROW_HEADER)
 
 		current_row = 1
-		ftable:write_ln(varname, "", "", "", "#"..tostring(iteration))
+		ftable:write_ln(string.format("[ %s ] variable attributes value",varname):upper(), "", "", "RESULTS ON THE ITERATION", "#"..tostring(iteration))
 		ftable:add_separator()
 
 		current_row = 2
@@ -93,14 +96,14 @@ function report:print(varname, level, iteration)
 		end
 
 		-- CELL SPANS
-		ftable:set_cell_span(1, 1, 4) -- header row
+		ftable:set_cell_span(1, 1, 3) -- header row
 		ftable:set_cell_span(2, 1, 3) -- input value row
 
 		-- CELL SPAN FOR OUTPUT ROW
 		ftable:set_cell_span(current_row, 1, 3)
 
 		-- HEADER STYLE
-		ftable:set_cell_prop(ft.ANY_ROW, 5, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
+		ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
 		ftable:set_cell_prop(ft.ANY_ROW, 1, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
 		ftable:set_cell_prop(1, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
 

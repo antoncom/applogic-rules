@@ -1,53 +1,27 @@
 
+local substitute = require "applogic.util.substitute"
+local pcallchunk = require "applogic.util.pcallchunk"
 
-function func(varname, mdf_name, mdf_body, rule, setting) --[[
+function func(varname, mdf_name, rule) --[[
 	Apply modifiers to the target value
 	---------------------------------]]
-	local debug = require "applogic.var.debug".init(rule)
-	local varlink = setting[varname] or {}
-	varlink.input = varlink.input or ""
-	varlink.output = varlink.ouput or ""
+	local debug
+	if rule.debug then debug = require "applogic.var.debug".init(rule) end
+	local varlink = rule.setting[varname]
 	local result = ""
 	local noerror = true
+	local body = rule.setting[varname].modifier[mdf_name]
+	body = body:gsub("^%s+", ""):gsub("%s$", "") or ""
 
-	-- Replace all variables in the Func text with actual values
-	local luacode = (function(chunk)
-		for name, _ in pairs(setting) do
-			if name ~= varname then
-				chunk = chunk:gsub('$'..name, tostring(setting[name].output))
-			else
-			--[[ If the Func has current variable name, substitute subtotal instead of output
-				 because output value will be set after all modifiers have been applied. ]]
-                chunk = chunk:gsub('$'..name, tostring(setting[name].subtotal))
-			end
-		end
-		return chunk
-	end)(mdf_body)
+	local from_output = (not varlink.source) and mdf_name:sub(1,1) == "1"
+	local luacode = substitute(varname, rule, body, from_output)
 
-	local finalcode = luacode and loadstring(luacode)
-	--if varname == "timer" then log(luacode) end
+	local noerror, res = pcallchunk(luacode)
+	result = res or ""
 
-	if finalcode then
-		status, result = pcall(finalcode)
-		if status == false then
-			--print(string.format("applogic: Error in pcall(finalcode) for [%s]: %s", varname, tostring(result)))
-			--log(varname, luacode)
-			noerror = false
-			result = ""
-		end
-	else
-		--print(string.format("applogic: Error in loadstring(luacode) for [%s]: %s", varname, tostring(result)))
-		noerror = false
-	end
-
-	--result = varlink.subtotal
-	--rule:debug(varname, "modifier", "func", luacode, result, noerror)
-	debug(varname):modifier(mdf_name, luacode, result, noerror)
-	varlink.subtotal = result
-
+	if rule.debug then debug(varname):modifier(mdf_name, luacode, result, noerror) end
 
 	return result
-
 end
 
 return func
