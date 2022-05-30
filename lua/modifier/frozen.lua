@@ -29,20 +29,24 @@ function frozen(varname, rule, mdf_name) --[[
         end
     end
 
-    if varlink.frozen and varlink.frozen.cancel_time then
-        -- Update Frozen modifier result (for debug)
-        frozen_value = tostring(varlink.frozen.value)
-        local now = os.time()
-        if (now > varlink.frozen.cancel_time) then
-            varlink.frozen = nil
-            if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", "Unfrozen", noerror) end
-        else
-            local time = os.date("%X", varlink.frozen.cancel_time)
-            local remains = varlink.frozen.cancel_time - now
-            result = string.format("%s, remains: %s sec.", time, remains)
+    if noerror then
+        if varlink.frozen and varlink.frozen.cancel_time then
+            -- Update Frozen modifier result (for debug)
+            frozen_value = tostring(varlink.frozen.value)
+            local now = os.time()
+            if (now > varlink.frozen.cancel_time) then
+                varlink.frozen = nil
+                if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", "Unfrozen", noerror) end
+            else
+                local time = os.date("%X", varlink.frozen.cancel_time)
+                local remains = varlink.frozen.cancel_time - now
+                result = string.format("%s, remains: %s sec.", time, remains)
 
-            if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", result, noerror) end
+                if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", result, noerror) end
+            end
         end
+    else
+        if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", "Wrong frozen value. Check rule!", noerror) end
     end
 
     return frozen_value

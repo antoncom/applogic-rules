@@ -35,7 +35,9 @@ function bash(varname, mdf_name, mdf_body, rule) --[[
 	end
 
 	noerror = (not result.stderr)
-	if rule.debug_mode.enabled then debug(varname):modifier_bash(mdf_name, command, result, noerror) end
+	if rule.debug_mode.enabled then
+		debug(varname):modifier_bash(mdf_name, command, result, noerror)
+	end
 
 	return result.stdout or ""
 end

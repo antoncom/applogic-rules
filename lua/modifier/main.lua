@@ -40,7 +40,6 @@ function main:modify(varname, rule) --[[
 
             if "frozen" == mdf_name:sub(3) then
                 varlink.subtotal = tostring(frozen(varname, rule, mdf_name))
-                break
             end
             --- Place more modifiers here ---
 

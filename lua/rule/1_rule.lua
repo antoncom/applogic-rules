@@ -27,6 +27,7 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e '$.broker.host' ]],
+			["2_frozen"] = "5"
 		}
 	},
 
@@ -59,8 +60,8 @@ local rule_setting = {
 	reserved_host = {
 		note = [[ Пингутет резервные хосты, возвращает первый доступный в виде "1 www.ya.ru" ]],
 		modifier = {
-			["1_bash"] = "ddd/usr/lib/lua/applogic/sh/pingcheck.sh --host-list '$reserved_host_list' | awk /^1/ | tail -1 | sed s/1[[:space:]]//",
-			--["2_frozen"] = "60"
+			["1_bash"] = "/usr/lib/lua/applogic/sh/pingcheck.sh --host-list '$reserved_host_list' | awk /^1/ | tail -1 | sed s/1[[:space:]]//",
+			["2_frozen"] = "60"
 		}
 	},
 
@@ -79,7 +80,7 @@ local rule_setting = {
 				local is_current_ok = ("$ping_current" == "1")
 				local is_reserved_fail = ("$reserved_host" == "")
 				local not_ready_to_switch =	(is_current_ok or is_reserved_fail or tonumber("$timer") < 15)
-				retrurn not_ready_to_switch
+				return not_ready_to_switch
 			]],
 			["2_frozen"] = "5"
 		}
@@ -90,20 +91,20 @@ local rule_setting = {
 -- Use /etc/config/applogic to change the debug mode: RULE or VAR
 -- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
 debug_mode.type = "RULE"
-
-debug_mode.level = "INFO"
+debug_mode.level = "ERROR"
 
 rule.debug_mode = debug_mode
 function rule:make()
-	local only = rule.debug_mode.level
+	local ONLY = rule.debug_mode.level
 
-	self:load("title"):modify():debug(only)
-	self:load("timer"):modify():debug(only)
-	self:load("current_host"):modify():debug(only)
-	self:load("reserved_host_list"):modify():debug(only)
-	self:load("reserved_host"):modify():debug(only)
-	self:load("ping_current"):modify():debug(only)
-	self:load("swith_cpe"):modify():debug(only)
+	--log("rule", rule)
+	self:load("title"):modify():debug()
+	self:load("timer"):modify():debug()
+	self:load("current_host"):modify():debug()
+	self:load("reserved_host_list"):modify():debug()
+	self:load("reserved_host"):modify():debug()
+	self:load("ping_current"):modify():debug()
+	self:load("swith_cpe"):modify():debug()
 
 	self:clear_cache()
 end

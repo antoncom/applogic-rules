@@ -74,8 +74,14 @@ local loadvar_metatable = {
 			local dbg = {}
 			function dbg:debug(...)
 				local level = arg[1]
-				if level and (level == "INFO" or level == "ERROR") and rule.debug_mode.enabled and rule.debug_mode.type == "VAR" then
-					rule.debug.report(rule):print_var(varname, level, rule.iteration)
+				local report_by_default_debug_setting = (not level) and rule.debug_mode.enabled and rule.debug_mode.type == "VAR"
+				local report_only_this_variable = level and (level == "INFO" or level == "ERROR") and rule.debug_mode.enabled
+				
+				if report_by_default_debug_setting then
+					rule.debug.report(rule):print_var(varname, rule.debug_mode.level, rule.iteration)
+					rule.debug.report(rule):clear()
+				elseif report_only_this_variable then
+					rule.debug.report(rule):print_var(varname, "INFO", rule.iteration)
 					rule.debug.report(rule):clear()
 				end
 			end

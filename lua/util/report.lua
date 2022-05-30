@@ -36,7 +36,6 @@ local report = {
 
 function report:print_var(varname, level, iter)
 	local vars = report.debug.variables
-	report.iteration = report.iteration + 1
 	--log("VARS", vars)
 	local rule_has_error = report.debug.noerror == false
 	local var_has_error = report.debug.variables[varname].noerror == false
@@ -64,7 +63,7 @@ function report:print_var(varname, level, iter)
 		ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_ROW_TYPE, ft.ROW_HEADER)
 
 		current_row = 1
-		ftable:write_ln(string.format("[ %s ] variable attributes value",varname):upper(), "", "", "RESULTS ON THE ITERATION", "#"..tostring(report.iteration))
+		ftable:write_ln(string.format("[ %s ] variable attributes value",varname):upper(), "", "", "RESULTS ON THE ITERATION", "#"..tostring(report.rule.iteration))
 		ftable:add_separator()
 
 		current_row = 2
@@ -151,6 +150,7 @@ function report:print_rule(level, iteration)
 
 		current_row = 1
 		local rule_title = (vars.title and vars.title.output) and vars.title.output.value or ""
+		rule_title = string.format("[%s] %s", report.rule.ruleid, rule_title)
 		ftable:write_ln(rule_title, "", "", "", "")
 		ftable:add_separator()
 
@@ -187,8 +187,6 @@ function report:print_rule(level, iteration)
 					end
 				end
 
---vars[varname].noerror = false
-        	--print("CHECK",varname, vars[varname].noerror)
 				check = (not vars[varname].noerror) and "✖" or "✔"
 				ftable:write_ln(varname, vardata["note"], passlogic, vardata.output.value, check)
 				if vardata["noerror"] then
@@ -231,6 +229,7 @@ local metatable = {
 	__call = function(table, rule)
         if not report.debug then
             report.debug = rule.debug	-- Link to the populated debug data
+			report.rule = rule
         end
 		return table
 	end

@@ -158,24 +158,22 @@ end
 
 function debug:modifier_bash(mdf_name, mdf_body, result, noerror)
     local dvlink = debug.variables[debug.varname]
-    if dvlink.modifier then
-        if not dvlink.modifier then
-            dvlink.modifier = {}
-        end
-        dvlink.modifier[mdf_name] = {
-            ["body"] = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n"),
-            ["value"] = result.stdout or "",
-            ["noerror"] = noerror
-        }
-
-        --log("DDD", dvlink)
-
-        -- Print shell command error together with result, if debug level = INFO
-        if debug.rule.debug.level and debug.rule.debug.level == "INFO" and result.stderr then
-            dvlink.modifier[mdf_name].value = dvlink.modifier[mdf_name].value .. "\n" .. result.stderr
-        end
-        debug:set_noerrors(dvlink, noerror)
+    if not dvlink.modifier then
+        dvlink.modifier = {}
     end
+    dvlink.modifier[mdf_name] = {
+        ["body"] = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n"),
+        ["value"] = result.stdout or "",
+        ["noerror"] = noerror
+    }
+
+    --log("DDD", dvlink)
+
+    -- Print shell command error together with result, if debug level = INFO
+    if debug.rule.debug.level and debug.rule.debug.level == "INFO" and result.stderr then
+        dvlink.modifier[mdf_name].value = dvlink.modifier[mdf_name].value .. "\n" .. result.stderr
+    end
+    debug:set_noerrors(dvlink, noerror)
 end
 
 
