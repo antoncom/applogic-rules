@@ -1,5 +1,7 @@
+local debug_mode = require "applogic.debug_mode"
+local rule_init = require "applogic.util.rule_init"
+local log = require "applogic.util.log"
 
-local loadvar = require "applogic.var.loadvar"
 
 local rule = {}
 local rule_setting = {
@@ -12,7 +14,7 @@ local rule_setting = {
 		input = "0",
 		modifier = {
 			["1_func"] = [[ if tonumber("$timer") >= 15 then return "0" else return "$timer" end ]],
-			["2_func"] = [[ return tostring(tonumber("$timer") + 1) ]]
+			["2_func"] = [[ return tostring(tonumber("$timer") + 1) ]],
 		}
 	},
 
@@ -57,8 +59,8 @@ local rule_setting = {
 	reserved_host = {
 		note = [[ Пингутет резервные хосты, возвращает первый доступный в виде "1 www.ya.ru" ]],
 		modifier = {
-			["1_bash"] = "/usr/lib/lua/applogic/sh/pingcheck.sh --host-list '$reserved_host_list' | awk /^1/ | tail -1 | sed s/1[[:space:]]//",
-			["2_frozen"] = "60"
+			["1_bash"] = "ddd/usr/lib/lua/applogic/sh/pingcheck.sh --host-list '$reserved_host_list' | awk /^1/ | tail -1 | sed s/1[[:space:]]//",
+			--["2_frozen"] = "60"
 		}
 	},
 
@@ -77,58 +79,46 @@ local rule_setting = {
 				local is_current_ok = ("$ping_current" == "1")
 				local is_reserved_fail = ("$reserved_host" == "")
 				local not_ready_to_switch =	(is_current_ok or is_reserved_fail or tonumber("$timer") < 15)
-				return not_ready_to_switch
+				retrurn not_ready_to_switch
 			]],
 			["2_frozen"] = "5"
 		}
 	}
 }
 
-function rule:make()
-	local only = "ERROR"
+-- Use "ERROR", "INFO" to override the debug level
+-- Use /etc/config/applogic to change the debug mode: RULE or VAR
+-- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
+debug_mode.type = "RULE"
 
-	self:load("title"):modify():debug()			-- Use "ERROR", "DEBUG" or "INFO" to check individual var
+debug_mode.level = "INFO"
+
+rule.debug_mode = debug_mode
+function rule:make()
+	local only = rule.debug_mode.level
+
+	self:load("title"):modify():debug(only)
 	self:load("timer"):modify():debug(only)
 	self:load("current_host"):modify():debug(only)
 	self:load("reserved_host_list"):modify():debug(only)
 	self:load("reserved_host"):modify():debug(only)
 	self:load("ping_current"):modify():debug(only)
-	self:load("swith_cpe"):modify():debug("INFO")
+	self:load("swith_cpe"):modify():debug(only)
 
-	self:clear_cache() -- The Variables cache is cleared on rule completion
+	self:clear_cache()
 end
 
---------------------[[ Don't edit the following code ]]
-rule.ubus = {}
-rule.report = report
-rule.cache_ubus, rule.cache_uci, rule.cache_bash = {}, {}, {}
-rule.is_busy, rule.iteration = false, 0
 
-function rule:load(varname)
-	return loadvar(rule, varname)
-end
-function rule:clear_cache()
-	rule.cache_ubus, rule.cache_uci, rule.cache_bash = nil, nil, nil
-	rule.cache_ubus, rule.cache_uci, rule.cache_bash = {}, {}, {}
-end
+---[[ Initializing. Don't edit the code below ]]---
 local metatable = {
 	__call = function(table, parent)
-		if not table.setting then
-			table.setting = rule_setting
+		local t = rule_init(table, rule_setting, parent)
+		if not t.is_busy then
+			t.is_busy = true
+			t:make()
+			t.is_busy = false
 		end
-		if table.debug and (not table.report) then
-			print("applogic: Rule [1_rule] includes applogic.util.report for debugging needs.")
-			table.report = require "applogic.util.report"
-		end
-		table.ubus = parent.ubus_object
-		table.conn = parent.conn
-
-		if not table.is_busy then
-			table.is_busy = true
-			table:make()
-			table.is_busy = false
-		end
-		return table
+		return t
 	end
 }
 setmetatable(rule, metatable)

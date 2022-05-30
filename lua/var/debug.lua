@@ -1,42 +1,76 @@
 local log = require "applogic.util.log"
 local util = require "luci.util"
 local pretty = require "applogic.util.prettyjson"
-
--- Module instantiation
 local cjson = require "cjson"
+local report = require "applogic.util.report"
 
-function leading_trailing(str)
-    return str:gsub('^%s*', ''):gsub('%s*$', '')
-end
+--[[ Example of structure to populate
+	variables = {
+	    ["varname"] = {
+			note = "",
+	        source = { code, value, noerror },
+	        input = { value, noerror },
+	        output = { value, noerror },
+	        modifiers = {
+	            ["1_func"] = { body, value, noerror }
+	        },
+			noerror = true,
+            order = 1,
+	    },
+	},
+	noerror_rule = true,
+]]
 
-function tabular(str)
-    return str:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n")
-end
-
-local report = {}
 local debug = {}
-debug.rule = {}
 debug.varname = ""
 debug.init = function(rule)
     debug.rule = rule
-    report = rule.report or {}
+    if not debug.variables then
+        debug.variables = {}
+        debug.noerror_rule = true
+    end
+    rule.debug = debug      -- Add populated debug table to the rule table for sharing the data
+    debug.report = report   -- Link to "report" table to access print_var(), print_rule() methods
     return debug
 end
 
+function debug:set_noerrors(varl, noerror)
+    local asvarattr = varl
+    local asruleattr = self
+    asvarattr.noerror = noerror and asvarattr.noerror
+    asruleattr.noerror = noerror and asruleattr.noerror
+end
+
+
+function debug:note(val)
+    local value = val or ""
+    local dvlink = debug.variables[debug.varname]
+    if value:len() == 0 then value = "empty" end
+    local noerror = (type(value) == "string")
+    dvlink.note = value
+    debug:set_noerrors(dvlink, noerror)
+end
+
+function debug:order()
+    local dvlink = debug.variables[debug.varname]
+    dvlink.order = debug.rule.setting[self.varname].order
+end
 
 function debug:source_bash(command, result, noerror)
+    local dvlink = debug.variables[debug.varname]
     if self.rule.setting[self.varname].source then
-        report[self.varname].source = {
+        dvlink.source = {
             ["type"] = "bash",
             ["code"] = string.format("%s", command),
             ["value"] = string.format("%s", result),
             ["noerror"] = noerror
         }
-        report.noerror = noerror and report.noerror
+        debug:set_noerrors(dvlink, noerror)
     end
 end
 
 function debug:source_ubus(object, method, params, result, noerror, src)
+    local dvlink = debug.variables[debug.varname]
     if self.rule.setting[self.varname].source then
         local src = string.format([[
             source = {
@@ -46,19 +80,18 @@ function debug:source_ubus(object, method, params, result, noerror, src)
                 params = "%s"
             }
         ]], object, method, util.serialize_json(params))
-        local s = tabular(src)
-        report[self.varname].source = {
+        dvlink.source = {
             ["type"] = "ubus",
             ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
             ["value"] = pretty(result):gsub("\t", "  "),
             ["noerror"] = noerror
         }
-
-        report.noerror = noerror and report.noerror
+        debug:set_noerrors(dvlink, noerror)
     end
 end
 
-function debug:source_uci(config, section, option, result, noerror)
+function debug:source_uci(confdvlinkig, section, option, result, noerror)
+    local dvlink = debug.variables[debug.varname]
     if self.rule.setting[self.varname].source then
         local sec = ((type(section) == "table") and util.serialize_json(section)) or section
         local src = string.format([[
@@ -69,28 +102,30 @@ function debug:source_uci(config, section, option, result, noerror)
                 option = "%s"
             }
         ]], config, section, (option or ""))
-        report[self.varname].source = {
+        dvlink.source = {
             ["type"] = "uci",
             ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
             ["value"] = result,
             ["noerror"] = noerror
         }
-        report.noerror = noerror and report.noerror
+        debug:set_noerrors(dvlink, noerror)
     end
 end
 
 function debug:input(val)
+    local dvlink = debug.variables[debug.varname]
     local value = val or ""
     if value:len() == 0 then value = "empty" end
     local noerror = (type(value) == "string")
-    report[self.varname].input = {
+    dvlink.input = {
         ["value"] = value:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"),  -- TODO change \t to " " if needed
         ["noerror"] = noerror
     }
-    report.noerror = noerror and report.noerror
+    debug:set_noerrors(dvlink, noerror)
 end
 
 function debug:output(val)
+    local dvlink = debug.variables[debug.varname]
     local value = val or ""
     if value:len() == 0 then value = "empty" end
     local noerror = (type(value) == "string")
@@ -98,44 +133,48 @@ function debug:output(val)
     local ok, res = pcall(cjson.decode, value)
     value = ok and pretty(res) or value
 
-    report[self.varname].output = {
+    dvlink.output = {
         ["value"] = value:gsub("\t", "  "),
         ["noerror"] = noerror
     }
-    report.noerror = noerror and report.noerror
+    debug:set_noerrors(dvlink, noerror)
 end
 
 function debug:modifier(mdf_name, mdf_body, result, noerror)
+    local dvlink = debug.variables[debug.varname]
     if self.rule.setting[self.varname].modifier then
-        if not report[self.varname].modifier then
-            report[self.varname].modifier = {}
+        if not dvlink.modifier then
+            dvlink.modifier = {}
         end
 
-        report[self.varname].modifier[mdf_name] = {
+        dvlink.modifier[mdf_name] = {
             ["body"] = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n"),
             ["value"] = result,
             ["noerror"] = noerror
         }
-        report.noerror = noerror and report.noerror
+        debug:set_noerrors(dvlink, noerror)
     end
 end
 
 function debug:modifier_bash(mdf_name, mdf_body, result, noerror)
-    local varlink = self.rule.setting[self.varname]
-    if varlink.modifier then
-        if not report[self.varname].modifier then
-            report[self.varname].modifier = {}
+    local dvlink = debug.variables[debug.varname]
+    if dvlink.modifier then
+        if not dvlink.modifier then
+            dvlink.modifier = {}
         end
-        report[self.varname].modifier[mdf_name] = {
+        dvlink.modifier[mdf_name] = {
             ["body"] = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n"),
             ["value"] = result.stdout or "",
             ["noerror"] = noerror
         }
+
+        --log("DDD", dvlink)
+
         -- Print shell command error together with result, if debug level = INFO
-        if varlink.dbg_level and varlink.dbg_level == "INFO" and result.stderr then
-            report[self.varname].modifier[mdf_name].value = report[self.varname].modifier[mdf_name].value .. "\n" .. result.stderr
+        if debug.rule.debug.level and debug.rule.debug.level == "INFO" and result.stderr then
+            dvlink.modifier[mdf_name].value = dvlink.modifier[mdf_name].value .. "\n" .. result.stderr
         end
-        report.noerror = noerror and report.noerror
+        debug:set_noerrors(dvlink, noerror)
     end
 end
 
@@ -143,8 +182,10 @@ end
 local metatable = {
 	__call = function(table, varname)
         table.varname = varname
-        if not report[varname] then
-            report[varname] = {}
+        if not debug.variables[varname] then
+            debug.variables[varname] = {
+                noerror = true
+            }
         end
 		return table
 	end

@@ -14,7 +14,7 @@ function main:modify(varname, rule) --[[
 	Apply modifiers to the target value
 	---------------------------------]]
 	local debug
-	if rule.debug then debug = require "applogic.var.debug".init(rule) end
+	if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
 	local varlink = rule.setting[varname]
 
     -- Before the modifier applies, we put load the initial (input) value to intermediate (subtotal)
@@ -52,7 +52,7 @@ function main:modify(varname, rule) --[[
 	local _, n = varlink.output:gsub("\n", "\n")
 	if n == 1 then varlink.output = varlink.output:gsub("%s+$", "") end
 
-	if rule.debug then debug(varname):output(varlink.output) end
+	if rule.debug_mode.enabled then debug(varname):output(varlink.output) end
 	varlink.subtotal = nil
 	varlink.bash_join = nil
 end

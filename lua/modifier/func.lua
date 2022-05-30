@@ -6,7 +6,7 @@ function func(varname, mdf_name, rule) --[[
 	Apply modifiers to the target value
 	---------------------------------]]
 	local debug
-	if rule.debug then debug = require "applogic.var.debug".init(rule) end
+	if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
 	local varlink = rule.setting[varname]
 	local result = ""
 	local noerror = true
@@ -19,7 +19,7 @@ function func(varname, mdf_name, rule) --[[
 	local noerror, res = pcallchunk(luacode)
 	result = res or ""
 
-	if rule.debug then debug(varname):modifier(mdf_name, luacode, result, noerror) end
+	if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, luacode, result, noerror) end
 
 	return result
 end

@@ -1,7 +1,12 @@
+local log = require "applogic.util.log"
 
 local loadvar = {}
 local loadvar_metatable = {
-	__call = function(loadvar_table, rule, varname)
+	__call = function(loadvar_metatable, rule, varname)
+		local debug
+
+		if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
+
 		local util = require "luci.util"
 		local log = require "applogic.util.log"
 		local md5 = require "md5" -- https://github.com/keplerproject/md5/blob/master/tests/test.lua
@@ -11,26 +16,24 @@ local loadvar_metatable = {
 		local frozen = require "applogic.modifier.frozen"
 		local last_mdfr_name = require "applogic.util.last_mdfr_name"
 
-
 		local loadvar_ubus = require "applogic.var.loadvar_ubus"
 		local loadvar_uci = require "applogic.var.loadvar_uci"
 		local loadvar_bash = require "applogic.var.loadvar_bash"
-
-		--[[ Use rules.DEBUG switcher in applogic/run.lua to turn debug on/off at all ]]
-		--[[ It reduces memory and process overloaded ]]
-		local debug
-		if rule.debug then
-			debug = require "applogic.var.debug".init(rule)
-		end
 
 		local setting = rule.setting
 		local varlink = rule.setting[varname]
 		local report = rule.report
 
+		-- Make variable order
+		rule.variterator = rule.variterator + 1
+		varlink.order = rule.variterator
+
 		-- If user missed input/output declaration in the rule
 		varlink.input = varlink.input or ""
 		varlink.output = varlink.output or tostring(varlink.input)
-		if rule.debug then debug(varname):input(varlink.input or "") end
+		if rule.debug_mode.enabled then debug(varname):order() end
+		if rule.debug_mode.enabled then debug(varname):note(varlink.note or "") end
+		if rule.debug_mode.enabled then debug(varname):input(varlink.input or "") end
 
 		-- Check if the variable skipped
 		local skipped = varlink.modifier and #util.keys(varlink.modifier) > 0 and varlink.modifier["1_skip"]
@@ -71,10 +74,9 @@ local loadvar_metatable = {
 			local dbg = {}
 			function dbg:debug(...)
 				local level = arg[1]
-				if level and (level == "INFO" or level == "ERROR") and rule.debug then
-					varlink.dbg_level = level
-					rule.report:print(varname, level, rule.iteration)
-					rule.report[varname] = nil -- clear report on the variable after printing out
+				if level and (level == "INFO" or level == "ERROR") and rule.debug_mode.enabled and rule.debug_mode.type == "VAR" then
+					rule.debug.report(rule):print_var(varname, level, rule.iteration)
+					rule.debug.report(rule):clear()
 				end
 			end
 			setmetatable(dbg, { __call = function(table) return table end })

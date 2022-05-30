@@ -8,6 +8,7 @@ local log = require "applogic.util.log"
 local flist = require "applogic.util.filelist"
 local uci = require "luci.model.uci".cursor()
 local bit = require "bit"
+local debug_mode = require "applogic.debug_mode"
 
 --local F = require "posix.fcntl"
 --local U = require "posix.unistd"
@@ -16,7 +17,6 @@ local config = "wimark"
 
 
 local rules = {}
-rules.DEBUG = 1
 rules.ubus_object = {}
 rules.conn = 0
 
@@ -89,23 +89,35 @@ function rules:make()
 end
 
 
-function rules:run_all(varlink)
+function rules:run_all()
 	local rules_list = self.setting.rules_list.target
 	local state = ''
 
 	for name, rule in util.kspairs(rules_list) do
+		-- rule.debug = (rules.debug_type and (rules.debug_type == "VAR" or rules.debug_type == "RULE") or false
+		-- rule.debug_var = (rules.debug_type and rules.debug_type == "VAR") or false
+		-- rule.debug_rule = (rules.debug_type and rules.debug_type == "RULE") or false
+		-- rule.iteration = self.iteration
 		-- Initiate rule with link to the present (parent) module
 		-- Then the rule can send notification on the ubus object of parent module
-		rule.debug = (rules.DEBUG and rules.DEBUG == 1) or false
-		rule.iteration = self.iteration
+
+
 		state = rule(self)
+
+		-- DEBUG: Print all vars table
+		local rule_has_error = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "ERROR" and rule.debug.noerror == false
+		local report_anyway_mode = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "INFO"
+		if rule_has_error or report_anyway_mode then
+			rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
+			rule.debug.report(rule):clear()
+		end
+
 	end
 end
 
 local metatable = {
 	__call = function(table)
 		table.setting = rules_setting
-		table.iteration = 0
 		local tick = table.setting.tick_size_default
 
 		table:make_ubus()
@@ -117,7 +129,6 @@ local metatable = {
 		local timer
 		function t()
 			table:run_all()
-			table.iteration = table.iteration + 1
 			timer:set(tick)
 		end
 		timer = uloop.timer(t)

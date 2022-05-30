@@ -6,7 +6,7 @@ function frozen(varname, rule, mdf_name) --[[
     Should return number of seconds to froze.
     ----------------------------------------]]
     local debug
-    if rule.debug then debug = require "applogic.var.debug".init(rule) end
+    if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
     local varlink = rule.setting[varname]
     local max_seconds = 31536000
     local noerror = true
@@ -35,13 +35,13 @@ function frozen(varname, rule, mdf_name) --[[
         local now = os.time()
         if (now > varlink.frozen.cancel_time) then
             varlink.frozen = nil
-            if rule.debug then debug(varname):modifier(mdf_name, "Frozen until:", "Unfrozen", noerror) end
+            if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", "Unfrozen", noerror) end
         else
             local time = os.date("%X", varlink.frozen.cancel_time)
             local remains = varlink.frozen.cancel_time - now
             result = string.format("%s, remains: %s sec.", time, remains)
 
-            if rule.debug then debug(varname):modifier(mdf_name, "Frozen until:", result, noerror) end
+            if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", result, noerror) end
         end
     end
 

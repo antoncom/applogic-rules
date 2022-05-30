@@ -8,7 +8,8 @@ local loadvar_ubus = {}
 
 function loadvar_ubus:load(varname, rule)
 	local debug
-	if rule.debug then debug = require "applogic.var.debug".init(rule) end
+	if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
+
 	local setting = rule.setting
 	local varlink = rule.setting[varname]
 	local cache_key = ""
@@ -36,7 +37,7 @@ function loadvar_ubus:load(varname, rule)
 	end
 
 	result = rule.cache_ubus[cache_key] or ""
-	if rule.debug then debug(varname):source_ubus(obj, method, params, result, noerror, varlink.source) end
+	if rule.debug_mode.enabled then debug(varname):source_ubus(obj, method, params, result, noerror, varlink.source) end
 
 	return (rule.cache_ubus[cache_key] and util.serialize_json(rule.cache_ubus[cache_key])) or ""
 end

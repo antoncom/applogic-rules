@@ -9,7 +9,8 @@ local loadvar_bash = {}
 
 function loadvar_bash:load(varname, rule)
 	local debug
-	if rule.debug then debug = require "applogic.var.debug".init(rule) end
+	if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
+
 	local setting = rule.setting
 	local varlink = rule.setting[varname]
 	local cache_key = ""
@@ -31,7 +32,7 @@ function loadvar_bash:load(varname, rule)
 			rule.cache_bash[cache_key] = result.stdout and string.format("%s", result.stdout) or ""
 		end
 	end
-	if rule.debug then debug(varname):source_bash(command, rule.cache_bash[cache_key] or "", noerror) end
+	if rule.debug_mode.enabled then debug(varname):source_bash(command, rule.cache_bash[cache_key] or "", noerror) end
 
 	return rule.cache_bash[cache_key]
 end

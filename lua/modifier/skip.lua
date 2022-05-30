@@ -4,7 +4,7 @@ local pcallchunk = require "applogic.util.pcallchunk"
 
 function skip(varname, rule)
 	local debug
-	if rule.debug then debug = require "applogic.var.debug".init(rule) end
+	if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
 	local result = false
 	local noerror = true
 
@@ -17,7 +17,7 @@ function skip(varname, rule)
 	if res == nil then noerror = false end
 	result = res or false
 
-	if rule.debug then debug(varname):modifier("1_skip", luacode, result, noerror) end
+	if rule.debug_mode.enabled then debug(varname):modifier("1_skip", luacode, result, noerror) end
 
 	return result
 end

@@ -6,7 +6,7 @@ function bash(varname, mdf_name, mdf_body, rule) --[[
 	Apply modifiers to the target value
 	---------------------------------]]
 	local debug
-	if rule.debug then debug = require "applogic.var.debug".init(rule) end
+	if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
 	local varlink = rule.setting[varname] or {}
 	local command = mdf_body and mdf_body:gsub("^%s+", ""):gsub("%s$", "") or ""
 	local command_extra = ""
@@ -35,7 +35,7 @@ function bash(varname, mdf_name, mdf_body, rule) --[[
 	end
 
 	noerror = (not result.stderr)
-	if rule.debug then debug(varname):modifier_bash(mdf_name, command, result, noerror) end
+	if rule.debug_mode.enabled then debug(varname):modifier_bash(mdf_name, command, result, noerror) end
 
 	return result.stdout or ""
 end

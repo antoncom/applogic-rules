@@ -8,7 +8,8 @@ local loadvar_uci = {}
 
 function loadvar_uci:load(varname, rule)
 	local debug
-	if rule.debug then debug = require "applogic.var.debug".init(rule) end
+	if rule.debug_mode.enabled then debug = require "applogic.var.debug".init(rule) end
+
 	local setting = rule.setting
 	local varlink = rule.setting[varname]
 	local cache_key = ""
