@@ -1,0 +1,4 @@
+config debug_mode 'debug_mode'
+    option enable '1'
+    option type 'VAR'
+    option level 'INFO'

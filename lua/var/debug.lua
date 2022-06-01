@@ -27,11 +27,25 @@ debug.init = function(rule)
     debug.rule = rule
     if not debug.variables then
         debug.variables = {}
-        debug.noerror_rule = true
+        debug.noerror = true
     end
     rule.debug = debug      -- Add populated debug table to the rule table for sharing the data
     debug.report = report   -- Link to "report" table to access print_var(), print_rule() methods
     return debug
+end
+
+function wrap(str, limit, indent, indent1)
+  indent = indent or ""
+  indent1 = indent1 or indent
+  limit = limit or 79
+  local here = 1-#indent1
+  return indent1..str:gsub("(%s+)()(%S+)()",
+        function(sp, st, word, fi)
+            if fi-here > limit then
+                here = st - #indent
+                return "\n"..indent..word
+            end
+        end)
 end
 
 function debug:set_noerrors(varl, noerror)
@@ -47,6 +61,17 @@ function debug:note(val)
     local dvlink = debug.variables[debug.varname]
     if value:len() == 0 then value = "empty" end
     local noerror = (type(value) == "string")
+    value = value:gsub("%s+\n", " \n"):gsub("\n%s+", "\n")
+    value = value:trim()
+
+    value = wrap(value)
+
+
+    -- if value:len() > 20  then
+    --     local pos = value:find(" ", 39)
+    --     value = value:sub(1,pos-1) .. "\n" .. value:sub(pos,-1)
+    -- end
+
     dvlink.note = value
     debug:set_noerrors(dvlink, noerror)
 end
@@ -147,8 +172,10 @@ function debug:modifier(mdf_name, mdf_body, result, noerror)
             dvlink.modifier = {}
         end
 
+        mdf_body = wrap(mdf_body)
+
         dvlink.modifier[mdf_name] = {
-            ["body"] = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n"),
+            ["body"] = mdf_body,--:gsub("\t+", "\t"):gsub("%c+", "\n"),
             ["value"] = result,
             ["noerror"] = noerror
         }
@@ -169,9 +196,9 @@ function debug:modifier_bash(mdf_name, mdf_body, result, noerror)
 
     --log("DDD", dvlink)
 
-    -- Print shell command error together with result, if debug level = INFO
-    if debug.rule.debug.level and debug.rule.debug.level == "INFO" and result.stderr then
-        dvlink.modifier[mdf_name].value = dvlink.modifier[mdf_name].value .. "\n" .. result.stderr
+    -- Print shell command error together with result
+    if result.stderr then
+        dvlink.modifier[mdf_name].value = result.stderr .. "\n" .. dvlink.modifier[mdf_name].value
     end
     debug:set_noerrors(dvlink, noerror)
 end

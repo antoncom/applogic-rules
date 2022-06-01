@@ -5,34 +5,57 @@ local log = require "applogic.util.log"
 
 local rule = {}
 local rule_setting = {
+
 	title = {
 		input = "Переключение CPE Agent на резервный хост.",
 	},
 
-	timer = {
-		note = [[ Отсчитывает 60-секундный интервал ]],
-		input = "0",
-		modifier = {
-			["1_func"] = [[ if tonumber("$timer") >= 15 then return "0" else return "$timer" end ]],
-			["2_func"] = [[ return tostring(tonumber("$timer") + 1) ]],
-		}
-	},
-
-	current_host = {
-		note = [[ Адрес активного хоста брокера ]],
+	cpe_status = {
+		note = [[ Статус CPE Agent. Если включен - возвращает "OK". ]],
 		source = {
 			type = "ubus",
 			object = "cpeagent",
-			method = "status",
+			method = "status"
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e '$.broker.host' ]],
+			--["1_func"] = [[ if string.len('$cpe_status') > 0 then return "OK" else return "" ]],
+			["1_func"] = [[ if string.len('$cpe_status') > 0 then return "OK" else return "" end ]],
 			["2_frozen"] = "5"
 		}
 	},
 
-	reserved_host_list = {
-		note = [[ "Хранит список резервных хостов CPE Agent. Разделитель - ';' ]],
+	cpe_host = {
+		note = [[ Адрес активного хоста брокера CPE ]],
+		source = {
+			type = "ubus",
+			object = "cpeagent",
+			method = "status"
+		},
+		modifier = {
+			["1_skip"] = [[
+				local CPE_ACTIVE = ('$cpe_status' ~= '')
+				return (not CPE_ACTIVE)
+			]],
+			["2_bash"] = [[ jsonfilter -e '$.broker.host' ]],
+			["3_frozen"] = "10"
+		}
+	},
+
+	cpe_pinged = {
+		note = [[ Пингутет текущий хост CPE с интервалом 10 сек. и возвращает 1 или 0. ]],
+		modifier = {
+			["1_skip"] = [[
+				local CPE_ACTIVE = ('$cpe_status' ~= '')
+				return (not CPE_ACTIVE)
+			]],
+			["2_bash"] = "/usr/lib/lua/applogic/sh/pingcheck.sh --host $cpe_host",
+			["3_func"] = [[ return string.sub("$cpe_pinged",1,1) ]],
+			["4_frozen"] = "10"
+		}
+	},
+
+	all_hosts = {
+		note = [[ Хранит список всех хостов CPE Agent. Разделитель - ';' ]],
 		source = {
 			type = "ubus",
 			object = "uci",
@@ -43,44 +66,49 @@ local rule_setting = {
 			}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e '$.values.*.host' | awk '!/$current_host/' | awk '!/platform.wimark.com/' | awk -v RS=  '{$1=$1}1' | tr " " ";" ]],
+			["1_bash"] = [[ jsonfilter -e '$.values.*.host' | awk -v RS=  '{$1=$1}1' | tr " " ";" ]],
+			["2_frozen"] = "5"
 		}
 	},
 
-	ping_current = {
-		note = [[ Пингутет текущий хост с интервалом указанным в модификаторе "frozen" и возвращает 1 или 0 ]],
+	alived_hosts = {
+		note = [[ Пингутет все хосты, возвращает только действующие. Разделитель ";". ]],
 		modifier = {
-			["1_bash"] = "/usr/lib/lua/applogic/sh/pingcheck.sh --host $current_host",
-			["2_func"] = [[ return string.gsub("$ping_current", "%s+", ""):sub(1,1) ]],
-			["3_func"] = [[ return "0" ]],
-			["4_frozen"] = "10"
+			["1_bash"] = "/usr/lib/lua/applogic/sh/pingcheck.sh --host-list '$all_hosts' | awk /^1/ | sed s/1[[:space:]]// | awk -v RS=  '{$1=$1}1' | tr ' ' ';'",
+			["2_frozen"] = "15"
 		}
 	},
 
-	reserved_host = {
-		note = [[ Пингутет резервные хосты, возвращает первый доступный в виде "1 www.ya.ru" ]],
+	timer = {
+		note = [[ Отсчитывает 60-секундный интервал, если хост не отвечает и есть куда переключиться ]],
+		input = "0",
 		modifier = {
-			["1_bash"] = "/usr/lib/lua/applogic/sh/pingcheck.sh --host-list '$reserved_host_list' | awk /^1/ | tail -1 | sed s/1[[:space:]]//",
-			["2_frozen"] = "60"
+			["1_skip"] = [[
+				local CPE_ACTIVE = ('$cpe_status' ~= '')
+				local CPE_HOST_NOT_ALIVE = ("$cpe_pinged" == "0")
+				local OK_RESERVED = ("$alived_hosts" ~= "")
+				local COUNT = CPE_ACTIVE and CPE_HOST_NOT_ALIVE and OK_RESERVED
+				return (not COUNT)
+			]],
+			["1_func"] = [[ if tonumber("$timer") >= 60 then return "0" else return "$timer" end ]],
+			["2_func"] = [[ return tostring(tonumber("$timer") + 1) ]],
 		}
 	},
 
 	swith_cpe = {
-		note = [[ Переключает CPE Agent на резервный хост если ping_current=0 и ping_reserved=<host> ]],
+		note = [[ Переключает CPE Agent на резервный хост если за 50 сек. текущий хост FAIL и резервный список не пуст. ]],
 		source = {
 			type = "ubus",
 			object = "cpeagent",
-			method = "status",
-			-- params = {
-			-- 	host = "$reserved_host"
-			-- }
+			method = "reset"
 		},
 		modifier = {
 			["1_skip"] = [[
-				local is_current_ok = ("$ping_current" == "1")
-				local is_reserved_fail = ("$reserved_host" == "")
-				local not_ready_to_switch =	(is_current_ok or is_reserved_fail or tonumber("$timer") < 15)
-				return not_ready_to_switch
+				local CPE_ACTIVE = ('$cpe_status' ~= '')
+				local CPE_HOST_NOT_ALIVE = ("$cpe_pinged" == "0")
+				local OK_RESERVED = ("$alived_hosts" ~= "")
+				local DO_SWITCH = CPE_ACTIVE and CPE_HOST_NOT_ALIVE and OK_RESERVED
+				return (not (DO_SWITCH and tonumber("$timer") > 50))
 			]],
 			["2_frozen"] = "5"
 		}
@@ -91,19 +119,23 @@ local rule_setting = {
 -- Use /etc/config/applogic to change the debug mode: RULE or VAR
 -- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
 debug_mode.type = "RULE"
-debug_mode.level = "ERROR"
+debug_mode.level = "INFO"
 
 rule.debug_mode = debug_mode
+
 function rule:make()
 	local ONLY = rule.debug_mode.level
 
-	--log("rule", rule)
-	self:load("title"):modify():debug()
+	self:load("title"):modify():debug()	-- Use debug(ONLY) to check the var only
+
+	self:load("cpe_status"):modify():debug()
+	self:load("cpe_host"):modify():debug()
+	self:load("cpe_pinged"):modify():debug()
+
+	self:load("all_hosts"):modify():debug()
+	self:load("alived_hosts"):modify():debug()
+
 	self:load("timer"):modify():debug()
-	self:load("current_host"):modify():debug()
-	self:load("reserved_host_list"):modify():debug()
-	self:load("reserved_host"):modify():debug()
-	self:load("ping_current"):modify():debug()
 	self:load("swith_cpe"):modify():debug()
 
 	self:clear_cache()
@@ -124,3 +156,5 @@ local metatable = {
 }
 setmetatable(rule, metatable)
 return rule
+
+-- ubus call uci set '{"config":"wimark","type":"broker","section":"cfg0b2e8a","values":{"host":"192.168.1.22"}}'

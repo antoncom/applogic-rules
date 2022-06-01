@@ -175,14 +175,25 @@ function report:print_rule(level, iteration)
 					for name, mdf in util.kspairs(vars[varname]["modifier"]) do
 						if "skip" == name:sub(3) then
 							if mdf["value"] then
-								passlogic = "[skip] skipped."
-								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+								passlogic = "[skip]"
+								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 							else
-								passlogic = "[skip] Not skipped. Do logic. "
+								passlogic = ""
+								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+							end
+						elseif "trigger" == name:sub(3) then
+							if mdf["value"] then
+								passlogic = "[trigger]"
+								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
+							else
+								passlogic = ""
 								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 							end
 						elseif "frozen" == name:sub(3) then
-							passlogic = string.format("%s\n[frozen] %s %s", passlogic, mdf["body"], mdf["value"])
+							if mdf["value"] and mdf["value"]:len() > 0 then
+								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(mdf["value"]) or mdf["value"])
+								--passlogic = string.format("%s[frozen]", passlogic)
+							end
 						end
 					end
 				end

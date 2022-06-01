@@ -8,6 +8,7 @@ require "applogic.modifier.skip"
 require "applogic.modifier.func"
 require "applogic.modifier.bash"
 require "applogic.modifier.frozen"
+require "applogic.modifier.trigger"
 
 local main = {}
 function main:modify(varname, rule) --[[
@@ -26,6 +27,12 @@ function main:modify(varname, rule) --[[
 	            if "skip" == mdf_name:sub(3) then
 	                local is_skip = skip(varname, rule)
 	                if is_skip then
+	                    break
+	                end
+	            end
+				if "trigger" == mdf_name:sub(3) then
+	                local must_trigger = trigger(varname, rule)
+					if not must_trigger then
 	                    break
 	                end
 	            end

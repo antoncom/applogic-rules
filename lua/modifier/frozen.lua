@@ -36,11 +36,12 @@ function frozen(varname, rule, mdf_name) --[[
             local now = os.time()
             if (now > varlink.frozen.cancel_time) then
                 varlink.frozen = nil
-                if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", "Unfrozen", noerror) end
+                if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", "", noerror) end
             else
-                local time = os.date("%X", varlink.frozen.cancel_time)
+                --local time = os.date("%X", varlink.frozen.cancel_time)
                 local remains = varlink.frozen.cancel_time - now
-                result = string.format("%s, remains: %s sec.", time, remains)
+                local seconds = varlink.frozen.seconds
+                result = string.format("%s", seconds)
 
                 if rule.debug_mode.enabled then debug(varname):modifier(mdf_name, "Frozen until:", result, noerror) end
             end

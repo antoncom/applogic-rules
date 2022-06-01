@@ -35,7 +35,7 @@ function rules:make_ubus()
 	end
 
 	local ubus_object = {
-		["cpeagent.rules"] = {
+		["applogic.rules"] = {
 			list = {
 				function(req, msg)
 					local rlist = {}
@@ -58,7 +58,9 @@ function rules:make_ubus()
 
 					if rules[rule_name] and rules[rule_name].setting then
 						for varname, varparams in pairs(rules[rule_name].setting) do
-							vlist[varname] = (type(varparams["output"]) == "table") and util.serialize_json(varparams["output"]) or varparams["output"]
+							if varname ~= "title" then -- Hide title variable in UBUS response
+								vlist[varname] = (type(varparams["output"]) == "table") and util.serialize_json(varparams["output"]) or varparams["output"]
+							end
 						end
 					else
 						self.conn:reply(req, { ["error"] = string.format("Rule '%s' was not found.", tostring(rule_name)) })
@@ -105,13 +107,14 @@ function rules:run_all()
 		state = rule(self)
 
 		-- DEBUG: Print all vars table
-		local rule_has_error = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "ERROR" and rule.debug.noerror == false
-		local report_anyway_mode = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "INFO"
-		if rule_has_error or report_anyway_mode then
-			rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
-			rule.debug.report(rule):clear()
+		if rule.debug_mode.enabled then
+			local rule_has_error = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "ERROR" and rule.debug.noerror == false
+			local report_anyway_mode = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "INFO"
+			if rule_has_error or report_anyway_mode then
+				rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
+				rule.debug.report(rule):clear()
+			end
 		end
-
 	end
 end
 
