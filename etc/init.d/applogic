@@ -1,0 +1,29 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2017-2021 WiMark Systems
+
+START=41
+STOP=81
+USE_PROCD=1
+
+SERVICE=/usr/sbin/applogic
+SERVICE_USE_PID=1
+
+  . /lib/functions.sh
+INCLUDE_ONLY=1 . $SERVICE
+
+start_service() {
+    procd_open_instance 'applogic'
+
+    procd_set_param respawn 3600 5 0
+    procd_set_param file "/etc/config/applogic"
+    procd_set_param stdout 1
+    procd_set_param command $SERVICE
+    procd_set_param pidfile $SERVICE_PID_FILE
+    procd_close_instance
+
+}
+
+service_triggers()
+{
+    procd_add_reload_trigger "applogic"
+}
