@@ -1,24 +1,5 @@
 #!/bin/sh
 
-___ping_host() {
-    host=$1
-    result=$(ping $host -c1 -A -w1 -W1 -q | awk -v HOST="$host" '{
-        if(NF>6) {
-            loss = $7; loss = substr($7, 0, length($7)-1);
-            if(loss == "100") {
-                print "0 " HOST
-            } else {
-                print "1 " HOST
-            }
-        }
-    }')
-    # if Error occured in ping (when possibly bad address, etc.)
-    if [[ -z $result ]]; then
-        result="FAIL"
-    fi
-    echo $result
-}
-
 ping_host() {
     host=$1
     result=$(ping $host -c1 -A -w1 -W1 -q 2>/dev/null | awk -v HOST="$host" '{
