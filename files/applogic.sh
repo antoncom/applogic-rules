@@ -24,7 +24,7 @@ callinit() {
     RETVAL=$?
 }
 run() {
-    uci set cperules.debug_mode.enable='0'
+    uci set applogic.debug_mode.enable='0'
     uci commit
     exec /usr/bin/lua /usr/lib/lua/applogic/app.lua
     RETVAL=$?
@@ -37,7 +37,7 @@ list() {
 
 debug() {
     applogic stop
-    uci set cperules.debug_mode.enable='1'
+    uci set applogic.debug_mode.enable='1'
     uci commit
     exec /usr/bin/lua /usr/lib/lua/applogic/app.lua
     RETVAL=$?
