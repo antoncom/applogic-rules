@@ -10,6 +10,7 @@ require "applogic.modifier.frozen"
 require "applogic.modifier.trigger"
 require "applogic.modifier.save"
 require "applogic.modifier.shell"
+require "applogic.modifier.ui_update"
 
 
 local main = {}
@@ -35,6 +36,10 @@ function main:modify(varname, rule) --[[
 	            if "skip" == mdf_name:sub(3) then
 	                local is_skip = skip(varname, rule)
 	                if is_skip then
+						-- Если указать у переменной input = "some value"
+						-- то перед отменой обработки присвоить переменно йзначение из input
+						-- иначе в переменной останется хранится последнее расчётное значение (из output)
+						 varlink.subtotal = varlink.input or varlink.output or ""
 	                    break
 	                end
 	            end

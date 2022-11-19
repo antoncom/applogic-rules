@@ -1,168 +1,164 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.util.rule_init"
 local log = require "applogic.util.log"
-
+local I18N = require "luci.i18n"
 
 local rule = {}
 local rule_setting = {
-
 	title = {
-		input = "Переключение CPE Agent на резервный хост.",
+		input = "Правило переключения Сми-карты при отсутствии регистрации в сети",
 	},
 
-	cpe_status = {
-		note = [[ Статус CPE Agent. Если включен - возвращает "OK". ]],
+	sim_id = {
+		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
 		source = {
 			type = "ubus",
-			object = "cpeagent",
-			method = "status"
+			object = "tsmodem.driver",
+			method = "sim",
+			params = {},
+			--filter = "value"
 		},
 		modifier = {
-			["1_skip"] = [[
-				local NOT_switching_now = ($swith_cpe ~= "switching")
-				return (not NOT_switching_now)
-			]],
-			["2_bash"] = [[ jsonfilter -e '$.state' 2>/dev/null ]],
-			["3_func"] = [[ if string.len($cpe_status) > 0 then return "OK" else return "" end ]],
+			["1_bash"] = [[ jsonfilter -e $.value ]]
 		}
 	},
 
-	cpe_host = {
-		note = [[ Адрес активного хоста брокера CPE (ubus-запрос с интервалом 2 сек.) ]],
-		source = {
-			type = "ubus",
-			object = "cpeagent",
-			method = "status"
-		},
+	uci_section = {
+		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
 		modifier = {
-			["1_skip"] = [[
-				local cpe_status_OK = ($cpe_status ~= "")
-				local NOT_switching_now = ($swith_cpe ~= "switching")
-				return not (cpe_status_OK and NOT_switching_now)
-			]],
-			["2_bash"] = [[ jsonfilter -e '$.broker.host' 2>/dev/null ]],
+			["1_func"] = [[ if ($sim_id == 0 or $sim_id == 1) then return ("sim_" .. $sim_id) else return "sim_0" end ]],
 		}
 	},
 
-	cpe_pinged = {
-		note = [[ Пингутет текущий хост CPE с интервалом 5 сек. и возвращает "1" или "0". ]],
-		modifier = {
-			["1_skip"] = [[
-				local cpe_status_OK = ($cpe_status ~= "")
-				local NOT_switching_now = ($swith_cpe ~= "switching")
-				return not (cpe_status_OK and NOT_switching_now)
-			]],
-			["2_bash"] = "/usr/lib/lua/applogic/sh/pingcheck.sh --host $cpe_host",
-			["3_func"] = [[ return string.sub($cpe_pinged,1,1) ]],
-			["4_frozen"] = "return(5)"
-		}
-	},
-
-	last_alive_time = {
-			note = [[ Время когда PING был OK (если CPE выключен, тоже считаем что хост "жив" ]],
-			input = os.time(),
-			modifier = {
-				["1_skip"] = [[
-					local cpe_pinged_OK = ('$cpe_pinged' == '1')
-					local cpe_status_FAIL = ($cpe_status ~= "OK")
-					return not (cpe_pinged_OK or cpe_status_FAIL)
-				]],
-				["2_func"] = [[ return os.time() ]],
-				["3_save"] = [[ return $last_alive_time ]]
-			}
-	},
-
-	all_hosts = {
-		note = [[ Список всех хостов CPE Agent-а ]],
+	uci_timeout_reg = {
+		note = [[ Таймаут отсутствия регистрации в сети. Источник: /etc/config/tsmodem  ]],
 		source = {
 			type = "ubus",
 			object = "uci",
 			method = "get",
 			params = {
-				config = "wimark",
-				type = "broker"
+				config = "tsmodem",
+				section = "$uci_section",
+				option = "timeout_reg",
 			}
 		},
 		modifier = {
-			["1_skip"] = [[
-				local cpe_status_OK = ($cpe_status ~= "")
-				return (not cpe_status_OK)
-			]],
-			["2_bash"] = [[ jsonfilter -e '$.values.*.host' | awk -v RS=  '{$1=$1}1' | tr " " ";" ]],
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+			["2_func"] = [[ if ( $uci_timeout_reg == "" or tonumber($uci_timeout_reg) == nil) then return "99" else return $uci_timeout_reg end ]],
 		}
 	},
 
-	alived_hosts = {
-		note = [[ Пингутет все хосты, возвращает только действующие (раз в 5 сек.) ]],
-		modifier = {
-			["1_skip"] = [[
-				local cpe_status_OK = ($cpe_status ~= "")
-				local all_hosts_OK = ($all_hosts ~= "")
-				local NOT_switching_now = ($swith_cpe ~= "switching")
-				return not (cpe_status_OK and all_hosts_OK and NOT_switching_now)
-			]],
-			["2_bash"] = "/usr/lib/lua/applogic/sh/pingcheck.sh --host-list $all_hosts | awk /^1/ | sed s/1[[:space:]]// | awk -v RS=  '{$1=$1}1' | tr ' ' ';'",
-			["3_frozen"] = "return(5)"
-		}
-	},
-
-	timer = {
-		note = [[ Отсчитывает время, начиная от $last_alive_time ]],
-		input = "0",
-		modifier = {
-			["1_skip"] = [[
-				local NOT_switching_now = ($swith_cpe ~= "switching")
-				local last_alive_time_OK = (type($last_alive_time) == "number")
-				return not (NOT_switching_now and last_alive_time_OK)
-			]],
-			["2_func"] = [[ return (os.time() - $last_alive_time) ]],
-		}
-	},
-
-	swith_cpe = {
-		note = [[ Делаем "ubus call cpeagent reset" если за 20с текущий хост FAIL и резервный список не пуст. ]],
+	network_registration = {
+		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
 		source = {
 			type = "ubus",
-			object = "cpeagent",
-			method = "reset"
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {},
+			--filter = "value"
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+			["2_ui-update"] = {
+				param_list = { "network_registration", "sim_id" }
+			}
+		}
+	},
+
+	changed_reg_time = {
+		note = [[ Время последней успешной регистрации в сети или "", если неизвестно. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {},
+			--filter = "time"
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]]
+		}
+	},
+
+
+	lastreg_timer = {
+		note = [[ Отсчёт секунд при потере регистрации Сим-карты в сети. ]],
+		input = "0", -- Set default value if you need "reset" variable before skipping
+		modifier = {
+			["1_skip"] = [[ return ($network_registration == 1 or $network_registration == 7) ]],
+			["2_func"] = [[
+				local TIMER = tonumber($changed_reg_time) and (os.time() - $changed_reg_time) or false
+				if TIMER then return TIMER else return "0" end
+			]],
+			["3_ui-update"] = {
+				param_list = { "lastreg_timer", "sim_id", "event_switch_state", "changed_reg_time" }
+			},
+		}
+	},
+
+	switching = {
+		note = [[ Статус переключения Sim: true / false. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "switching",
+			params = {},
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+			["2_ui-update"] = {
+				param_list = { "switching", "sim_id" }
+			},
+			["3_frozen"] = [[ return 5 ]]
+		}
+	},
+
+	do_switch = {
+		note = [[ Активирует и возвращает трезультат переключения Сим-карты  ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "do_switch",
+			params = {},
 		},
 		modifier = {
 			["1_skip"] = [[
-				local cpe_status_OK = ($cpe_status ~= '')
-				local cpe_pinged_FAIL = ('$cpe_pinged' ~= '1')
-				local alived_hosts_OK = ($alived_hosts ~= '')
-				local exceeded = ($timer > 20)
-				return not (cpe_status_OK and cpe_pinged_FAIL and alived_hosts_OK and exceeded)
+				local READY = 	( $switching == "" or $switching == "false" )
+				local TIMEOUT = tonumber($lastreg_timer) and ( $lastreg_timer > $uci_timeout_reg )
+				return ( not (READY and TIMEOUT) )
 			]],
-			["2_func"] = [[ return "switching" ]],
-			["3_frozen"] = "return({10,string.format('done at: %s', os.date())})"
+			["2_bash"] = [[ jsonfilter -e $.value ]],
+			["3_ui-update"] = {
+				param_list = { "do_switch", "sim_id" }
+			},
+			["4_init"] = {
+				vars = {"lastreg_timer"}
+			}
 		}
-	}
+	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
 -- Use /etc/config/applogic to change the debug mode: RULE or VAR
 -- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
 function rule:make()
-	local ONLY = rule.debug_mode.level
 	debug_mode.type = "RULE"
 	debug_mode.level = "INFO"
 	rule.debug_mode = debug_mode
+	local ONLY = rule.debug_mode.level
 
-	self:load("title"):modify():debug()	-- Use debug(ONLY) to check the var only
+	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
+	self:load("sim_id"):modify():debug()
+	self:load("uci_section"):modify():debug()
+	self:load("uci_timeout_reg"):modify():debug()
 
-	self:load("cpe_status"):modify():debug()
-	self:load("cpe_host"):modify():debug()
-	self:load("cpe_pinged"):modify():debug()
-	self:load("last_alive_time"):modify():debug()
+	self:load("network_registration"):modify():debug()
+	self:load("changed_reg_time"):modify():debug()
+	self:load("lastreg_timer"):modify():debug()
 
-	self:load("all_hosts"):modify():debug()
-	self:load("alived_hosts"):modify():debug()
+	self:load("switching"):modify():debug()
+	self:load("do_switch"):modify():debug()
 
-	self:load("timer"):modify():debug()
-	self:load("swith_cpe"):modify():debug()
 end
-
 
 ---[[ Initializing. Don't edit the code below ]]---
 local metatable = {
@@ -178,5 +174,3 @@ local metatable = {
 }
 setmetatable(rule, metatable)
 return rule
-
--- ubus call uci set '{"config":"wimark","type":"broker","section":"cfg0b2e8a","values":{"host":"192.168.1.22"}}'

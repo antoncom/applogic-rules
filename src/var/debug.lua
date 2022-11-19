@@ -153,7 +153,13 @@ function debug:output(val)
     local noerror = (type(value) == "string")
 
     local ok, res = pcall(cjson.decode, value)
-    value = ok and pretty(res) or value
+    
+    if(debug.varname == "title") then
+        value = ok and pretty(res) or value
+    else
+        value = ok and pretty(res) or wrap_text(value)
+    end
+
 
     dvlink.output = {
         ["value"] = value:gsub("\t", "  "),

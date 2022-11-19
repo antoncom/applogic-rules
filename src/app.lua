@@ -41,8 +41,11 @@ function rules:make_ubus()
 		error("rules:make_ubus() - Failed to connect to ubus")
 	end
 
+	--[[ Get name of Ubus object from /etc/config/applogic ]]
+	local ubus_name = uci:get("applogic", "ubus", "object") or "applogic"
+
 	local ubus_object = {
-		["applogic.cpe"] = {
+		[ubus_name] = {
 			list = {
 				function(req, msg)
 					local rlist = {}
