@@ -142,7 +142,7 @@ local rule_setting = {
 -- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
 function rule:make()
 	debug_mode.type = "RULE"
-	debug_mode.level = "INFO"
+	debug_mode.level = "ERROR"
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
