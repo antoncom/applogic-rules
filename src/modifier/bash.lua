@@ -22,6 +22,8 @@ function bash(varname, mdf_name, mdf_body, rule) --[[
 
 	local command_extra = ""
 	if varlink.subtotal:len() > 0 then
+		-- Remove "'" from bash command to prevent errors
+		rule.setting[varname].subtotal = rule.setting[varname].subtotal:gsub("'", "")
 		command_extra = string.format("echo '%s' | %s", rule.setting[varname].subtotal, command)
 	else
 		command_extra = string.format("%s", command)
