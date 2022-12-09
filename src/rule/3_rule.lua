@@ -3,7 +3,6 @@ local rule_init = require "applogic.util.rule_init"
 local log = require "applogic.util.log"
 local I18N = require "luci.i18n"
 
-
 local rule = {}
 local rule_setting = {
 	title = {
@@ -191,7 +190,7 @@ local rule_setting = {
 function rule:make()
 	rule.debug_mode = debug_mode
 	debug_mode.type = "RULE"
-	debug_mode.level = "INFO"
+	debug_mode.level = "ERROR"
 	local ONLY = rule.debug_mode.level
 
 	self:load("title"):modify():debug()
@@ -201,7 +200,7 @@ function rule:make()
 	self:load("network_registration"):modify():debug()
 	self:load("signal"):modify():debug()
 	self:load("signal_time"):modify():debug()
-	self:load("signal_normal_last_time"):modify():debug(ONLY)
+	self:load("signal_normal_last_time"):modify():debug()
 	self:load("low_signal_timer"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()

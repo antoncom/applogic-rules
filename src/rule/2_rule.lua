@@ -3,7 +3,6 @@ local rule_init = require "applogic.util.rule_init"
 local log = require "applogic.util.log"
 local I18N = require "luci.i18n"
 
-
 local rule = {}
 local rule_setting = {
 	title = {

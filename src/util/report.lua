@@ -2,7 +2,7 @@
 local util = require "luci.util"
 local log = require "applogic.util.log"
 
-local ft = require "fort"
+local ft = require "applogic.util.fort"
 ft.ANY_ROW = 4294967295
 ft.ANY_COLUMN = 4294967295
 local style = "BOLD2_STYLE"
@@ -63,7 +63,7 @@ function report:print_var(varname, level, iter)
 		ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_ROW_TYPE, ft.ROW_HEADER)
 
 		current_row = 1
-		ftable:write_ln(string.format("[ %s ] variable attributes value",varname):upper(), "", "", "RESULTS ON THE ITERATION", "#"..tostring(report.rule.iteration))
+		ftable:write_ln(string.format("[ %s ][ %s ] variable attributes value", report.rule.ruleid, varname):upper(), "", "", "RESULTS ON THE ITERATION", "#"..tostring(report.rule.iteration))
 		ftable:add_separator()
 
 		current_row = 2
@@ -136,8 +136,6 @@ function report:print_rule(level, iteration)
 	local vars = report.debug.variables
 	local rule_has_error = report.debug.noerror == false
 
-	--local var_has_error = report.debug.variables[varname].noerror == false
-
 	report.iteration = report.iteration + 1
 
 	if (rule_has_error and level == "ERROR") or level == "INFO" then
@@ -166,6 +164,7 @@ function report:print_rule(level, iteration)
 				return (vars[a].order < vars[b].order)
 			end) do
 
+		--log("VARS", vardata)
 			if varname ~= "title" then
 
 				current_row = current_row + 1
@@ -197,15 +196,15 @@ function report:print_rule(level, iteration)
 						elseif "frozen" == name:sub(3) then
 							if mdf["value"] and tonumber(mdf["value"]) then
 								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(mdf["value"]) or mdf["value"])
+								--passlogic = string.format("%s[frozen]", passlogic)
 							end
 						end
 					end
 				end
 
-
 				check = (not vars[varname].noerror) and "✖" or "✔"
 				ftable:write_ln(varname, vardata["note"], passlogic, vardata.output.value, check)
-				if vars[varname].noerror then
+				if vardata["noerror"] then
 					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 				else
 					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_RED)
@@ -228,22 +227,21 @@ function report:print_rule(level, iteration)
 		-- Print ftable
 		print(tostring(ftable))
 
-		--report:clear()
-
 	end
 end
 
 function report:clear()
 	-- clear error statuses, but keep debug data untouched, as they are linked to real rule ongoing data
 
-	local vars = report.debug.variables
-	report.debug.noerror = true
-	for varname, debugdata in pairs(vars) do
-		debugdata.noerror = true
-	end
+	-- local vars = report.debug.variables
+	-- report.debug.noerror = true
+	-- for varname, debugdata in pairs(vars) do
+	-- 	debugdata.noerror = true
+	-- end
 
-	--report.debug = nil
-	--report.rule = nil
+	report.debug = nil
+	report.rule = nil
+
 end
 
 local metatable = {
