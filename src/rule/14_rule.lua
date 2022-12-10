@@ -50,6 +50,20 @@ local rule_setting = {
 		}
 	},
 
+	network_registration = {
+		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {},
+			--filter = "value"
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
+	},
+
 	provider_name = {
 		note = [[ Наименование провайдера. ]],
 		source = {
@@ -59,8 +73,13 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_ui-update"] = {
+			["1_skip"] = [[
+				local REG_OK = 	( $network_registration == "1" )
+				local NO_NAME = ( $provider_name == "" )
+				return ( not REG_OK or NO_NAME )
+			]],
+			["2_bash"] = [[ jsonfilter -e $.value ]],
+			["3_ui-update"] = {
 				param_list = { "provider_name", "sim_id" }
 			}
 		}
@@ -103,7 +122,7 @@ function rule:make()
 	self:load("event_datetime"):modify():debug()
 	self:load("event_is_new"):modify():debug()
 	self:load("sim_id"):modify():debug()
-	self:load("provider_name"):modify():debug()
+	self:load("provider_name"):modify():debug(ONLY)
 	self:load("journal"):modify():debug()
 end
 

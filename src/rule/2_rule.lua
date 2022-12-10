@@ -146,9 +146,6 @@ local rule_setting = {
 				local TIMER = tonumber($balance_time) and (os.time() - $balance_time) or false
 				if TIMER then return TIMER end
 			]],
-			["3_ui-update"] = {
-				param_list = { "lowbalance_timer", "sim_id" }
-			},
         }
 	},
 
@@ -174,7 +171,7 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[ return $balance_new == "true" ]],
 			["2_ui-update"] = {
-				param_list = { "sim_id", "sim_balance", "event_datetime" }
+				param_list = { "sim_id", "sim_balance", "event_datetime", "lowbalance_timer" }
 			}
 		}
 	},
