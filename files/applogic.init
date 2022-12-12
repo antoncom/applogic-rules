@@ -1,5 +1,4 @@
 #!/bin/sh /etc/rc.common
-# Copyright (C) 2017-2021 WiMark Systems
 
 START=42
 STOP=81
@@ -15,7 +14,6 @@ start_service() {
     procd_open_instance 'applogic'
 
     procd_set_param respawn 3600 5 0
-    procd_set_param file "/etc/config/applogic"
     procd_set_param stdout 1
     procd_set_param command $SERVICE
     procd_set_param pidfile $SERVICE_PID_FILE
@@ -26,4 +24,9 @@ start_service() {
 service_triggers()
 {
     procd_add_reload_trigger "applogic"
+}
+
+stop_service() {
+    kill -9 `ps | grep '/usr/lib/lua/applogic/app.lua' | grep -v grep | awk '{print $1}'`
+    rm /var/run/applogic.pid
 }
