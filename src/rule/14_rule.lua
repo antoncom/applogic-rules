@@ -114,7 +114,7 @@ local rule_setting = {
 function rule:make()
 	rule.debug_mode = debug_mode
 	debug_mode.type = "RULE"
-	debug_mode.level = "INFO"
+	debug_mode.level = "ERROR"
 	local ONLY = rule.debug_mode.level
 
 
@@ -122,7 +122,7 @@ function rule:make()
 	self:load("event_datetime"):modify():debug()
 	self:load("event_is_new"):modify():debug()
 	self:load("sim_id"):modify():debug()
-	self:load("provider_name"):modify():debug(ONLY)
+	self:load("provider_name"):modify():debug()
 	self:load("journal"):modify():debug()
 end
 

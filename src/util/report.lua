@@ -38,16 +38,17 @@ function report:print_var(varname, level, iter)
 	local vars = report.debug.variables
 	--log("VARS", vars)
 	local rule_has_error = report.debug.noerror == false
-	local var_has_error = report.debug.variables[varname].noerror == false
 
 	if not vars[varname] then
 		print(string.format("applogic: report:print() can't find var [%s]", varname))
 		vars[varname].noerror = true
 		return
-	else
-		if not vars[varname].input then vars[varname].input = "empty" end
-		if not vars[varname].output then vars[varname].output = "empty" end
 	end
+	
+	local var_has_error = report.debug.variables[varname].noerror == false
+	if not vars[varname].input then vars[varname].input = "empty" end
+	if not vars[varname].output then vars[varname].output = "empty" end
+
 
 	if (rule_has_error and var_has_error and level == "ERROR") or level == "INFO" then
 

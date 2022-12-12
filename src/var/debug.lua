@@ -153,7 +153,7 @@ function debug:output(val)
     local noerror = (type(value) == "string")
 
     local ok, res = pcall(cjson.decode, value)
-    
+
     if(debug.varname == "title") then
         value = ok and pretty(res) or value
     else
