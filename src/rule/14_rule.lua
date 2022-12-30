@@ -68,15 +68,15 @@ local rule_setting = {
 		note = [[ Наименование провайдера. ]],
 		source = {
 			type = "ubus",
-			object = "tsmodem.driver",	-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
+			object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
 			method = "provider_name",				-- This is UBUS METHOD name. Run in the shell "ubus -v list tsmodem driver" to see all nethods.
 			params = {},
 		},
 		modifier = {
 			["1_skip"] = [[
-				local REG_OK = 	( $network_registration == "1" )
+				local REG_OK = 	( $network_registration == 1 )
 				local NO_NAME = ( $provider_name == "" )
-				return ( not REG_OK or NO_NAME )
+				return ( not REG_OK )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 			["3_ui-update"] = {
@@ -122,6 +122,7 @@ function rule:make()
 	self:load("event_datetime"):modify():debug()
 	self:load("event_is_new"):modify():debug()
 	self:load("sim_id"):modify():debug()
+	self:load("network_registration"):modify():debug()
 	self:load("provider_name"):modify():debug()
 	self:load("journal"):modify():debug()
 end

@@ -45,8 +45,21 @@ end
 function debug:set_noerrors(varl, noerror)
     local asvarattr = varl
     local asruleattr = debug[debug.ruleid]
-    asvarattr.noerror = noerror and asvarattr.noerror
-    asruleattr.noerror = noerror and asruleattr.noerror
+
+    if noerror == true and asvarattr.noerror == true then
+        asvarattr.noerror = true
+    else
+        asvarattr.noerror = false
+    end
+    -- asvarattr.noerror = noerror and asvarattr.noerror
+    -- asruleattr.noerror = noerror and asruleattr.noerror
+
+    if noerror == true and asruleattr.noerror == true then
+        asruleattr.noerror = true
+    else
+        asruleattr.noerror = false
+    end
+
 end
 
 
@@ -196,7 +209,8 @@ function debug:modifier_bash(mdf_name, mdf_body, result, noerror)
         dvlink.modifier = {}
     end
     dvlink.modifier[mdf_name] = {
-        ["body"] = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n"),
+        --["body"] = wrap_text(mdf_body:gsub("\t+", "\t"):gsub("%c+", " ")),
+        ["body"] = wrap_text(mdf_body),
         ["value"] = result.stdout or "",
         ["noerror"] = noerror
     }

@@ -147,7 +147,7 @@ local rule_setting = {
 -- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
 function rule:make()
 	debug_mode.type = "RULE"
-	debug_mode.level = "INFO"
+	debug_mode.level = "ERROR"
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
@@ -157,7 +157,7 @@ function rule:make()
     self:load("uci_timeout_ping"):modify():debug()
 
     self:load("network_registration"):modify():debug()
-    self:load("ping_status"):modify():debug(ONLY)
+    self:load("ping_status"):modify():debug()
     self:load("changed_ping_time"):modify():debug()
 
     self:load("lastping_timer"):modify():debug()

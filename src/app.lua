@@ -127,6 +127,8 @@ function rules:run_all()
 				rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
 				rule.debug.report(rule):clear()
 			end
+
+			rule.debug.noerror = true
 		end
 	end
 	--log("CACHE", rules.cache_ubus)
