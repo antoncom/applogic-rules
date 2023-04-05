@@ -9,7 +9,7 @@ function bash(varname, mdf_name, mdf_body, rule) --[[
 	if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
 	local varlink = rule.setting[varname] or {}
 	local command = mdf_body and mdf_body:gsub("^%s+", ""):gsub("%s$", "") or ""
-	local command_extra = ""
+	local command_extra
 
 	local result = {}
 	local noerror = true
@@ -30,6 +30,7 @@ function bash(varname, mdf_name, mdf_body, rule) --[[
 	end
 
 	command_extra = command_extra:gsub("%c", "")
+	--if varname == "ussd_command" then print("COMMAND_EXTRA=", command_extra) end
 	result = sys.process.exec({"/bin/sh", "-c", command_extra }, true, true, true)
 
 	if result.stdout then

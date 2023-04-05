@@ -16,7 +16,6 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "sim",
 			params = {},
-			--filter = "value"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]]
@@ -108,7 +107,6 @@ local rule_setting = {
 			["2_ui-update"] = {
 				param_list = { "switching", "sim_id" }
 			},
-			["3_frozen"] = [[ return 5 ]]
 		}
 	},
 
@@ -154,7 +152,6 @@ function rule:make()
 	self:load("network_registration"):modify():debug()
 	self:load("changed_reg_time"):modify():debug()
 	self:load("lastreg_timer"):modify():debug()
-
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
 

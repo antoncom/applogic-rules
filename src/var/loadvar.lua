@@ -27,9 +27,10 @@ local loadvar_metatable = {
 		rule.variterator = rule.variterator + 1
 		varlink.order = rule.variterator
 
+		varlink.subtotal = nil
 		-- If user missed input/output declaration in the rule
 		varlink.input = varlink.input or ""
-		varlink.output = varlink.output or tostring(varlink.input)
+		--varlink.output = varlink.output or tostring(varlink.input)
 		varlink.output = varlink.output or ""
 		if rule.debug_mode.enabled then debug(varname, rule):order() end
 		if rule.debug_mode.enabled then debug(varname, rule):note(varlink.note or "") end

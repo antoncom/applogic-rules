@@ -67,7 +67,8 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-		}
+			--["2_frozen"] = [[ return 6 ]]
+		},
 	},
 
 	signal = {
@@ -80,7 +81,7 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if (tonumber($signal)) then return $signal else return "-" end ]],
+			["2_func"] = [[ if (tonumber($signal)) then return $signal else return "" end ]],
             ["3_ui-update"] = {
                 param_list = { "signal", "sim_id" }
             }
@@ -97,47 +98,54 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = [[ if ($network_registration == 1) then return $signal_time else return "" end ]],
 		},
 	},
 
 	signal_normal_last_time = {
 		note = [[ Время, когда последний раз сигнал был выше нормы, UNIXTIME. ]],
-		input = "",
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "signal",
-			params = {},
-		},
 		modifier = {
-			["1_skip"] = [[
+			-- Инициализируем при старте и если нет сети
+			["1_func"] = [[ if not(tonumber($signal_normal_last_time)) or $network_registration ~= 1
+							then
+								return tostring(os.time())
+							else
+								return $signal_normal_last_time
+							end ]],
+			-- Если сигнал ОК, то обновляем время signal_normal_last_time
+			-- Если сигнал ниже нормы то сохраняе старое значение signal_normal_last_time
+			["2_func"] = [[
 				local SIGNAL_OK = (
-									tonumber($signal)
-								and tonumber($uci_signal_min)
-								and ($signal > $uci_signal_min or $network_registration ~= 1)
-							)
-				if SIGNAL_OK then return true else return false end
+						tonumber($signal)
+					and tonumber($uci_signal_min)
+					and $signal >= $uci_signal_min
+				)
+				if SIGNAL_OK
+					then
+						return $signal_time
+					else
+						return $signal_normal_last_time
+				end
 			]],
-			["2_bash"] = [[ jsonfilter -e $.time ]],
-			["3_func"] = [[ if ($network_registration == 1) then return $signal_normal_last_time else return os.time() end ]],
-			["4_frozen"] = [[ return (tonumber($uci_timeout_signal) or 0) ]]
+			-- Сохраняем значение для следующей итерации
+			["3_save"] = [[ return $signal_normal_last_time ]],
 		}
 	},
 
 	low_signal_timer = {
-		note = [[ Отсчитывает секунды, если урвень сигнала ниже нормы, сек. ]],
+		note = [[ Отсчитывает секунды, если уровень сигнала ниже нормы, сек. ]],
 		input = 0,
 		modifier = {
-			["1_skip"] = [[ return not (
-								$network_registration == 1
-							and tonumber($signal_normal_last_time)
-							and	tonumber($signal)
-							and tonumber($signal_time)
-							and tonumber($uci_signal_min)
-						) ]],
-			["2_func"] = [[ if ( $signal < $uci_signal_min )
-				then return($signal_time - $signal_normal_last_time) else return(0) end ]],
+			["1_skip"] = [[
+							local SIGNAL_OK = (
+									tonumber($signal)
+								and tonumber($uci_signal_min)
+								and $signal > $uci_signal_min
+								or (not tonumber($signal_time))
+								or (not tonumber($signal_normal_last_time))
+							)
+							return SIGNAL_OK
+					 	 ]],
+			["2_func"] = [[ return($signal_time - $signal_normal_last_time) ]],
 			["3_ui-update"] = {
 				param_list = { "low_signal_timer", "sim_id" }
 			}
@@ -156,7 +164,7 @@ local rule_setting = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 			["2_ui-update"] = {
 				param_list = { "switching", "sim_id" }
-			}
+			},
 		}
 	},
 
@@ -171,13 +179,13 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[
 				local READY = 	( $switching == "" or $switching == "false" )
-				local TIMEOUT = ( tonumber($low_signal_timer) and tonumber($uci_timeout_signal) and ($low_signal_timer > $uci_timeout_signal) )
+				local TIMEOUT = ( tonumber($low_signal_timer) and tonumber($uci_timeout_signal) and ($low_signal_timer >= $uci_timeout_signal) )
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 			["3_ui-update"] = {
 				param_list = { "do_switch", "sim_id" }
-			}
+			},
 		}
 	},
 
@@ -190,7 +198,7 @@ local rule_setting = {
 function rule:make()
 	rule.debug_mode = debug_mode
 	debug_mode.type = "RULE"
-	debug_mode.level = "ERROR"
+	debug_mode.level = "INFO"
 	local ONLY = rule.debug_mode.level
 
 	self:load("title"):modify():debug()
@@ -200,8 +208,8 @@ function rule:make()
 	self:load("network_registration"):modify():debug()
 	self:load("signal"):modify():debug()
 	self:load("signal_time"):modify():debug()
-	self:load("signal_normal_last_time"):modify():debug()
-	self:load("low_signal_timer"):modify():debug()
+	self:load("signal_normal_last_time"):modify():debug(ONLY)
+	self:load("low_signal_timer"):modify():debug(ONLY)
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
 end

@@ -7,7 +7,9 @@ local log = require "applogic.util.log"
 local flist = require "applogic.util.filelist"
 local uci = require "luci.model.uci".cursor()
 local bit = require "bit"
+local checkubus = require "applogic.util.checkubus"
 local debug_mode = require "applogic.debug_mode"
+
 
 --local F = require "posix.fcntl"
 --local U = require "posix.unistd"
@@ -15,8 +17,14 @@ local debug_mode = require "applogic.debug_mode"
 
 local rules = {}
 rules.ubus_object = {}
-rules.conn = 0
+rules.conn = nil
 rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
+rules.state = 	{
+					mode = "run",	-- "run", "stop" are only possible
+				}					-- "stop" is needed when web-console of AT commands is activated
+									-- "stop" stops ubus-requests from applogic to tsmodem.driver,
+									-- as tsmodem.driver automation is in "stop" mode too.
+
 
 local rules_setting = {
 	title = "Группа правил CPE Agent",
@@ -80,6 +88,32 @@ function rules:make_ubus()
 
 				end, {id = ubus.INT32, msg = ubus.STRING }
 			},
+
+			state = {
+	            function(req, msg)
+	                if msg["mode"] and msg["mode"] == "run" then
+						rules.state = { mode = "run" }
+						resp = rules.state
+	                elseif msg["mode"] and msg["mode"] == "stop" then
+	                    rules.state = {
+							mode = "stop",
+							run_after = 30,
+							comment = [[
+								After 30 sec. Applogic will check if http session is active.
+								If the http session is expired or user logged off from UI,
+								then Applogic go back to 'run' mode automatically.
+							]]
+						}
+						rules.state.comment = rules.state.comment:gsub("\t", "")
+						rules.state.comment = rules.state.comment:gsub("\n", " ")
+						resp = rules.state
+					else
+						resp = rules.state
+	                end
+
+	                self.conn:reply(req, resp);
+	            end, {id = ubus.INT32, msg = ubus.STRING }
+	        },
 		},
 	}
 	self.conn:add( ubus_object )
@@ -101,40 +135,48 @@ function rules:make()
 end
 
 
-function rules:run_all()
-	--profiler.start()
-
-
-	local rules_list = self.setting.rules_list.target
-	local state = ''
-
-	for name, rule in util.kspairs(rules_list) do
-		-- rule.debug = (rules.debug_type and (rules.debug_type == "VAR" or rules.debug_type == "RULE") or false
-		-- rule.debug_var = (rules.debug_type and rules.debug_type == "VAR") or false
-		-- rule.debug_rule = (rules.debug_type and rules.debug_type == "RULE") or false
-		-- rule.iteration = self.iteration
-		-- Initiate rule with link to the present (parent) module
-		-- Then the rule can send notification on the ubus object of parent module
-
-
-		state = rule(self)
-
-		-- DEBUG: Print all vars table
-		if rule.debug_mode.enabled then
-			local rule_has_error = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "ERROR" and rule.debug.noerror == false
-			local report_anyway_mode = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "INFO"
-			if rule_has_error or report_anyway_mode then
-				rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
-				rule.debug.report(rule):clear()
-			end
-
-			rule.debug.noerror = true
-		end
+function rules:check_driver_automation()
+	local driver_mode = ""
+	local automation = { mode = "" }
+	if checkubus(rules.conn, "tsmodem.driver", "automation") then
+		automation = util.ubus("tsmodem.driver", "automation", {})
+		driver_mode = automation and automation["mode"] or ""
 	end
-	--log("CACHE", rules.cache_ubus)
-	rules:clear_cache()
-	-- profiler.stop()
-	-- profiler.report("profiler.log")
+	return driver_mode
+end
+
+
+function rules:run_all()
+	local user_session_alive = rules:check_driver_automation()
+	if (rules:check_driver_automation() == "run") then
+		local rules_list = self.setting.rules_list.target
+		local state = ''
+
+		for name, rule in util.kspairs(rules_list) do
+			-- rule.debug = (rules.debug_type and (rules.debug_type == "VAR" or rules.debug_type == "RULE") or false
+			-- rule.debug_var = (rules.debug_type and rules.debug_type == "VAR") or false
+			-- rule.debug_rule = (rules.debug_type and rules.debug_type == "RULE") or false
+			-- rule.iteration = self.iteration
+			-- Initiate rule with link to the present (parent) module
+			-- Then the rule can send notification on the ubus object of parent module
+
+			state = rule(self)
+
+			-- DEBUG: Print all vars table
+			if rule.debug_mode.enabled then
+				local rule_has_error = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "ERROR" and rule.debug.noerror == false
+				local report_anyway_mode = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "INFO"
+				if rule_has_error or report_anyway_mode then
+					rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
+					rule.debug.report(rule):clear()
+				end
+
+				rule.debug.noerror = true
+			end
+		end
+		rules:clear_cache()
+
+	end
 end
 
 local metatable = {

@@ -116,7 +116,7 @@ local rule_setting = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 			["2_ui-update"] = {
 				param_list = { "switching", "sim_id" }
-			}
+			},
 		}
 	},
 

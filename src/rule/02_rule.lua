@@ -169,7 +169,7 @@ local rule_setting = {
 	ui_balance = {
 		note = [[ Отправляет в веб-интерфейс данные об изменившемся балансе.  ]],
 		modifier = {
-			["1_skip"] = [[ return $balance_new == "true" ]],
+			--["1_skip"] = [[ return $balance_new == "true" ]],
 			["2_ui-update"] = {
 				param_list = { "sim_id", "sim_balance", "event_datetime", "lowbalance_timer" }
 			}
@@ -208,7 +208,7 @@ local rule_setting = {
 function rule:make()
 	rule.debug_mode = debug_mode
 	debug_mode.type = "RULE"
-	debug_mode.level = "INFO"
+	debug_mode.level = "ERROR"
 	local ONLY = rule.debug_mode.level
 
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
@@ -223,9 +223,8 @@ function rule:make()
 	self:load("balance_message"):modify():debug()
 	self:load("ussd_command"):modify():debug()
 	self:load("lowbalance_timer"):modify():debug()
-	self:load("switching"):modify():debug()
 	self:load("ui_balance"):modify():debug()
-
+	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
 end
 

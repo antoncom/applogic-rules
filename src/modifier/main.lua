@@ -28,6 +28,13 @@ function main:modify(varname, rule) --[[
 	local varlink = rule.setting[varname]
 
     -- Before the modifier applies, we put load the initial (input) value to intermediate (subtotal)
+	--varlink.subtotal = varlink.subtotal or string.format("%s", tostring(varlink.input))
+
+	if(varlink["saved"]) then
+		varlink.input = varlink["saved"]
+		print("SAVED:", varlink["saved"])
+	end
+
 	varlink.subtotal = varlink.subtotal or string.format("%s", tostring(varlink.input))
 
 	if varlink.modifier then --and #util.keys(varlink.modifier) > 0 then
