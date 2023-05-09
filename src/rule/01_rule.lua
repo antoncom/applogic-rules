@@ -6,7 +6,7 @@ local I18N = require "luci.i18n"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Правило переключения Сми-карты при отсутствии регистрации в сети",
+		input = "Правило переключения Cим-карты при отсутствии регистрации в сети",
 	},
 
 	sim_id = {
@@ -54,13 +54,9 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "reg",
 			params = {},
-			--filter = "value"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_ui-update"] = {
-				param_list = { "network_registration", "sim_id" }
-			}
 		}
 	},
 
@@ -71,13 +67,11 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "reg",
 			params = {},
-			--filter = "time"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]]
 		}
 	},
-
 
 	lastreg_timer = {
 		note = [[ Отсчёт секунд при потере регистрации Сим-карты в сети. ]],
@@ -88,9 +82,6 @@ local rule_setting = {
 				local TIMER = tonumber($changed_reg_time) and (os.time() - $changed_reg_time) or false
 				if TIMER then return TIMER else return "0" end
 			]],
-			["3_ui-update"] = {
-				param_list = { "lastreg_timer", "sim_id", "event_switch_state", "changed_reg_time" }
-			},
 		}
 	},
 
@@ -105,7 +96,15 @@ local rule_setting = {
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 			["2_ui-update"] = {
-				param_list = { "switching", "sim_id" }
+				param_list = {
+					"switching",
+					"sim_id",
+					"lastreg_timer",
+					"event_switch_state",
+					"changed_reg_time",
+					"network_registration",
+					"lastreg_timer"
+				}
 			},
 		}
 	},
@@ -130,7 +129,7 @@ local rule_setting = {
 			},
 			["4_init"] = {
 				vars = {"lastreg_timer"}
-			}
+			},
 		}
 	},
 }

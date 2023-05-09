@@ -18,6 +18,7 @@ local loadvar_metatable = {
 		local loadvar_ubus = require "applogic.var.loadvar_ubus"
 		local loadvar_uci = require "applogic.var.loadvar_uci"
 		local loadvar_bash = require "applogic.var.loadvar_bash"
+		local loadvar_rule = require "applogic.var.loadvar_rule"
 
 		local setting = rule.setting
 		local varlink = rule.setting[varname]
@@ -59,6 +60,10 @@ local loadvar_metatable = {
 
 				if "bash" == varlink.source.type then
 					varlink.subtotal = loadvar_bash:load(varname, rule)
+				end
+
+				if "rule" == varlink.source.type then
+					varlink.subtotal = loadvar_rule:load(varname, rule, varlink.source.rulename, varlink.source.varname)
 				end
 			end
 		end

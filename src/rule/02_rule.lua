@@ -105,7 +105,6 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-            ["2_func"] = [[ if ( tonumber($balance_time) == nil) then return 0 else return $sim_balance end ]],
 		}
 	},
 
@@ -135,12 +134,31 @@ local rule_setting = {
 		}
 	},
 
+	r01_lastreg_timer = {
+		note = [[ Значение lastreg_timer из правила 01_rule ]],
+		source = {
+			type = "rule",
+			rulename = "01_rule",
+			varname = "lastreg_timer"
+		},
+	},
+
     lowbalance_timer = {
 		note = [[ Счётчик секунд при балансе ниже минимума, сек. ]],
 		input = 0,
         modifier = {
 			["1_skip"] = [[
-				return not ( tonumber($sim_balance) and tonumber($uci_balance_min) and (tonumber($sim_balance) < tonumber($uci_balance_min)) )
+				local BALANCE_OK = (
+										tonumber($sim_balance) and tonumber($uci_balance_min)
+									and (tonumber($sim_balance) > tonumber($uci_balance_min))
+									or tonumber($sim_balance) == -999
+									or tonumber($sim_balance) == -998
+									or tostring($sim_balance) == ""
+								)
+				local SIM_NOT_REGISTERED = (tonumber($r01_lastreg_timer) and tonumber($r01_lastreg_timer) > 0)
+				if SIM_NOT_REGISTERED then return true
+				elseif BALANCE_OK then return true
+				else return false end
 			]],
 			["2_func"] = [[
 				local TIMER = tonumber($balance_time) and (os.time() - $balance_time) or false
@@ -148,7 +166,6 @@ local rule_setting = {
 			]],
         }
 	},
-
 
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
@@ -222,6 +239,7 @@ function rule:make()
 	self:load("sim_balance"):modify():debug()
 	self:load("balance_message"):modify():debug()
 	self:load("ussd_command"):modify():debug()
+	self:load("r01_lastreg_timer"):modify():debug()
 	self:load("lowbalance_timer"):modify():debug()
 	self:load("ui_balance"):modify():debug()
 	self:load("switching"):modify():debug()

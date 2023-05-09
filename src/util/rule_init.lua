@@ -22,6 +22,8 @@ function rule_init(table, rule_setting, parent)
     table.cache_uci = parent.cache_uci
     table.cache_bash = parent.cache_bash
 
+    table.all_rules = parent.setting.rules_list.target
+
 
 
 

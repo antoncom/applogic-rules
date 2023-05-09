@@ -6,54 +6,44 @@ local I18N = require "luci.i18n"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Правило переключения Сим-карты, если уровень сигнала ниже нормы.",
+		input = "Правило переключения Сми-карты при отсутствии PING сети",
 	},
+
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-        source = {
-			type = "ubus",
-            object = "tsmodem.driver",
-            method = "sim",
-            params = {},
-        },
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]]
-		}
-    },
-
-	uci_signal_min = {
-		note = [[ Минимальный уровень сигнала, заданный в конфиге для данной Сим, %. ]],
 		source = {
 			type = "ubus",
-			object = "uci",
-			method = "get",
-			params = {
-				config = "tsmodem",
-				section = "sim_$sim_id",
-				option = "signal_min",
-			},
+			object = "tsmodem.driver",
+			method = "sim",
+			params = {},
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( tonumber($uci_signal_min) == nil ) then return "5" else return $uci_signal_min end ]]
 		}
 	},
 
-	uci_timeout_signal = {
-		note = [[ Таймаут по сигналу, заданный в конфиге для данной Сим, сек. ]],
+	uci_section = {
+		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
+		modifier = {
+			["1_func"] = [[ if ($sim_id == 0 or $sim_id == 1) then return ("sim_" .. $sim_id) else return "sim_0" end ]],
+		}
+	},
+
+	uci_timeout_ping = {
+		note = [[ Таймаут отсутствия PING в сети. Источник: /etc/config/tsmodem  ]],
 		source = {
 			type = "ubus",
 			object = "uci",
 			method = "get",
 			params = {
 				config = "tsmodem",
-				section = "sim_$sim_id",
-				option = "timeout_signal",
+				section = "$uci_section",
+				option = "timeout_ping",
 			},
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( tonumber($uci_timeout_signal) == nil ) then return "99" else return "$uci_timeout_signal" end ]]
+			["2_func"] = [[ if ( $uci_timeout_ping == "" or tonumber($uci_timeout_ping) == nil) then return "99" else return $uci_timeout_ping end ]],
 		}
 	},
 
@@ -67,88 +57,58 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			--["2_frozen"] = [[ return 6 ]]
-		},
+		}
 	},
 
-	signal = {
-		note = [[ Уровень сигнала сотового оператора, %. ]],
+	ping_status = {
+		note = [[ Результат PING-а сети ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "signal",
+			method = "ping",
 			params = {},
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if (tonumber($signal)) then return $signal else return "" end ]],
-            ["3_ui-update"] = {
-                param_list = { "signal", "sim_id" }
-            }
-		},
+		}
 	},
 
-	signal_time = {
-		note = [[ Время получения уровня сигнала оператора, UNIXTIME. ]],
+	changed_ping_time = {
+		note = [[ Время последнего успешного PING, или 0 если неизвестно. ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "signal",
+			method = "ping",
 			params = {},
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-		},
-	},
-
-	signal_normal_last_time = {
-		note = [[ Время, когда последний раз сигнал был выше нормы, UNIXTIME. ]],
-		modifier = {
-			-- Инициализируем при старте и если нет сети
-			["1_func"] = [[ if not(tonumber($signal_normal_last_time)) or $network_registration ~= 1
-							then
-								return tostring(os.time())
-							else
-								return $signal_normal_last_time
-							end ]],
-			-- Если сигнал ОК, то обновляем время signal_normal_last_time
-			-- Если сигнал ниже нормы то сохраняе старое значение signal_normal_last_time
-			["2_func"] = [[
-				local SIGNAL_OK = (
-						tonumber($signal)
-					and tonumber($uci_signal_min)
-					and $signal >= $uci_signal_min
-				)
-				if SIGNAL_OK
-					then
-						return $signal_time
-					else
-						return $signal_normal_last_time
-				end
-			]],
-			-- Сохраняем значение для следующей итерации
-			["3_save"] = [[ return $signal_normal_last_time ]],
 		}
 	},
 
-	low_signal_timer = {
-		note = [[ Отсчитывает секунды, если уровень сигнала ниже нормы, сек. ]],
-		input = 0,
+	r02_lowbalance_timer = {
+		note = [[ Значение lowbalance_timer из правила 02_rule ]],
+		source = {
+			type = "rule",
+			rulename = "02_rule",
+			varname = "lowbalance_timer"
+		},
+	},
+
+	lastping_timer = {
+		note = [[ Отсчёт секунд при отсутствии PING в сети. ]],
+		input = "0", -- Set default value each time you use [skip] modifier
 		modifier = {
-			["1_skip"] = [[
-							local SIGNAL_OK = (
-									tonumber($signal)
-								and tonumber($uci_signal_min)
-								and $signal > $uci_signal_min
-								or (not tonumber($signal_time))
-								or (not tonumber($signal_normal_last_time))
-							)
-							return SIGNAL_OK
-					 	 ]],
-			["2_func"] = [[ return($signal_time - $signal_normal_last_time) ]],
-			["3_ui-update"] = {
-				param_list = { "low_signal_timer", "sim_id" }
-			}
+			["1_skip"] = [[ local PING_OK = ($ping_status == 1 or $ping_status == "")
+							local BALANCE_NOT_OK = (tonumber($r02_lowbalance_timer) and tonumber($r02_lowbalance_timer) > 0)
+							if BALANCE_NOT_OK then return true
+							elseif PING_OK then return true
+							else return false end
+						 ]],
+			["2_func"] = [[
+				local TIMER = tonumber($changed_ping_time) and (os.time() - $changed_ping_time) or false
+				if TIMER then return TIMER else return 0 end
+			]],
 		}
 	},
 
@@ -163,13 +123,13 @@ local rule_setting = {
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 			["2_ui-update"] = {
-				param_list = { "switching", "sim_id" }
+				param_list = { "switching", "sim_id", "ping_status", "lastping_timer" }
 			},
 		}
 	},
 
 	do_switch = {
-		note = [[ Активирует и хранит трезультат переключения Сим-карты при слабом сигнале. ]],
+		note = [[ Активирует и возвращает трезультат переключения Сим-карты  ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
@@ -179,41 +139,40 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[
 				local READY = 	( $switching == "" or $switching == "false" )
-				local TIMEOUT = ( tonumber($low_signal_timer) and tonumber($uci_timeout_signal) and ($low_signal_timer >= $uci_timeout_signal) )
+				local TIMEOUT = ( $lastping_timer > $uci_timeout_ping )
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 			["3_ui-update"] = {
 				param_list = { "do_switch", "sim_id" }
-			},
+			}
 		}
 	},
-
 }
 
 -- Use "ERROR", "INFO" to override the debug level
 -- Use /etc/config/applogic to change the debug mode: RULE or VAR
 -- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
-
 function rule:make()
-	rule.debug_mode = debug_mode
 	debug_mode.type = "RULE"
 	debug_mode.level = "INFO"
+	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	self:load("title"):modify():debug()
+	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
-	self:load("uci_signal_min"):modify():debug()
-	self:load("uci_timeout_signal"):modify():debug()
-	self:load("network_registration"):modify():debug()
-	self:load("signal"):modify():debug()
-	self:load("signal_time"):modify():debug()
-	self:load("signal_normal_last_time"):modify():debug(ONLY)
-	self:load("low_signal_timer"):modify():debug(ONLY)
+	self:load("uci_section"):modify():debug()
+    self:load("uci_timeout_ping"):modify():debug()
+
+    self:load("network_registration"):modify():debug()
+    self:load("ping_status"):modify():debug()
+    self:load("changed_ping_time"):modify():debug()
+	self:load("r02_lowbalance_timer"):modify():debug()
+    self:load("lastping_timer"):modify():debug(ONLY)
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
-end
 
+end
 
 ---[[ Initializing. Don't edit the code below ]]---
 local metatable = {

@@ -84,7 +84,7 @@ function rules:make_ubus()
 						self.conn:reply(req, { ["error"] = string.format("Rule '%s' was not found.", tostring(rule_name)) })
 					end
 
-					self.conn:reply(req, { variables = vlist })
+					self.conn:reply(req, vlist)
 
 				end, {id = ubus.INT32, msg = ubus.STRING }
 			},

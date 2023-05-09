@@ -34,6 +34,7 @@ function ui_update(varname, mdf_name, modifier, rule)
 					params[name] = rule.setting[name] and rule.setting[name].output or ""
 				end
 			end
+            params["ruleid"] = rule.ruleid
 
 
 			local ui_data = util.serialize_json(params)
