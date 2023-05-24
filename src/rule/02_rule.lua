@@ -174,6 +174,7 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "switching",
 			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
@@ -225,7 +226,7 @@ local rule_setting = {
 function rule:make()
 	rule.debug_mode = debug_mode
 	debug_mode.type = "RULE"
-	debug_mode.level = "ERROR"
+	debug_mode.level = "INFO"
 	local ONLY = rule.debug_mode.level
 
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
@@ -243,7 +244,7 @@ function rule:make()
 	self:load("lowbalance_timer"):modify():debug()
 	self:load("ui_balance"):modify():debug()
 	self:load("switching"):modify():debug()
-	self:load("do_switch"):modify():debug()
+	self:load("do_switch"):modify():debug(ONLY)
 end
 
 

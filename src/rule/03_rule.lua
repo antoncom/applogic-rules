@@ -86,6 +86,15 @@ local rule_setting = {
 		}
 	},
 
+	r01_lastreg_timer = {
+		note = [[ Значение lastreg_timer из правила 01_rule ]],
+		source = {
+			type = "rule",
+			rulename = "01_rule",
+			varname = "lastreg_timer"
+		},
+	},
+
 	r02_lowbalance_timer = {
 		note = [[ Значение lowbalance_timer из правила 02_rule ]],
 		source = {
@@ -100,8 +109,10 @@ local rule_setting = {
 		input = "0", -- Set default value each time you use [skip] modifier
 		modifier = {
 			["1_skip"] = [[ local PING_OK = ($ping_status == 1 or $ping_status == "")
+							local REG_NOT_OK = (tonumber($r01_lastreg_timer) and tonumber($r01_lastreg_timer) > 0)
 							local BALANCE_NOT_OK = (tonumber($r02_lowbalance_timer) and tonumber($r02_lowbalance_timer) > 0)
-							if BALANCE_NOT_OK then return true
+							if REG_NOT_OK then return true
+							elseif BALANCE_NOT_OK then return true
 							elseif PING_OK then return true
 							else return false end
 						 ]],
@@ -119,6 +130,7 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "switching",
 			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
@@ -155,7 +167,7 @@ local rule_setting = {
 -- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
 function rule:make()
 	debug_mode.type = "RULE"
-	debug_mode.level = "INFO"
+	debug_mode.level = "ERROR"
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
@@ -167,8 +179,9 @@ function rule:make()
     self:load("network_registration"):modify():debug()
     self:load("ping_status"):modify():debug()
     self:load("changed_ping_time"):modify():debug()
+	self:load("r01_lastreg_timer"):modify():debug()
 	self:load("r02_lowbalance_timer"):modify():debug()
-    self:load("lastping_timer"):modify():debug(ONLY)
+    self:load("lastping_timer"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
 

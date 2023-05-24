@@ -14,6 +14,7 @@ function loadvar_ubus:load(varname, rule)
 	local varlink = rule.setting[varname]
 
 	local cache_key = ""
+	local cached = varlink.source["cached"] or "yes" -- Allow to user turn OFF caching the variable
 	local result
 	local noerror = true
 	local err = ""
@@ -31,7 +32,8 @@ function loadvar_ubus:load(varname, rule)
 	--cache_key = md5.sumhexa(varname..obj..method..util.serialize_json(params))
 	cache_key = md5.sumhexa(obj..method..util.serialize_json(params))
 
-	if not rule.cache_ubus[cache_key] then
+	--if not rule.cache_ubus[cache_key] then
+	if ((not rule.cache_ubus[cache_key]) or cached == "no") then
 		-- Cache result only if ubus object/method is valid
 		noerror, err = checkubus(rule.conn, obj, method)
 		if noerror then

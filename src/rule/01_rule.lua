@@ -92,6 +92,7 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "switching",
 			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
