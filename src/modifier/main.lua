@@ -11,6 +11,8 @@ require "applogic.modifier.trigger"
 require "applogic.modifier.save"
 require "applogic.modifier.shell"
 require "applogic.modifier.ui_update"
+-- require "applogic.modifier.init"
+
 
 
 local main = {}
@@ -32,7 +34,6 @@ function main:modify(varname, rule) --[[
 
 	if(varlink["saved"]) then
 		varlink.input = varlink["saved"]
-		print("SAVED:", varlink["saved"])
 	end
 
 	varlink.subtotal = varlink.subtotal or string.format("%s", tostring(varlink.input))

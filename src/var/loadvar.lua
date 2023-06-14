@@ -1,10 +1,20 @@
 local log = require "applogic.util.log"
+local debug_cli = require "applogic.var.debug_cli"
+local util = require "luci.util"
+
 
 local loadvar = {}
 local loadvar_metatable = {
 	__call = function(loadvar_metatable, rule, varname)
 		local debug
-		if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
+		-- Turn debug mode ON for this rule
+		rule.debug_mode.enabled = (debug_cli.rule and debug_cli.rule == rule.ruleid) or rule.debug_mode.enabled
+		if(debug_cli.rule and debug_cli.rule == rule.ruleid) then
+			rule.debug_mode.level = "INFO"
+		end
+		if rule.debug_mode.enabled then
+			debug = require "applogic.var.debug"
+		end
 
 		local util = require "luci.util"
 		local log = require "applogic.util.log"
@@ -80,13 +90,17 @@ local loadvar_metatable = {
 			local dbg = {}
 			function dbg:debug(...)
 				local level = arg[1]
-				local report_by_default_debug_setting = (not level) and rule.debug_mode.enabled and rule.debug_mode.type == "VAR"
 				local report_only_this_variable = level and (level == "INFO" or level == "ERROR") and rule.debug_mode.enabled
+				local report_by_cli = (debug_cli.rule and debug_cli.rule == rule.ruleid)
 
-				if report_by_default_debug_setting then
-					rule.debug.report(rule):print_var(varname, rule.debug_mode.level, rule.iteration)
-				elseif report_only_this_variable then
-					rule.debug.report(rule):print_var(varname, "INFO", rule.iteration)
+				if report_by_cli then -- debug var by CLI like this: "applogic debug 01_rule sim_id"
+					if (util.contains(debug_cli.showvar, varname)) then
+					 	rule.debug.report(rule):print_var(varname, "INFO", rule.iteration)
+					end
+				else
+					if report_only_this_variable then -- debug var by editing the rule file (see comments there)
+						rule.debug.report(rule):print_var(varname, "INFO", rule.iteration)
+					end
 				end
 			end
 			setmetatable(dbg, { __call = function(table) return table end })

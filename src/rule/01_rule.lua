@@ -6,7 +6,7 @@ local I18N = require "luci.i18n"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Правило переключения Cим-карты при отсутствии регистрации в сети",
+		input = "Правило переключения если нет Cим-карты в слоте",
 	},
 
 	sim_id = {
@@ -22,50 +22,44 @@ local rule_setting = {
 		}
 	},
 
-	uci_section = {
-		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
-		modifier = {
-			["1_func"] = [[ if ($sim_id == 0 or $sim_id == 1) then return ("sim_" .. $sim_id) else return "sim_0" end ]],
-		}
-	},
-
-	uci_timeout_reg = {
-		note = [[ Таймаут отсутствия регистрации в сети. Источник: /etc/config/tsmodem  ]],
+	uci_timeout_sim_absent = {
+		note = [[ Таймаут отсутствия Сим карты. Источник: /etc/config/tsmodem  ]],
 		source = {
 			type = "ubus",
 			object = "uci",
 			method = "get",
 			params = {
 				config = "tsmodem",
-				section = "$uci_section",
-				option = "timeout_reg",
+				section = "default",
+				option = "timeout_sim_absent",
 			}
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( $uci_timeout_reg == "" or tonumber($uci_timeout_reg) == nil) then return "99" else return $uci_timeout_reg end ]],
 		}
 	},
 
-	network_registration = {
-		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
+	sim_ready = {
+		note = [[ Сим-карта в слоте? "true" / "false" ]],
+		--input = "true",
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "reg",
+			method = "cpin",
 			params = {},
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
+			["2_frozen"] = [[ if $sim_ready == "" then return 6 else return 0 end ]] -- debounce AT+CPIN? when switching
 		}
 	},
 
-	changed_reg_time = {
-		note = [[ Время последней успешной регистрации в сети или "", если неизвестно. ]],
+	ready_time = {
+		note = [[ Время когда Сим-карта была замечена в слоте или момент переключения слотов ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "reg",
+			method = "cpin",
 			params = {},
 		},
 		modifier = {
@@ -73,15 +67,29 @@ local rule_setting = {
 		}
 	},
 
-	lastreg_timer = {
-		note = [[ Отсчёт секунд при потере регистрации Сим-карты в сети. ]],
+	timer = {
+		note = [[ Отсчёт секунд при отсутствии Сим-карты в слоте. ]],
 		input = "0", -- Set default value if you need "reset" variable before skipping
 		modifier = {
-			["1_skip"] = [[ return ($network_registration == 1 or $network_registration == 7) ]],
+			["1_skip"] = [[ return ($sim_ready == "true") ]],
 			["2_func"] = [[
-				local TIMER = tonumber($changed_reg_time) and (os.time() - $changed_reg_time) or false
+				local TIMER = tonumber($ready_time) and (os.time() - $ready_time) or false
 				if TIMER then return TIMER else return "0" end
 			]],
+		}
+	},
+
+    reset_modem = {
+		note = [[ Подать сигнал сброса на модем через каждые 10 сек. ]],
+        source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "send_at",
+			params = { command = "AT+CRESET"},
+		},
+		modifier = {
+			["1_skip"] = [[ return ($sim_ready == "true") ]],
+			["2_frozen"] = [[ return 20 ]]
 		}
 	},
 
@@ -92,21 +100,11 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "switching",
 			params = {},
-			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+			--cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_ui-update"] = {
-				param_list = {
-					"switching",
-					"sim_id",
-					"lastreg_timer",
-					"event_switch_state",
-					"changed_reg_time",
-					"network_registration",
-					"lastreg_timer"
-				}
-			},
+			["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
 		}
 	},
 
@@ -121,39 +119,51 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[
 				local READY = 	( $switching == "" or $switching == "false" )
-				local TIMEOUT = tonumber($lastreg_timer) and ( $lastreg_timer > $uci_timeout_reg )
+				local TIMEOUT = tonumber($timer) and ( $timer > $uci_timeout_sim_absent )
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_ui-update"] = {
-				param_list = { "do_switch", "sim_id" }
-			},
-			["4_init"] = {
-				vars = {"lastreg_timer"}
+			["3_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
+		}
+	},
+
+	send_ui = {
+		note = [[ Индикация в веб-интерфейсе ]],
+		modifier = {
+			["1_ui-update"] = {
+				param_list = {
+					"sim_id",
+					"timer",
+					"sim_ready",
+					"uci_timeout_sim_absent",
+					"do_switch",
+				}
 			},
 		}
 	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
--- Use /etc/config/applogic to change the debug mode: RULE or VAR
--- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
+-- Use /etc/config/applogic to change the debug level
+-- Use :debug(ONLY) - to debug single variable in the rule
+-- Alternatively, you may run debug via shell like this "applogic 01_rule title sim_id" (use 5 variable names maximum)
 function rule:make()
-	debug_mode.type = "RULE"
 	debug_mode.level = "ERROR"
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
-	self:load("uci_section"):modify():debug()
-	self:load("uci_timeout_reg"):modify():debug()
+	self:load("uci_timeout_sim_absent"):modify():debug()
+	self:load("sim_ready"):modify():debug()
+	self:load("ready_time"):modify():debug()
 
-	self:load("network_registration"):modify():debug()
-	self:load("changed_reg_time"):modify():debug()
-	self:load("lastreg_timer"):modify():debug()
+	self:load("reset_modem"):modify():debug()
+
+    self:load("timer"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
+	self:load("send_ui"):modify():debug()
 
 end
 

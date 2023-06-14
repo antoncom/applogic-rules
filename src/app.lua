@@ -11,6 +11,27 @@ local checkubus = require "applogic.util.checkubus"
 local debug_mode = require "applogic.debug_mode"
 
 
+--[[ Restore UCI config of Applogic once the debug stopped by Ctrl-C ]]
+local signal = require("posix.signal")
+signal.signal(signal.SIGINT, function(signum)
+
+	uci:set("applogic", "debug_mode", "enable", 0)
+	uci:set("applogic", "debug_mode", "level", "ERROR")
+	uci:delete("applogic", "debug_mode", "rule")
+	uci:delete("applogic", "debug_mode", "showvar")
+	uci:commit("applogic")
+
+  io.write("\n")
+  print("-----------------------")
+  print("Applogic debug stopped.")
+  print("UCI config restored.")
+  print("-----------------------")
+  io.write("\n")
+  os.exit(128 + signum)
+end)
+
+
+
 --local F = require "posix.fcntl"
 --local U = require "posix.unistd"
 
@@ -31,7 +52,7 @@ local rules_setting = {
 	rules_list = {
 		target = {},
 	},
-	tick_size_default = 1900
+	tick_size_default = 1600	-- use 1900 ms interval in debug mode
 }
 
 function rules:init()
@@ -145,7 +166,6 @@ function rules:check_driver_automation()
 	return driver_mode
 end
 
-
 function rules:run_all()
 	local user_session_alive = rules:check_driver_automation()
 	if (rules:check_driver_automation() == "run") then
@@ -164,8 +184,8 @@ function rules:run_all()
 
 			-- DEBUG: Print all vars table
 			if rule.debug_mode.enabled then
-				local rule_has_error = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "ERROR" and rule.debug.noerror == false
-				local report_anyway_mode = rule.debug_mode.type == "RULE" and rule.debug_mode.level == "INFO"
+				local rule_has_error = rule.debug_mode.level == "ERROR" and rule.debug.noerror == false
+				local report_anyway_mode = rule.debug_mode.level == "INFO"
 				if rule_has_error or report_anyway_mode then
 					rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
 					rule.debug.report(rule):clear()

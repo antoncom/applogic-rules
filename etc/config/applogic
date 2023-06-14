@@ -1,6 +1,5 @@
 
 config debug_mode 'debug_mode'
-	option type 'VAR'
-	option level 'INFO'
-	option enable '1'
+	option level 'ERROR'
+	option enable '0'
 

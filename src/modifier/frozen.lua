@@ -56,6 +56,7 @@ function frozen(varname, rule, mdf_name) --[[
                 -- After unfroze put predefined value to the var output
                 if (varlink.frozen.value_after) then
                     varlink.subtotal = tostring(varlink.frozen.value_after)
+                    varlink.input = tostring(varlink.frozen.value_after)
                 end
                 varlink.frozen = nil
                 if rule.debug_mode.enabled then debug(varname, rule):modifier(mdf_name, "Frozen until:", "", noerror) end

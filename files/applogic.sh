@@ -3,6 +3,12 @@
 INITFILE=/etc/init.d/applogic
 SERVICE_PID_FILE=/var/run/applogic.pid
 APP=$0
+RULE=$2
+SHOWVAR1=$3
+SHOWVAR2=$4
+SHOWVAR3=$5
+SHOWVAR4=$6
+SHOWVAR5=$7
 
 usage() {
     echo "Usage: $APP [ COMMAND [ OPTIONS ] ]"
@@ -11,7 +17,7 @@ usage() {
     echo "Commands are:"
     echo "    start|stop|restart|reload     controlling the daemon"
     echo "    list                          show list of active rules"
-    echo "    debug                         run in rules debug mode"
+    echo "    debug 01                      run 01 rule in debug mode"
     echo "    help                          show this and exit"
     doexit
 }
@@ -38,6 +44,24 @@ list() {
 debug() {
     applogic stop
     uci set applogic.debug_mode.enable='1'
+    [ -n "$RULE" ] && {
+        uci set applogic.debug_mode.rule=$RULE
+    }
+    [ -n "$SHOWVAR1" ] && {
+        uci add_list applogic.debug_mode.showvar=$SHOWVAR1
+    }
+    [ -n "$SHOWVAR2" ] && {
+        uci add_list applogic.debug_mode.showvar=$SHOWVAR2
+    }
+    [ -n "$SHOWVAR3" ] && {
+        uci add_list applogic.debug_mode.showvar=$SHOWVAR3
+    }
+    [ -n "$SHOWVAR4" ] && {
+        uci add_list applogic.debug_mode.showvar=$SHOWVAR4
+    }
+    [ -n "$SHOWVAR5" ] && {
+        uci add_list applogic.debug_mode.showvar=$SHOWVAR5
+    }
     uci commit
     exec /usr/bin/lua /usr/lib/lua/applogic/app.lua
     RETVAL=$?
@@ -46,6 +70,11 @@ debug() {
 doexit() {
     exit $RETVAL
 }
+
+stop_debug() {
+    echo "Bye"
+}
+trap stop_debug SIGINT
 
 [ -n "$INCLUDE_ONLY" ] && return
 

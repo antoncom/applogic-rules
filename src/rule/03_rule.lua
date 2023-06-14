@@ -6,53 +6,101 @@ local I18N = require "luci.i18n"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Правило переключения Сми-карты при отсутствии PING сети",
+		input = "Правило переключения Сим-карты, если баланс ниже минимума",
 	},
 
-	sim_id = {
+    sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
+        source = {
+			type = "ubus",
+            object = "tsmodem.driver",
+            method = "sim",
+            params = {},
+        },
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]]
+		}
+    },
+
+
+	uci_balance_min = {
+		note = [[ Минимальный уровень баланса, руб. ]],
 		source = {
 			type = "ubus",
-			object = "tsmodem.driver",
-			method = "sim",
-			params = {},
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
-		}
-	},
-
-	uci_section = {
-		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
-		modifier = {
-			["1_func"] = [[ if ($sim_id == 0 or $sim_id == 1) then return ("sim_" .. $sim_id) else return "sim_0" end ]],
-		}
-	},
-
-	uci_timeout_ping = {
-		note = [[ Таймаут отсутствия PING в сети. Источник: /etc/config/tsmodem  ]],
-		source = {
-			type = "ubus",
-			object = "uci",
-			method = "get",
-			params = {
+            object = "uci",
+            method = "get",
+            params = {
 				config = "tsmodem",
-				section = "$uci_section",
-				option = "timeout_ping",
+				section = "sim_$sim_id",
+				option = "balance_min",
 			},
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( $uci_timeout_ping == "" or tonumber($uci_timeout_ping) == nil) then return "99" else return $uci_timeout_ping end ]],
+			["2_func"] = [[ if ( tonumber($uci_balance_min) == nil ) then return "30" else return $uci_balance_min end ]]
 		}
 	},
 
-	network_registration = {
-		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
+	uci_timeout_bal = {
+		note = [[ Таймаут перед переключеием при низком балансе, сек. ]],
+		source = {
+			type = "ubus",
+            object = "uci",
+            method = "get",
+            params = {
+				config = "tsmodem",
+				section = "sim_$sim_id",
+				option = "timeout_bal",
+			},
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+			["2_func"] = [[ if ( tonumber($uci_timeout_bal) == nil ) then return 999 else return $uci_timeout_bal end ]]
+		}
+	},
+
+    balance_time = {
+		note = [[ Актуальная дата получения баланса, UNIXTIME. ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "reg",
+			method = "balance",
+			params = {},
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]]
+		}
+	},
+
+	balance_new = {
+		note = [[ Признак изменившегося баланса: true/false. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "balance",
+			params = {},
+		},
+		modifier = {
+			--["1_bash"] = [[ sed s/\'//g ]],
+			--["1_bash"] = [[ jsonfilter -e $.unread ]]
+			["1_bash"] = [[ jsonfilter -e $.unread ]]
+		}
+	},
+
+
+	event_datetime = {
+		note = [[ Дата актуального баланса в формате для Web-интерфейса. ]],
+		modifier = {
+			["1_func"] = [[ if ( tonumber($balance_time) ~= nil) then return(os.date("%Y-%m-%d %H:%M:%S", tonumber($balance_time))) else return "" end ]]
+		}
+	},
+
+	sim_balance = {
+		note = [[ Сумма баланса на текущей Сим-карте, руб. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "balance",
 			params = {},
 		},
 		modifier = {
@@ -60,29 +108,29 @@ local rule_setting = {
 		}
 	},
 
-	ping_status = {
-		note = [[ Результат PING-а сети ]],
+	balance_message = {
+		note = [[ Сообщение от GSM-провайдера ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "ping",
+			method = "balance",
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_bash"] = [[ jsonfilter -e $.comment ]],
 		}
 	},
 
-	changed_ping_time = {
-		note = [[ Время последнего успешного PING, или 0 если неизвестно. ]],
+	ussd_command = {
+		note = [[ Хранит строку USSD-запроса на получение баланса.  ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "ping",
+			method = "balance",
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["1_bash"] = [[ jsonfilter -e $.command ]]
 		}
 	},
 
@@ -95,32 +143,29 @@ local rule_setting = {
 		},
 	},
 
-	r02_lowbalance_timer = {
-		note = [[ Значение lowbalance_timer из правила 02_rule ]],
-		source = {
-			type = "rule",
-			rulename = "02_rule",
-			varname = "lowbalance_timer"
-		},
-	},
-
-	lastping_timer = {
-		note = [[ Отсчёт секунд при отсутствии PING в сети. ]],
-		input = "0", -- Set default value each time you use [skip] modifier
-		modifier = {
-			["1_skip"] = [[ local PING_OK = ($ping_status == 1 or $ping_status == "")
-							local REG_NOT_OK = (tonumber($r01_lastreg_timer) and tonumber($r01_lastreg_timer) > 0)
-							local BALANCE_NOT_OK = (tonumber($r02_lowbalance_timer) and tonumber($r02_lowbalance_timer) > 0)
-							if REG_NOT_OK then return true
-							elseif BALANCE_NOT_OK then return true
-							elseif PING_OK then return true
-							else return false end
-						 ]],
-			["2_func"] = [[
-				local TIMER = tonumber($changed_ping_time) and (os.time() - $changed_ping_time) or false
-				if TIMER then return TIMER else return 0 end
+    lowbalance_timer = {
+		note = [[ Счётчик секунд при балансе ниже минимума, сек. ]],
+		input = 0,
+        modifier = {
+			["1_skip"] = [[
+				local BALANCE_OK = (
+										tonumber($sim_balance) and tonumber($uci_balance_min)
+									and (tonumber($sim_balance) > tonumber($uci_balance_min))
+									or tonumber($sim_balance) == -999
+									or tonumber($sim_balance) == -998
+									or tostring($sim_balance) == ""
+									or tostring($sim_balance) == "in progress"
+								)
+				local SIM_NOT_REGISTERED = (tonumber($r01_lastreg_timer) and tonumber($r01_lastreg_timer) > 0)
+				if SIM_NOT_REGISTERED then return true
+				elseif BALANCE_OK then return true
+				else return false end
 			]],
-		}
+			["2_func"] = [[
+				local TIMER = tonumber($balance_time) and (os.time() - $balance_time) or false
+				if TIMER then return TIMER end
+			]],
+        }
 	},
 
 	switching = {
@@ -134,14 +179,24 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["2_ui-update"] = {
+			-- 	param_list = { "switching", "sim_id" }
+			-- },
+		}
+	},
+
+	ui_balance = {
+		note = [[ Отправляет в веб-интерфейс данные об изменившемся балансе.  ]],
+		modifier = {
+			--["1_skip"] = [[ return $balance_new == "true" ]],
 			["2_ui-update"] = {
-				param_list = { "switching", "sim_id", "ping_status", "lastping_timer" }
-			},
+				param_list = { "sim_id", "sim_balance", "event_datetime", "lowbalance_timer", "switching" }
+			}
 		}
 	},
 
 	do_switch = {
-		note = [[ Активирует и возвращает трезультат переключения Сим-карты  ]],
+		note = [[ Активирует и хранит трезультат переключения Сим-карты при низком балансе. ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
@@ -151,41 +206,49 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[
 				local READY = 	( $switching == "" or $switching == "false" )
-				local TIMEOUT = ( $lastping_timer > $uci_timeout_ping )
+				local TIMEOUT = ( tonumber($lowbalance_timer) and $lowbalance_timer > $uci_timeout_bal )
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 			["3_ui-update"] = {
 				param_list = { "do_switch", "sim_id" }
-			}
+			},
+			["4_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
+
+			-- ["4_init"] = {
+			-- 	vars = {"lowbalance_timer"}
+			-- }
 		}
 	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
--- Use /etc/config/applogic to change the debug mode: RULE or VAR
--- Use :debug("INFO") - to debug single variable in the rule (ERROR also is possible)
+-- Use /etc/config/applogic to change the debug level
+-- Use :debug(ONLY) - to debug single variable in the rule
+-- Alternatively, you may run debug via shell like this "applogic 02_rule title sim_id" (use 5 variable names maximum)
 function rule:make()
-	debug_mode.type = "RULE"
 	debug_mode.level = "ERROR"
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
-	self:load("uci_section"):modify():debug()
-    self:load("uci_timeout_ping"):modify():debug()
+	self:load("uci_balance_min"):modify():debug()
+	self:load("uci_timeout_bal"):modify():debug()
 
-    self:load("network_registration"):modify():debug()
-    self:load("ping_status"):modify():debug()
-    self:load("changed_ping_time"):modify():debug()
+	self:load("balance_time"):modify():debug()
+	self:load("balance_new"):modify():debug()
+	self:load("event_datetime"):modify():debug()
+	self:load("sim_balance"):modify():debug()
+	self:load("balance_message"):modify():debug()
+	self:load("ussd_command"):modify():debug()
 	self:load("r01_lastreg_timer"):modify():debug()
-	self:load("r02_lowbalance_timer"):modify():debug()
-    self:load("lastping_timer"):modify():debug()
+	self:load("lowbalance_timer"):modify():debug()
+	self:load("ui_balance"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
-
 end
+
 
 ---[[ Initializing. Don't edit the code below ]]---
 local metatable = {
