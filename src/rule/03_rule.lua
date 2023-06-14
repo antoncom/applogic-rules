@@ -190,7 +190,7 @@ local rule_setting = {
 		modifier = {
 			--["1_skip"] = [[ return $balance_new == "true" ]],
 			["2_ui-update"] = {
-				param_list = { "sim_id", "sim_balance", "event_datetime", "lowbalance_timer", "switching" }
+				param_list = { "sim_id", "sim_balance", "event_datetime", "lowbalance_timer" }
 			}
 		}
 	},

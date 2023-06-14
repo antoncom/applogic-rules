@@ -61,7 +61,7 @@ local rule_setting = {
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 			["2_ui-update"] = {
-				param_list = { "switching", "sim_id", "netmode" }
+				param_list = { "sim_id", "netmode" }
 			}
 		}
 	},
