@@ -185,23 +185,13 @@ local rule_setting = {
 		}
 	},
 
-	ui_balance = {
-		note = [[ Отправляет в веб-интерфейс данные об изменившемся балансе.  ]],
-		modifier = {
-			--["1_skip"] = [[ return $balance_new == "true" ]],
-			["2_ui-update"] = {
-				param_list = { "sim_id", "sim_balance", "event_datetime", "lowbalance_timer" }
-			}
-		}
-	},
-
 	do_switch = {
 		note = [[ Активирует и хранит трезультат переключения Сим-карты при низком балансе. ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
 			method = "do_switch",
-			params = {},
+			params = { rule = "03_rule"},
 		},
 		modifier = {
 			["1_skip"] = [[
@@ -210,16 +200,24 @@ local rule_setting = {
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_ui-update"] = {
-				param_list = { "do_switch", "sim_id" }
-			},
-			["4_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
-
-			-- ["4_init"] = {
-			-- 	vars = {"lowbalance_timer"}
-			-- }
+			["3_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
 		}
 	},
+
+	send_ui = {
+		note = [[ Индикация в веб-интерфейсе ]],
+		modifier = {
+			["1_ui-update"] = {
+				param_list = {
+					"sim_id",
+					"do_switch",
+					"sim_balance",
+					"event_datetime",
+					"lowbalance_timer",
+				}
+			},
+		}
+	}
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -244,9 +242,9 @@ function rule:make()
 	self:load("ussd_command"):modify():debug()
 	self:load("r01_lastreg_timer"):modify():debug()
 	self:load("lowbalance_timer"):modify():debug()
-	self:load("ui_balance"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
+	self:load("send_ui"):modify():debug()
 end
 
 

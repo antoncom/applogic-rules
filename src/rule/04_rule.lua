@@ -70,6 +70,8 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
+			["2_save"] = [[ return $ping_status ]],
+			["3_frozen"] = [[ if $ping_status == 1 then return 10 else return 0 end ]]
 		}
 	},
 
@@ -145,9 +147,6 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_ui-update"] = {
-				param_list = { "sim_id", "ping_status", "lastping_timer" }
-			},
 		}
 	},
 
@@ -157,7 +156,7 @@ local rule_setting = {
 			type = "ubus",
 			object = "tsmodem.driver",
 			method = "do_switch",
-			params = {},
+			params = { rule = "04_rule"},
 		},
 		modifier = {
 			["1_skip"] = [[
@@ -166,13 +165,24 @@ local rule_setting = {
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_ui-update"] = {
-				param_list = { "do_switch", "sim_id" }
-			},
-			["4_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
+			["3_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
 
 		}
 	},
+
+	send_ui = {
+		note = [[ Индикация в веб-интерфейсе ]],
+		modifier = {
+			["1_ui-update"] = {
+				param_list = {
+					"sim_id",
+					"do_switch",
+					"ping_status",
+					"lastping_timer"
+				}
+			},
+		}
+	}
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -198,6 +208,7 @@ function rule:make()
     self:load("lastping_timer"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
+	self:load("send_ui"):modify():debug()
 
 end
 

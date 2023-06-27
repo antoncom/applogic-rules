@@ -38,13 +38,85 @@ local rule_setting = {
 		}
 	},
 
+	r01_do_switch = {
+		note = [[ r01_do_switch  ]],
+		source = {
+			type = "rule",
+			rulename = "01_rule",
+			varname = "do_switch",
+		},
+	},
+
+	r02_do_switch = {
+		note = [[ r01_do_switch  ]],
+		source = {
+			type = "rule",
+			rulename = "02_rule",
+			varname = "do_switch",
+		},
+	},
+
+	r03_do_switch = {
+		note = [[ r01_do_switch  ]],
+		source = {
+			type = "rule",
+			rulename = "03_rule",
+			varname = "do_switch",
+		},
+	},
+
+	r04_do_switch = {
+		note = [[ r01_do_switch  ]],
+		source = {
+			type = "rule",
+			rulename = "04_rule",
+			varname = "do_switch",
+		},
+	},
+
+	r05_do_switch = {
+		note = [[ r01_do_switch  ]],
+		source = {
+			type = "rule",
+			rulename = "05_rule",
+			varname = "do_switch",
+		},
+	},
+
+	r15_do_switch = {
+		note = [[ r15_do_switch  ]],
+		source = {
+			type = "rule",
+			rulename = "15_rule",
+			varname = "do_switch",
+		},
+	},
+
+	do_switch = {
+		note = [[ Статус do_switch  ]],
+		modifier = {
+			["1_func"] = [[
+				local DO_SWITCH = ($r01_do_switch == "true"
+								or $r02_do_switch == "true"
+								or $r03_do_switch == "true"
+								or $r04_do_switch == "true"
+								or $r05_do_switch == "true"
+								or $r15_do_switch == "true")
+				if DO_SWITCH then return "true" else return "false" end
+			]],
+			["2_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
+
+		}
+	},
+
 	send_ui = {
 		note = [[ Индикация в веб-интерфейсе ]],
 		modifier = {
 			["1_ui-update"] = {
 				param_list = {
 					"switching",
-                    "sim_id"
+                    "sim_id",
+					"do_switch"
 				}
 			},
 		}
@@ -63,6 +135,13 @@ function rule:make()
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
 	self:load("switching"):modify():debug()
+	self:load("r01_do_switch"):modify():debug()
+	self:load("r02_do_switch"):modify():debug()
+	self:load("r03_do_switch"):modify():debug()
+	self:load("r04_do_switch"):modify():debug()
+	self:load("r05_do_switch"):modify():debug()
+	self:load("r15_do_switch"):modify():debug()
+	self:load("do_switch"):modify():debug()
 	self:load("send_ui"):modify():debug()
 
 end

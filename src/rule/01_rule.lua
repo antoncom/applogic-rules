@@ -114,7 +114,7 @@ local rule_setting = {
 			type = "ubus",
 			object = "tsmodem.driver",
 			method = "do_switch",
-			params = {},
+			params = { rule = "01_rule"},
 		},
 		modifier = {
 			["1_skip"] = [[

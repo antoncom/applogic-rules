@@ -47,19 +47,32 @@ local rule_setting = {
 		}
 	},
 
-	-- sim_ready = {
-	-- 	note = [[ Сим-карта в слоте? "true" / "false" ]],
-	-- 	input = "true",
-	-- 	source = {
-	-- 		type = "ubus",
-	-- 		object = "tsmodem.driver",
-	-- 		method = "cpin",
-	-- 		params = {},
-	-- 	},
-	-- 	modifier = {
-	-- 		["1_bash"] = [[ jsonfilter -e $.value ]],
-	-- 	}
-	-- },
+	sim_ready = {
+        note = [[ Сим-карта в слоте? "true" / "false" ]],
+        source = {
+            type = "ubus",
+            object = "tsmodem.driver",
+            method = "cpin",
+            params = {},
+        },
+        modifier = {
+            ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["2_func"] = [[ if $sim_ready == "" then return "*" else return $sim_ready end ]],
+            ["2_frozen"] = [[ if $sim_ready == "*" then return 6 else return 0 end ]] -- debounce AT+CPIN? when switching
+        }
+    },
+
+
+    iface_up = {
+        modifier = {
+            ["1_skip"] = [[ return ($sim_ready ~= "true" or $switching ~= "false" ) ]],
+            ["2_bash"] = [[ ifconfig 3g-tsmodem | sed -n '3p;3q' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
+            ["3_func"] = [[ if ($iface_up == "UP") then return "true"
+							elseif tonumber($lastreg_timer) < 30 then return "*"
+							else return "false" end
+						 ]]
+        }
+    },
 
 	network_registration = {
 		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
@@ -71,11 +84,13 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			-- ["2_func"] = [[
-			-- 	if ($sim_ready == "true") then return $network_registration
-			-- 	elseif ($sim_ready == "false") then return "-1"
-			-- 	else return $network_registration end
-			-- ]]
+			["2_func"] = [[
+				if ($sim_ready == "false") then return "-1"
+				elseif ($iface_up == "UP") then return $network_registration
+				elseif ($iface_up == "*") then return "9"
+				elseif ($iface_up == "false") then return "8"
+				else return $network_registration end
+			]]
 		}
 	},
 
@@ -93,16 +108,45 @@ local rule_setting = {
 	},
 
 	lastreg_timer = {
-		note = [[ Отсчёт секунд при потере регистрации Сим-карты в сети. ]],
-		input = "0", -- Set default value if you need "reset" variable before skipping
+		note = [[ Отсчёт секунд при отсутствии REG ]],
+		input = 0, -- Set default value if you need "reset" variable before skipping
 		modifier = {
-			["1_skip"] = [[ return ($network_registration == 1 or $network_registration == 7) ]],
+			["1_skip"] = [[ return not tonumber($os_time) ]],
 			["2_func"] = [[
-				local TIMER = tonumber($changed_reg_time) and (os.time() - $changed_reg_time) or false
-				if TIMER then return TIMER else return "0" end
+				local IFACE_UP = ($iface_up == "true")
+				local REG_OK = ($network_registration == 1 or $network_registration == 7 or $network_registration == -1)
+				if ( (not REG_OK) or (not IFACE_UP) ) then return ( tonumber($lastreg_timer) + (os.time() - tonumber($os_time)) ) else return 0 end
 			]],
+            ["3_save"] = [[ if tonumber($lastreg_timer) and (tonumber($lastreg_timer) < (tonumber($uci_timeout_reg) + 3)) then return tonumber($lastreg_timer) else return 0 end ]]
 		}
 	},
+
+	-- if ($iface_up ~= "true") then return (tonumber($timer) + (os.time() - tonumber($os_time))) else return 0 end
+
+
+    os_time = {
+        modifier= {
+            ["1_func"] = [[ return os.time() ]],
+            ["2_save"] = [[ return $os_time ]]
+        }
+    },
+
+
+	-- lastreg_timer = {
+	-- 	note = [[ Отсчёт секунд при потере регистрации Сим-карты в сети. ]],
+	-- 	input = "0", -- Set default value if you need "reset" variable before skipping
+	-- 	modifier = {
+	-- 		["1_skip"] = [[
+	-- 			local REG_OK = ($network_registration == 1 or $network_registration == 7)
+	-- 			local LINK_OK = ($iface_up == "UP")
+	-- 			return (REG_OK and LINK_OK)
+	-- 		]],
+	-- 		["2_func"] = [[
+	-- 			local TIMER = tonumber($changed_reg_time) and (os.time() - $changed_reg_time) or false
+	-- 			if TIMER then return TIMER else return "0" end
+	-- 		]],
+	-- 	}
+	-- },
 
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
@@ -124,7 +168,7 @@ local rule_setting = {
 			type = "ubus",
 			object = "tsmodem.driver",
 			method = "do_switch",
-			params = {},
+			params = { rule = "02_rule"},
 		},
 		modifier = {
 			["1_skip"] = [[
@@ -155,7 +199,8 @@ local rule_setting = {
 					"event_switch_state",
 					"changed_reg_time",
 					"network_registration",
-					"lastreg_timer"
+					"lastreg_timer",
+					"do_switch",
 				}
 			},
 		}
@@ -176,10 +221,12 @@ function rule:make()
 	self:load("uci_section"):modify():debug()
 	self:load("uci_timeout_reg"):modify():debug()
 
-	-- self:load("sim_ready"):modify():debug()
+	self:load("sim_ready"):modify():debug()
+	self:load("iface_up"):modify():debug()
 	self:load("network_registration"):modify():debug()
 	self:load("changed_reg_time"):modify():debug()
 	self:load("lastreg_timer"):modify():debug()
+	self:load("os_time"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug()
 	self:load("send_ui"):modify():debug()
