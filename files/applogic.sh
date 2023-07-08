@@ -32,18 +32,22 @@ callinit() {
 run() {
     uci set applogic.debug_mode.enable='0'
     uci commit
+    sleep 1
     exec /usr/bin/lua /usr/lib/lua/applogic/app.lua
     RETVAL=$?
 }
 
 list() {
-    ubus call applogic.cpe list
+    ubus call applogic list | sort
     RETVAL=$?
 }
 
 debug() {
     applogic stop
     uci set applogic.debug_mode.enable='1'
+    [ -n "$RULE" ] || {
+        uci set applogic.debug_mode.rule="overview"
+    }
     [ -n "$RULE" ] && {
         uci set applogic.debug_mode.rule=$RULE
     }
@@ -63,6 +67,7 @@ debug() {
         uci add_list applogic.debug_mode.showvar=$SHOWVAR5
     }
     uci commit
+    sleep 1
     exec /usr/bin/lua /usr/lib/lua/applogic/app.lua
     RETVAL=$?
 }

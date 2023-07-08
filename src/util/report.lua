@@ -231,6 +231,118 @@ function report:print_rule(level, iteration)
 	end
 end
 
+function report:overview(rules, iteration)
+	local ftable = ft.new()
+	local check = ""
+	local current_row
+
+	ftable:set_cell_prop(ft.ANY_ROW, 1, ft.CPROP_TEXT_ALIGN, ft.ALIGNED_LEFT)
+	ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_ROW_TYPE, ft.ROW_HEADER)
+
+	current_row = 1
+	ftable:write_ln("RULEID", "VARIABLE", "NOTES", "PASS LOGIC", "RESULT", "#"..tostring(iteration))
+	ftable:add_separator()
+
+	for ruleid, rule in  util.spairs(rules) do
+		if rule["default"].overviewed_vars then
+			local vars = rule.debug.variables
+			local varname = ""
+			local vardata
+
+			for i = 1, #rule["default"].overviewed_vars do
+				varname = rule["default"].overviewed_vars[i]
+				vardata = vars[varname]
+
+				-- print("varname",varname)
+				-- log("vardata",vardata)
+
+				current_row = current_row + 1
+
+				-- Make colorizing overview level (green, yellow, red)
+				if(vardata.overview and vardata.overview["yellow"] and vardata.overview["yellow"] == true) then
+					ftable:set_cell_prop(current_row, 1, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
+					ftable:set_cell_prop(current_row, 2, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
+					ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
+					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
+				elseif(vardata.overview and vardata.overview["red"] and vardata.overview["red"] == true) then
+					ftable:set_cell_prop(current_row, 1, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_RED)
+					ftable:set_cell_prop(current_row, 2, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_RED)
+					ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_RED)
+					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_RED)
+				elseif(vardata.overview and vardata.overview["green"] and vardata.overview["green"] == true) then
+					ftable:set_cell_prop(current_row, 2, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+				else
+					ftable:set_cell_prop(current_row, 1, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+					ftable:set_cell_prop(current_row, 2, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+					ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+				end
+
+				-- Make passlogic cell
+				local passlogic = ""
+				if vars[varname]["modifier"] then
+					for name, mdf in util.kspairs(vars[varname]["modifier"]) do
+						if "skip" == name:sub(3) then
+							if mdf["value"] then
+								passlogic = "[skip]"
+								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
+								break
+							else
+								passlogic = ""
+								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+							end
+						elseif "trigger" == name:sub(3) then
+							if mdf["value"] then
+								passlogic = "[trigger]"
+								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
+							else
+								passlogic = ""
+								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
+							end
+						elseif "frozen" == name:sub(3) then
+							if mdf["value"] and tonumber(mdf["value"]) then
+								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(mdf["value"]) or mdf["value"])
+								--passlogic = string.format("%s[frozen]", passlogic)
+							end
+						end
+					end
+				end
+
+				check = (not vars[varname].noerror) and "✖" or "✔"
+				ftable:write_ln(rule.ruleid, varname, vardata["note"], passlogic, vardata.output.value, check)
+				if vardata["noerror"] then
+					ftable:set_cell_prop(current_row, 6, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
+				else
+					ftable:set_cell_prop(current_row, 6, ft.CPROP_CONT_FG_COLOR, ft.COLOR_RED)
+				end
+
+			end
+		else
+			-- current_row = current_row + 1
+			-- ftable:write_ln(ruleid, "-", "Nothing to overview..", "-", "-", "")
+		end
+	end
+
+	-- CELL SPANS
+	--ftable:set_cell_span(1, 1, 5) -- rule title row
+
+
+
+	-- CELLS STYLE
+	ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
+	ftable:set_cell_prop(ft.ANY_ROW, 1, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
+	ftable:set_cell_prop(1, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+
+	-- Setup border style
+	ftable:set_border_style(ft[style])
+	-- Print ftable
+	print(tostring(ftable))
+
+end
+
+
+
 function report:clear()
 	-- clear error statuses, but keep debug data untouched, as they are linked to real rule ongoing data
 

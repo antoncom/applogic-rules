@@ -36,6 +36,7 @@ local debug_mode = {
     enabled = (uci:get("applogic", "debug_mode", "enable") == "1"),
     type = uci:get("applogic", "debug_mode", "type"),
     level = uci:get("applogic", "debug_mode", "level"),
+    rule = uci:get("applogic", "debug_mode", "rule") or '',
 }
 
 return debug_mode

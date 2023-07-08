@@ -53,7 +53,7 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( tonumber($uci_timeout_signal) == nil ) then return "99" else return "$uci_timeout_signal" end ]]
+			["2_func"] = [[ if (not tonumber($uci_timeout_signal)) then return "99" else return $uci_timeout_signal end ]]
 		}
 	},
 
@@ -67,7 +67,6 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			--["2_frozen"] = [[ return 6 ]]
 		},
 	},
 
@@ -82,53 +81,29 @@ local rule_setting = {
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 			["2_func"] = [[ if (tonumber($signal)) then return $signal else return "" end ]],
+			["3_frozen"] = [[ if(tonumber($signal) and tonumber($signal) > 0) then return 10 else return 0 end ]],
 		},
 	},
 
-	signal_time = {
-		note = [[ Время получения уровня сигнала оператора, UNIXTIME. ]],
+	r01_timer = {
+		note = [[ Значение таймера отсутствия Сим-карты в слоте ]],
 		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "signal",
-			params = {},
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
+			type = "rule",
+			rulename = "01_rule",
+			varname = "wait_timer"
 		},
 	},
 
-	signal_normal_last_time = {
-		note = [[ Время, когда последний раз сигнал был выше нормы, UNIXTIME. ]],
-		modifier = {
-			-- Инициализируем при старте и если нет сети
-			["1_func"] = [[ if not(tonumber($signal_normal_last_time)) or $network_registration ~= 1
-							then
-								return tostring(os.time())
-							else
-								return $signal_normal_last_time
-							end ]],
-			-- Если сигнал ОК, то обновляем время signal_normal_last_time
-			-- Если сигнал ниже нормы то сохраняе старое значение signal_normal_last_time
-			["2_func"] = [[
-				local SIGNAL_OK = (
-						tonumber($signal)
-					and tonumber($uci_signal_min)
-					and $signal >= $uci_signal_min
-				)
-				if SIGNAL_OK
-					then
-						return $signal_time
-					else
-						return $signal_normal_last_time
-				end
-			]],
-			-- Сохраняем значение для следующей итерации
-			["3_save"] = [[ return $signal_normal_last_time ]],
-		}
+	r02_lastreg_timer = {
+		note = [[ Значение таймера отсутствия регистрации в сети ]],
+		source = {
+			type = "rule",
+			rulename = "02_rule",
+			varname = "lastreg_timer"
+		},
 	},
 
-	rule_03_lowbalance_timer = {
+	r03_lowbalance_timer = {
 		note = [[ Значение lowbalance_timer из правила 03_rule ]],
 		source = {
 			type = "rule",
@@ -137,7 +112,7 @@ local rule_setting = {
 		},
 	},
 
-	rule_04_lastping_timer = {
+	r04_lastping_timer = {
 		note = [[ Значение lastping_timer из правила 04_rule ]],
 		source = {
 			type = "rule",
@@ -146,23 +121,48 @@ local rule_setting = {
 		},
 	},
 
+	sim_balance = {
+		note = [[ Сумма баланса на текущей Сим-карте, руб. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "balance",
+			params = {},
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
+	},
+
 	low_signal_timer = {
 		note = [[ Отсчитывает секунды, если уровень сигнала ниже нормы, сек. ]],
 		input = 0,
 		modifier = {
-			["1_skip"] = [[
-							local SIGNAL_OK = ((
-									tonumber($signal)
-								and tonumber($uci_signal_min)
-								and $signal > $uci_signal_min)
-								or (not tonumber($signal_time))
-								or (not tonumber($signal_normal_last_time))
-								or (tonumber($rule_03_lowbalance_timer) and tonumber($rule_03_lowbalance_timer) > 0)
-								or (tonumber($rule_04_lastping_timer) and tonumber($rule_04_lastping_timer) > 0)
-							)
-							return SIGNAL_OK
-					 	 ]],
-			["2_func"] = [[ return($signal_time - $signal_normal_last_time) ]],
+			["1_skip"] = [[ return not tonumber($os_time) ]],
+			["2_func"] = [[
+				local TIMER = tonumber($low_signal_timer) + (os.time() - $os_time)
+
+				local PING_NOT_OK = (tonumber($r04_lastping_timer) and tonumber($r04_lastping_timer) > 0)
+				local REG_NOT_OK = (tonumber($r02_lastreg_timer) and tonumber($r02_lastreg_timer) > 0)
+				local BALANCE_NOT_OK = (tonumber($r03_lowbalance_timer) and tonumber($r03_lowbalance_timer) > 0 and $sim_balance ~= "*" and $sim_balance ~= "")
+				local SIM_NOT_OK = (tonumber($r01_timer) and tonumber($r01_timer) > 0)
+				local SIGNAL_OK = (tonumber($signal) and tonumber($uci_signal_min) and tonumber($signal) >= tonumber($uci_signal_min))
+				if REG_NOT_OK then return 0
+				elseif BALANCE_NOT_OK then return 0
+				elseif SIM_NOT_OK then return 0
+				elseif PING_NOT_OK then return 0
+				elseif SIGNAL_OK then return 0
+				else return TIMER end
+			]],
+			["3_save"] = [[ return $low_signal_timer ]]
+		}
+	},
+
+	os_time = {
+		note = [[ Текущее время системы (вспомогательная переменная) ]],
+		modifier= {
+			["1_func"] = [[ return os.time() ]],
+			["2_save"] = [[ return $os_time ]]
 		}
 	},
 
@@ -182,7 +182,8 @@ local rule_setting = {
 	},
 
 	do_switch = {
-		note = [[ Активирует и хранит трезультат переключения Сим-карты при слабом сигнале. ]],
+		note = [[ Переключает слот если уровень сигнала на данной SIM ниже порогового/ ]],
+		input = "false",
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
@@ -192,11 +193,11 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[
 				local READY = 	( $switching == "" or $switching == "false" )
-				local TIMEOUT = ( tonumber($low_signal_timer) and tonumber($uci_timeout_signal) and ($low_signal_timer >= $uci_timeout_signal) )
+				local TIMEOUT = ( tonumber($low_signal_timer) and tonumber($uci_timeout_signal) and (tonumber($low_signal_timer) >= tonumber($uci_timeout_signal)) )
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
+			["3_frozen"] = [[ return 10 ]]
 
 		}
 	},
@@ -226,19 +227,36 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
+	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
+	-- Green, Yellow and Red are measure of importance for Application logic
+	-- Green is for timers and some passive variables,
+	-- Yellow is for that vars which switches logic - affects to normal application behavior
+	-- Red is for some extraordinal application ehavior, like watchdog, etc.
+	local overview = {
+		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
+		["low_signal_timer"] = { ["yellow"] = [[ return (tonumber($low_signal_timer) and tonumber($low_signal_timer) > 0) ]] },
+	}
+
+
 	self:load("title"):modify():debug()
 	self:load("sim_id"):modify():debug()
 	self:load("uci_signal_min"):modify():debug()
 	self:load("uci_timeout_signal"):modify():debug()
 	self:load("network_registration"):modify():debug()
 	self:load("signal"):modify():debug()
-	self:load("signal_time"):modify():debug()
-	self:load("signal_normal_last_time"):modify():debug()
-	self:load("rule_03_lowbalance_timer"):modify():debug()
-	self:load("rule_04_lastping_timer"):modify():debug()
-	self:load("low_signal_timer"):modify():debug()
+	-- self:load("signal_time"):modify():debug()
+	-- self:load("signal_normal_last_time"):modify():debug()
+
+	self:load("r01_timer"):modify():debug()
+	self:load("r02_lastreg_timer"):modify():debug()
+
+	self:load("r03_lowbalance_timer"):modify():debug()
+	self:load("r04_lastping_timer"):modify():debug()
+	self:load("sim_balance"):modify():debug()
+	self:load("low_signal_timer"):modify():debug(overview)
+	self:load("os_time"):modify():debug()
 	self:load("switching"):modify():debug()
-	self:load("do_switch"):modify():debug()
+	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
 end
 

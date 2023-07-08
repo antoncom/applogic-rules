@@ -72,13 +72,14 @@ local rule_setting = {
                 local mode_2 = { scale = 50, blinking = "f200,200,200,800" }
                 local mode_3 = { scale = 75, blinking = "f200,200,200,200,200,800" }
                 local mode_4 = { scale = 100, blinking = "f200,200,200,200,200,200,200,800" }
-                if $network_registration ~= 1 then return no_blinking
-					elseif not tonumber($signal) then return no_blinking
-					elseif $switching == "true" then return no_blinking
-					elseif  tonumber($signal) and $signal <= mode_1.scale then return mode_1.blinking
-                    elseif  tonumber($signal) and $signal > mode_1.scale and $signal <= mode_2.scale then return mode_2.blinking
-                    elseif  tonumber($signal) and $signal > mode_2.scale and $signal <= mode_3.scale then return mode_3.blinking
-                    elseif  tonumber($signal) and $signal > mode_3.scale and $signal <= mode_4.scale then return mode_4.blinking
+				local signal = tonumber($signal) or 0
+                if $network_registration ~= "1" then return no_blinking
+					elseif (signal == 0) then return no_blinking
+					elseif ($switching == "true") then return no_blinking
+					elseif (signal <= mode_1.scale) then return mode_1.blinking
+	                elseif (signal > mode_1.scale and signal <= mode_2.scale) then return mode_2.blinking
+	                elseif (signal > mode_2.scale and signal <= mode_3.scale) then return mode_3.blinking
+	                elseif (signal > mode_3.scale and signal <= mode_4.scale) then return mode_4.blinking
 					else return no_blinking
                 end
              ]],

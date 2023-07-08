@@ -11,7 +11,6 @@ require "applogic.modifier.trigger"
 require "applogic.modifier.save"
 require "applogic.modifier.shell"
 require "applogic.modifier.ui_update"
-require "applogic.modifier.exec"
 -- require "applogic.modifier.init"
 
 
@@ -57,13 +56,18 @@ function main:modify(varname, rule) --[[
 						-- Если указать у переменной input = "some value"
 						-- то перед отменой обработки присвоить переменно йзначение из input
 						-- иначе в переменной останется хранится последнее расчётное значение (из output)
-						--varlink.subtotal = varlink.input or varlink.output or ""
-					   if rule["default"][varname].input then
-						   varlink.input = string.format("%s", rule["default"][varname].input) -- cloning default input
-						   varlink.subtotal = string.format("%s",varlink.input)
-					   else
-						   varlink.subtotal = string.format("%s",varlink.output)
-					   end
+						 --varlink.subtotal = varlink.input or varlink.output or ""
+						if rule["default"][varname].input then
+						 	varlink.input = string.format("%s", rule["default"][varname].input) -- cloning default input
+							varlink.subtotal = string.format("%s",varlink.input)
+						else
+							varlink.subtotal = string.format("%s",varlink.output)
+						end
+
+-- if (varname == "do_switch") then
+-- 	print(":::: ", rule.ruleid, " ::::",varlink.input, varlink.subtotal, varlink.output)
+-- end
+
 	                    break
 	                end
 	            end
@@ -79,6 +83,7 @@ function main:modify(varname, rule) --[[
 
 	            if "bash" == mdf_name:sub(3) then
 	                varlink.subtotal = bash(varname, mdf_name, mdf_body, rule)
+					print("BASH SUBTOTAL", varlink.subtotal)
 	            end
 
 				if "save" == mdf_name:sub(3) then
@@ -87,10 +92,6 @@ function main:modify(varname, rule) --[[
 
 				if "shell" == mdf_name:sub(3) then
 					shell(varname, mdf_name, mdf_body, rule)
-				end
-
-				if "exec" == mdf_name:sub(3) then
-					varlink.subtotal = exec(varname, mdf_name, mdf_body, rule)
 				end
 
 				if "ui-update" == mdf_name:sub(3) then

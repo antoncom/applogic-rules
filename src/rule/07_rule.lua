@@ -74,7 +74,7 @@ local rule_setting = {
                             local mode_1 = { name = "2G", blinking = "f200,200,200,800" }
                             local mode_2 = { name = "3G", blinking = "f200,200,200,200,200,800" }
                             local mode_3 = { scale = "4G", blinking = "f200,200,200,200,200,200,200,800" }
-                            if $network_registration ~= 1 then return no_blinking
+                            if $network_registration ~= "1" then return no_blinking
 								elseif $switching == "true" then return no_blinking
 								elseif $netmode == "2G" then return mode_1.blinking
                                 elseif  $netmode == "3G" then return mode_2.blinking
@@ -86,7 +86,7 @@ local rule_setting = {
     },
 
 	send_stm_at = {
-		note = [[ Отправка настроек светодиода LD1 ]],
+		note = [[ Отправка настроек светодиода LED2 ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.stm",

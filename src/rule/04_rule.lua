@@ -29,6 +29,23 @@ local rule_setting = {
 		}
 	},
 
+	host = {
+		note = [[ Пробный хост для тестирования (обычно Google-сервер) ]],
+		source = {
+			type = "ubus",
+			object = "uci",
+			method = "get",
+			params = {
+				config = "tsmodem",
+				section = "default",
+				option = "ping_host"
+			},
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
+	},
+
 	uci_timeout_ping = {
 		note = [[ Таймаут отсутствия PING в сети. Источник: /etc/config/tsmodem  ]],
 		source = {
@@ -75,30 +92,17 @@ local rule_setting = {
 		}
 	},
 
-	changed_ping_time = {
-		note = [[ Время последнего успешного PING, или 0 если неизвестно. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "ping",
-			params = {},
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
-		}
-	},
-
 	r01_timer = {
-		note = [[ Значение lastreg_timer из правила 01_rule ]],
+		note = [[ Значение таймера отсутствия Сим-карты в слоте ]],
 		source = {
 			type = "rule",
 			rulename = "01_rule",
-			varname = "timer"
+			varname = "wait_timer"
 		},
 	},
 
 	r02_lastreg_timer = {
-		note = [[ Значение lastreg_timer из правила 02_rule ]],
+		note = [[ Значение таймера отсутствия регистрации в сети ]],
 		source = {
 			type = "rule",
 			rulename = "02_rule",
@@ -107,7 +111,7 @@ local rule_setting = {
 	},
 
 	r03_lowbalance_timer = {
-		note = [[ Значение lowbalance_timer из правила 03_rule ]],
+		note = [[ Значение таймера низкого баланса ]],
 		source = {
 			type = "rule",
 			rulename = "03_rule",
@@ -115,24 +119,47 @@ local rule_setting = {
 		},
 	},
 
+	sim_balance = {
+		note = [[ Сумма баланса на текущей Сим-карте, руб. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "balance",
+			params = {},
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
+	},
+
 	lastping_timer = {
 		note = [[ Отсчёт секунд при отсутствии PING в сети. ]],
 		input = "0", -- Set default value each time you use [skip] modifier
 		modifier = {
-			["1_skip"] = [[ local PING_OK = ($ping_status == 1 or $ping_status == "")
-							local REG_NOT_OK = (tonumber($r02_lastreg_timer) and tonumber($r02_lastreg_timer) > 0)
-							local BALANCE_NOT_OK = (tonumber($r03_lowbalance_timer) and tonumber($r03_lowbalance_timer) > 0)
-							local SIM_NOT_OK = (tonumber($r01_timer) and tonumber($r01_timer) > 0)
-							if REG_NOT_OK then return true
-							elseif BALANCE_NOT_OK then return true
-							elseif SIM_NOT_OK then return true
-							elseif PING_OK then return true
-							else return false end
-						 ]],
+			["1_skip"] = [[ return not tonumber($os_time) ]],
 			["2_func"] = [[
-				local TIMER = tonumber($changed_ping_time) and (os.time() - $changed_ping_time) or false
-				if TIMER then return TIMER else return 0 end
-			]],
+							local TIMER = $lastping_timer + (os.time() - $os_time)
+
+							local PING_OK = (tonumber($ping_status) and tonumber($ping_status) == 1)
+							local REG_NOT_OK = (tonumber($r02_lastreg_timer) and tonumber($r02_lastreg_timer) > 0)
+							local BALANCE_NOT_OK = (tonumber($r03_lowbalance_timer) and tonumber($r03_lowbalance_timer) > 0 and $sim_balance ~= "*" and $sim_balance ~= "")
+							local SIM_NOT_OK = (tonumber($r01_timer) and tonumber($r01_timer) > 0)
+							if REG_NOT_OK then return 0
+							elseif BALANCE_NOT_OK then return 0
+							elseif SIM_NOT_OK then return 0
+							elseif PING_OK then return 0
+							else return TIMER end
+		 	]],
+			["3_save"] = [[ return $lastping_timer ]]
+
+		}
+	},
+
+	os_time = {
+		note = [[ Текущее время системы (вспомогательная переменная) ]],
+		modifier= {
+			["1_func"] = [[ return os.time() ]],
+			["2_save"] = [[ return $os_time ]]
 		}
 	},
 
@@ -151,7 +178,8 @@ local rule_setting = {
 	},
 
 	do_switch = {
-		note = [[ Активирует и возвращает трезультат переключения Сим-карты  ]],
+		note = [[ Переключает слот, если нет PING на текущей SIM-ке. ]],
+		input = "false",
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
@@ -160,12 +188,12 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_skip"] = [[
-				local READY = 	( $switching == "" or $switching == "false" )
-				local TIMEOUT = ( $lastping_timer > $uci_timeout_ping )
+				local READY = 	( $switching == "false" )
+				local TIMEOUT = ( tonumber($lastping_timer) > tonumber($uci_timeout_ping) )
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
+			["3_frozen"] = [[ return 10 ]]
 
 		}
 	},
@@ -178,7 +206,8 @@ local rule_setting = {
 					"sim_id",
 					"do_switch",
 					"ping_status",
-					"lastping_timer"
+					"lastping_timer",
+					"host"
 				}
 			},
 		}
@@ -194,20 +223,32 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
+	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
+	-- Green, Yellow and Red are measure of importance for Application logic
+	-- Green is for timers and some passive variables,
+	-- Yellow is for that vars which switches logic - affects to normal application behavior
+	-- Red is for some extraordinal application ehavior, like watchdog, etc.
+	local overview = {
+		["lastping_timer"] = { ["yellow"] = [[ return (tonumber($lastping_timer) and tonumber($lastping_timer) > 0) ]] },
+		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
+	}
+
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
 	self:load("uci_section"):modify():debug()
+	self:load("host"):modify():debug()
     self:load("uci_timeout_ping"):modify():debug()
 
     self:load("network_registration"):modify():debug()
     self:load("ping_status"):modify():debug()
-    self:load("changed_ping_time"):modify():debug()
 	self:load("r01_timer"):modify():debug()
 	self:load("r02_lastreg_timer"):modify():debug()
 	self:load("r03_lowbalance_timer"):modify():debug()
-    self:load("lastping_timer"):modify():debug()
+    self:load("sim_balance"):modify():debug()
+	self:load("lastping_timer"):modify():debug(overview)
+	self:load("os_time"):modify():debug()
 	self:load("switching"):modify():debug()
-	self:load("do_switch"):modify():debug()
+	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
 
 end

@@ -9,6 +9,10 @@ local uci = require "luci.model.uci".cursor()
 local bit = require "bit"
 local checkubus = require "applogic.util.checkubus"
 local debug_mode = require "applogic.debug_mode"
+local debug_cli = require "applogic.var.debug_cli"
+local report = require "applogic.util.report"
+
+
 
 
 --[[ Restore UCI config of Applogic once the debug stopped by Ctrl-C ]]
@@ -37,6 +41,7 @@ end)
 
 
 local rules = {}
+rules.iteration = 1
 rules.ubus_object = {}
 rules.conn = nil
 rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
@@ -81,7 +86,7 @@ function rules:make_ubus()
 					for rule_file, rule_obj in util.kspairs(self.setting.rules_list.target) do
 						rlist[rule_file] = rule_obj.setting.title.output
 					end
-					self.conn:reply(req, { rule_list = rlist })
+					self.conn:reply(req, rlist)
 				end, {id = ubus.INT32, msg = ubus.STRING }
 			},
 
@@ -194,10 +199,23 @@ function rules:run_all()
 				rule.debug.noerror = true
 			end
 		end
+
+		if (debug_cli.rule and debug_cli.rule == "overview") then
+			rules:overview(rules_list,rules.iteration)
+		end
+
 		rules:clear_cache()
+		rules.iteration = rules.iteration + 1
 
 	end
 end
+
+function rules:overview(rules_list, iteration)
+	--log("self.setting.rules_list.target", self.setting.rules_list.target["01_rule"].debug)
+	--print("COUNT", #util.keys(rules_list), iteration)
+	report:overview(rules_list, iteration)
+end
+
 
 local metatable = {
 	__call = function(table)

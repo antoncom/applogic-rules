@@ -147,6 +147,28 @@ function debug:source_uci(confdvlinkig, section, option, result, noerror)
     end
 end
 
+function debug:source_rule(rulename, varname, result, noerror)
+    local dvlink = debug[debug.ruleid].variables[debug.varname]
+    local rvlink = debug[debug.ruleid].rule.setting[self.varname]
+
+    if rvlink.source then
+        local src = string.format([[
+            source = {
+                type = "rule",
+                rulename = "%s",
+                varname = "%s",
+            }
+        ]], rulename, varname)
+        dvlink.source = {
+            ["type"] = "rule",
+            ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
+            ["value"] = result,
+            ["noerror"] = noerror
+        }
+        debug:set_noerrors(dvlink, noerror)
+    end
+end
+
 function debug:input(val)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
     local value = tostring(val) or ""

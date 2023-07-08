@@ -36,7 +36,7 @@ local rule_setting = {
 		}
 	},
 
-	rule_01_sim_ready = {
+	r01_sim_ready = {
 		note = [[ Значение sim_ready из правила 01_rule ]],
 		source = {
 			type = "rule",
@@ -53,8 +53,8 @@ local rule_setting = {
                             local mode_1 = { sim_id = "0", blinking = "f200,800" }
                             local mode_2 = { sim_id = "1", blinking = "f200,200,200,800" }
                             if $switching == "true" then return no_blinking
-							elseif  ($sim_id == 0 and $rule_01_sim_ready == "true") then return mode_1.blinking
-							elseif  ($sim_id == 1 and $rule_01_sim_ready == "true") then return mode_2.blinking
+							elseif  ($sim_id == "0" and $r01_sim_ready == "true") then return mode_1.blinking
+							elseif  ($sim_id == "1" and $r01_sim_ready == "true") then return mode_2.blinking
                             else return no_blinking end
                          ]],
         },
@@ -99,7 +99,7 @@ function rule:make()
 	self:load("title"):modify():debug()
 	self:load("sim_id"):modify():debug()
 	self:load("switching"):modify():debug()
-	self:load("rule_01_sim_ready"):modify():debug()
+	self:load("r01_sim_ready"):modify():debug()
 	self:load("LED3_mode"):modify():debug()
 	self:load("send_stm_at"):modify():debug()
     self:load("previous"):modify():debug()

@@ -40,15 +40,13 @@ function loadvar_rule:load(varname, rule, target_rulename, target_varname)
         result = rule.all_rules[target_rulename].setting[target_varname].output or ""
     end
 
-	-- if rule.debug_mode.enabled then
-	-- 	if (noerror) then
-	-- 		debug(varname, rule):source_ubus(obj, method, params, result, noerror, varlink.source)
-	-- 	else
-	-- 		debug(varname, rule):source_ubus(obj, method, params, err, noerror, varlink.source)
-	-- 	end
-	-- end
-    --
-	-- return (rule.cache_ubus[cache_key] and util.serialize_json(rule.cache_ubus[cache_key])) or ""
+	if rule.debug_mode.enabled then
+		if (noerror) then
+			debug(varname, rule):source_rule(target_rulename, target_varname, result, noerror)
+		else
+			debug(varname, rule):source_rule(target_rulename, target_varname, err, noerror)
+		end
+	end
 
     return result
 end

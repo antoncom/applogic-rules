@@ -1,6 +1,5 @@
 
 config debug_mode 'debug_mode'
 	option level 'ERROR'
-	option enable '1'
-	option rule '15_rule'
+	option enable '0'
 

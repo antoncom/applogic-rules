@@ -21,7 +21,9 @@ function frozen(varname, rule, mdf_name) --[[
     if not varlink.frozen then
 
         local luacode = substitute(varname, rule, body, false, true)
-        local noerror, res = pcallchunk(luacode)
+
+        noerror, res = pcallchunk(luacode)
+
         if (type(res) == "table") then
             result = res[1] or 0
             value_after_unfroze = res[2] or nil
@@ -29,9 +31,7 @@ function frozen(varname, rule, mdf_name) --[[
             result = res or 0
         end
 
-        if not tonumber(result) then
-            noerror = false
-        else
+        if (tonumber(result) and (noerror == true)) then
             local delay = result and tonumber(result)
             if delay and delay > 0 and delay < max_seconds then
                 varlink.frozen = {
@@ -41,13 +41,22 @@ function frozen(varname, rule, mdf_name) --[[
                     value_after = value_after_unfroze
                 }
                 frozen_value = varlink.frozen.value
+
+                -- ADDON TMPL
+                if (noerror) then
+                    varlink["frozee"] = varlink.subtotal
+                end
+
+            elseif delay == 0 then
+                noerror = true
+                varlink["frozee"] = nil
             else
                 noerror = false
             end
         end
     end
 
-    if noerror then
+    if (noerror == true) then
         if varlink.frozen and varlink.frozen.cancel_time then
             -- Update Frozen modifier result (for debug)
             frozen_value = tostring(varlink.frozen.value)
@@ -59,6 +68,10 @@ function frozen(varname, rule, mdf_name) --[[
                     varlink.input = tostring(varlink.frozen.value_after)
                 end
                 varlink.frozen = nil
+
+                -- ADDON TMPL
+                varlink["frozee"] = nil
+
                 if rule.debug_mode.enabled then debug(varname, rule):modifier(mdf_name, "Frozen until:", "", noerror) end
             else
                 if rule.debug_mode.enabled then
