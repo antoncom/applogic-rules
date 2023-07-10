@@ -61,10 +61,11 @@ local rule_setting = {
 				if FIRST_ITERATION then return true else return false end
 			]],
 			["2_func"] = [[
+				local wt = tonumber($wait_timer) or 0
 				if ($sim_ready == "true" or $do_switch == "true") then
 					return 0
 				else
-					return $wait_timer + (os.time() - $os_time)
+					return wt + (os.time() - tonumber($os_time))
 				end
 			]],
 			["3_save"] = [[ return $wait_timer ]]
@@ -115,7 +116,8 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[ return ($sim_ready == "true" or $usb == "disconnected") ]],
 			["2_func"] = [[
-				local TIMER = tonumber($ready_time) and (os.time() - $ready_time) or false
+				local rt = tonumber($ready_time) or 0
+				local TIMER = (os.time() - rt) or false
 				if TIMER then return TIMER else return "0" end
 			]],
 		}
@@ -134,7 +136,9 @@ local rule_setting = {
 			["1_skip"] = [[
 				local SIMID_OK = ($sim_id == "0" or $sim_id == "1")
 				local USB_OK = 	( $usb == "connected" )
-				local TIMEOUT = (tonumber($wait_timer) and tonumber($timeout) and tonumber($wait_timer) >= tonumber($timeout) )
+				local wt = tonumber($wait_timer) or 0
+				local t = tonumber($timeout) or 0
+				local TIMEOUT = (wt >= t)
 				local SIM_NOT_READY = ($sim_ready == "false")
 				return ( not (SIMID_OK and USB_OK and TIMEOUT and SIM_NOT_READY) )
 			]],
@@ -153,9 +157,11 @@ local rule_setting = {
 			["1_skip"] = [[
 				local SIM_OK = ($sim_ready == "true")
 				local USB_NOT_CONNECTED = ($usb == "disconnected")
-				local JUST_SWITCHED = ( (tonumber($ready_time) and (os.time() - tonumber($ready_time)) < 10 ) and $sim_ready == "false" )
-				local NEAR_TO_NEXT_SWITCH = false
-				if (tonumber($wait_timer) and tonumber($timeout)) then NEAR_TO_NEXT_SWITCH = (($timeout - $wait_timer) <= 15) end
+				local rt = tonumber($ready_time) or 0
+				local wt = tonumber($wait_timer) or 0
+				local t = tonumber($timeout) or 0
+				local JUST_SWITCHED = ( ((os.time() - rt) < 10) and ($sim_ready == "false") )
+				local NEAR_TO_NEXT_SWITCH = ((t - wt) <= 15)
 				if (SIM_OK or USB_NOT_CONNECTED or JUST_SWITCHED or NEAR_TO_NEXT_SWITCH) then return true else return false end
 			]],
 			["2_exec"] = [[ echo "~0:SIM.PWR=1\n\r" > /dev/ttyS1; sleep 2; echo "~0:SIM.EN=0\n\r" > /dev/ttyS1; sleep 2;  echo "~0:SIM.EN=1\n\r" > /dev/ttyS1; sleep 2; echo "~0:SIM.PWR=0\n\r" > /dev/ttyS1; ]],

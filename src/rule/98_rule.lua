@@ -39,10 +39,11 @@ local rule_setting = {
 				if FIRST_ITERATION then return true else return false end
 			]],
 			["2_func"] = [[
+				local it = tonumber($idle_time) or 0
 				if ($usb == "connected") then
 					return 0
 				else
-					return $idle_time + (os.time() - $os_time)
+					return it + (os.time() - tonumber($os_time))
 				end
 			]],
 			["3_save"] = [[ return $idle_time ]]
@@ -67,7 +68,10 @@ local rule_setting = {
 			varname = "usb",
 		},
 		modifier = {
-			["1_skip"] = [[ return ($usb == "connected" or (tonumber($idle_time) and tonumber($idle_time) <= 120)) ]],
+			["1_skip"] = [[
+				local it = tonumber($idle_time) or 0
+				return ($usb == "connected" or (it <= 120))
+			]],
             ["2_exec"] = [[ ls /dev/ | grep ttyUSB2 || echo "~0:SIM.EN=0\n\r" > /dev/ttyS1; sleep 5; echo
  "~0:SIM.EN=1\n\r" > /dev/ttyS1; sleep 2; echo "~0:SIM.PWR=0\n\r" > /dev/ttyS1; ]],
  			["3_func"] = [[ return "true" ]],

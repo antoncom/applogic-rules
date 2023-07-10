@@ -117,8 +117,9 @@ local rule_setting = {
         modifier= {
 			["1_func"] = [[
 				local beginning = 180
-				local JUST_STARTED = ($usb_time == "")
-				local JUST_SWITCHED = tonumber($usb_time) and ( (os.time() - tonumber($usb_time)) < 180 )
+				local ut = tonumber($usb_time) or 0
+				local JUST_STARTED = (ut == 0)
+				local JUST_SWITCHED = ( (ut > 0) and (os.time() - ut) < beginning )
 				if (JUST_STARTED or JUST_SWITCHED) then
 					return math.random (45, 90)
 				else
@@ -139,8 +140,10 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[ return not tonumber($os_time) ]],
 			["2_func"] = [[
-                if (tonumber($timer) <= tonumber($balance_interval)) then
-                    return ( tonumber($timer) + (os.time() - tonumber($os_time)) )
+				local t = tonumber($timer) or 0
+				local bi = tonumber($balance_interval) or 0
+                if (t < bi) then
+                    return ( t + (os.time() - tonumber($os_time)) )
                 else return 0 end
 			]],
             ["3_save"] = [[ return $timer ]]
@@ -206,10 +209,12 @@ local rule_setting = {
         },
         modifier = {
             ["1_skip"] = [[
+				local pid = tonumber($provider_id) or 0
+				local t = tonumber($timer)
 				local USB_OK = ($usb_ready == "connected")
 				local SIM_OK = ($sim_ready == "true")
-				local PROVIDER_IDENTIFIED = (tonumber($provider_id) and (tonumber($provider_id) ~= 0))
-                local TIME_TO_REQUEST = (tonumber($timer) and (tonumber($timer) < 5))
+				local PROVIDER_IDENTIFIED = (pid ~= 0)
+                local TIME_TO_REQUEST = (t < 5)
                 local BALANCE_OK = tonumber($current_balance_state)
                 local BALANCE_FAIL = ($current_balance_state == "")
                 local BALANCE_IN_PROGRESS = ($current_balance_state == "*")

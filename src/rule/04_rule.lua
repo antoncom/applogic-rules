@@ -25,7 +25,7 @@ local rule_setting = {
 	uci_section = {
 		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
 		modifier = {
-			["1_func"] = [[ if ($sim_id == 0 or $sim_id == 1) then return ("sim_" .. $sim_id) else return "sim_0" end ]],
+			["1_func"] = [[ if ($sim_id == "0" or $sim_id == "1") then return ("sim_" .. $sim_id) else return "ERROR. SIM_ID is not valid!" end ]],
 		}
 	},
 
@@ -60,7 +60,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( $uci_timeout_ping == "" or tonumber($uci_timeout_ping) == nil) then return "99" else return $uci_timeout_ping end ]],
+			["2_func"] = [[
+				local utp = tonumber($uci_timeout_ping) or 120
+				return utp
+			]],
 		}
 	},
 
@@ -88,7 +91,7 @@ local rule_setting = {
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 			["2_save"] = [[ return $ping_status ]],
-			["3_frozen"] = [[ if $ping_status == 1 then return 10 else return 0 end ]]
+			["3_frozen"] = [[ if tostring($ping_status) == "1" then return 10 else return 0 end ]]
 		}
 	},
 
@@ -138,12 +141,20 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[ return not tonumber($os_time) ]],
 			["2_func"] = [[
-							local TIMER = $lastping_timer + (os.time() - $os_time)
+							local tmr = tonumber($lastping_timer) or 0
+							local utout = tonumber($uci_timeout_ping) or 120
+							local r01t = tonumber($r01_timer) or 0
+							local r02lt = tonumber($r02_lastreg_timer) or 0
+							local r03lt = tonumber($r03_lowbalance_timer) or 0
+
+							local TIMER = tmr + (os.time() - tonumber($os_time))
+							-- It helps when ntpd synces time
+							if (TIMER > (utout + 20)) then TIMEOUT = 0 end
 
 							local PING_OK = (tonumber($ping_status) and tonumber($ping_status) == 1)
-							local REG_NOT_OK = (tonumber($r02_lastreg_timer) and tonumber($r02_lastreg_timer) > 0)
-							local BALANCE_NOT_OK = (tonumber($r03_lowbalance_timer) and tonumber($r03_lowbalance_timer) > 0 and $sim_balance ~= "*" and $sim_balance ~= "")
-							local SIM_NOT_OK = (tonumber($r01_timer) and tonumber($r01_timer) > 0)
+							local REG_NOT_OK = (r02lt > 0)
+							local BALANCE_NOT_OK = ((r03lt > 0) and ($sim_balance ~= "*") and ($sim_balance ~= ""))
+							local SIM_NOT_OK = (r01t > 0)
 							if REG_NOT_OK then return 0
 							elseif BALANCE_NOT_OK then return 0
 							elseif SIM_NOT_OK then return 0
@@ -188,8 +199,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_skip"] = [[
+				local lt = tonumber($lastping_timer) or 0
+				local utp = tonumber($uci_timeout_ping) or 0
 				local READY = 	( $switching == "false" )
-				local TIMEOUT = ( tonumber($lastping_timer) > tonumber($uci_timeout_ping) )
+				local TIMEOUT = ( lt > utp )
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],

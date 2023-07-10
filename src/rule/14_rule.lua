@@ -68,11 +68,7 @@ local rule_setting = {
 			},
 		},
 		modifier = {
-			-- ["1_skip"] = [[
-			-- 	local REG_OK = 	( $network_registration == 1 )
-			-- 	return ( not REG_OK )
-			-- ]],
-			["2_bash"] = [[ jsonfilter -e $.value ]],
+			["1_bash"] = [[ jsonfilter -e $.value ]],
 		}
 	},
 
@@ -113,7 +109,7 @@ local rule_setting = {
 				uci:commit("tsmodem")
 				return "true"
 			]],
-			["3_frozen"] = [[ if ($set_provider == "true") then return 6 else return 0 end ]]
+			["3_frozen"] = [[ return 6 ]]
 		}
 	},
 
@@ -127,11 +123,12 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			-- ["1_skip"] = [[
-			-- 	local NEW_PROVIDER_IDENTIFIED = tonumber($new_provider_id)
-			-- 	local REG_OK = 	( $network_registration == 1 )
-			-- 	return not (REG_OK and NEW_PROVIDER_IDENTIFIED)
-			-- ]],
+			["1_skip"] = [[
+				local NEW_PROVIDER_IDENTIFIED = tonumber($new_provider_id)
+				local nr = tonumber($network_registration)
+				local REG_OK = 	nr and ((nr >= 0) and (nr <= 8))
+				return not (REG_OK and NEW_PROVIDER_IDENTIFIED)
+			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 		}
 	},

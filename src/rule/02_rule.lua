@@ -39,7 +39,7 @@ local rule_setting = {
 	uci_section = {
 		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
 		modifier = {
-			["1_func"] = [[ if ($sim_id == 0 or $sim_id == 1) then return ("sim_" .. $sim_id) else return "sim_0" end ]],
+			["1_func"] = [[ if ($sim_id == "0" or $sim_id == "1") then return ("sim_" .. $sim_id) else return "ERROR, no SIM_ID!" end ]],
 		}
 	},
 
@@ -57,7 +57,6 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			--["2_func"] = [[ if ( $timeout == "" or tonumber($timeout) == nil) then return "99" else return $timeout end ]],
 		}
 	},
 
@@ -71,7 +70,7 @@ local rule_setting = {
 	},
 
 	network_registration = {
-		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
+		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
@@ -112,12 +111,14 @@ local rule_setting = {
 				local FIRST_ITERATION = (not tonumber($os_time))
 				return (SIM_NOT_OK or FIRST_ITERATION) ]],
 			["2_func"] = [[
-				local netreg = tonumber($network_registration)
+				local netreg = tonumber($network_registration) or 0
 				local lastreg_t = tonumber($lastreg_timer) or 0
 				local SIM_NOT_OK = ($sim_ready ~= "true")
 				local SWITCHING = ($switching ~= "false")
 				local REG_OK = netreg and (netreg == 1 or netreg == 7 or netreg == -1)
-				if (REG_OK or SIM_NOT_OK or SWITCHING) then return 0 else return ( lastreg_t + (os.time() - $os_time)) end
+				if (REG_OK or SIM_NOT_OK or SWITCHING) then
+					return 0
+				else return ( lastreg_t + (os.time() - tonumber($os_time)) ) end
 			]],
             ["3_save"] = [[ return $lastreg_timer ]]
 		}

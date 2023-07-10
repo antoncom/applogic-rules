@@ -35,7 +35,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( tonumber($uci_signal_min) == nil ) then return "5" else return $uci_signal_min end ]]
+			["2_func"] = [[
+				local usm = tonumber($uci_signal_min) or 5
+				return usm
+			]]
 		}
 	},
 
@@ -53,7 +56,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if (not tonumber($uci_timeout_signal)) then return "99" else return $uci_timeout_signal end ]]
+			["2_func"] = [[
+				local uts = tonumber($uci_timeout_signal) or 121
+				return uts
+			]]
 		}
 	},
 
@@ -80,8 +86,14 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if (tonumber($signal)) then return $signal else return "" end ]],
-			["3_frozen"] = [[ if(tonumber($signal) and tonumber($signal) > 0) then return 10 else return 0 end ]],
+			["2_func"] = [[
+				local s = tonumber($signal) or 0
+				if (s > 0) then return s else return "" end
+			]],
+			["3_frozen"] = [[
+				local s = tonumber($signal) or 0
+				if(s > 0) then return 10 else return 0 end
+			]],
 		},
 	},
 
@@ -140,13 +152,19 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[ return not tonumber($os_time) ]],
 			["2_func"] = [[
-				local TIMER = tonumber($low_signal_timer) + (os.time() - $os_time)
-
-				local PING_NOT_OK = (tonumber($r04_lastping_timer) and tonumber($r04_lastping_timer) > 0)
-				local REG_NOT_OK = (tonumber($r02_lastreg_timer) and tonumber($r02_lastreg_timer) > 0)
-				local BALANCE_NOT_OK = (tonumber($r03_lowbalance_timer) and tonumber($r03_lowbalance_timer) > 0 and $sim_balance ~= "*" and $sim_balance ~= "")
-				local SIM_NOT_OK = (tonumber($r01_timer) and tonumber($r01_timer) > 0)
-				local SIGNAL_OK = (tonumber($signal) and tonumber($uci_signal_min) and tonumber($signal) >= tonumber($uci_signal_min))
+				local r01t = tonumber($r01_timer) or 0
+				local r02lt = tonumber($r02_lastreg_timer) or 0
+				local r03lt = tonumber($r03_lowbalance_timer) or 0
+				local r04lt = tonumber($r04_lastping_timer) or 0
+				local lst = tonumber($low_signal_timer) or 0
+				local s = tonumber($signal) or 0
+				local usm = tonumber($uci_signal_min) or 0
+				local TIMER = lst + (os.time() - tonumber($os_time))
+				local PING_NOT_OK = (r04lt > 0)
+				local REG_NOT_OK = (r02lt > 0)
+				local BALANCE_NOT_OK = ((r03lt > 0) and ($sim_balance ~= "*") and ($sim_balance ~= ""))
+				local SIM_NOT_OK = (r01t > 0)
+				local SIGNAL_OK = (s > usm)
 				if REG_NOT_OK then return 0
 				elseif BALANCE_NOT_OK then return 0
 				elseif SIM_NOT_OK then return 0
@@ -193,7 +211,9 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[
 				local READY = 	( $switching == "" or $switching == "false" )
-				local TIMEOUT = ( tonumber($low_signal_timer) and tonumber($uci_timeout_signal) and (tonumber($low_signal_timer) >= tonumber($uci_timeout_signal)) )
+				local lst = tonumber($low_signal_timer) or 0
+				local uts = tonumber($uci_timeout_signal) or 0
+				local TIMEOUT = ( lst > uts )
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],

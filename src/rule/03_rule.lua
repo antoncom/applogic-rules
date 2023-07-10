@@ -37,7 +37,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( tonumber($uci_balance_min) == nil ) then return "30" else return $uci_balance_min end ]]
+			["2_func"] = [[
+				local ubm = tonumber($uci_balance_min) or 30
+				return ubm
+			]]
 		}
 	},
 
@@ -55,7 +58,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if ( not tonumber($uci_timeout_bal)) then return 999 else return $uci_timeout_bal end ]]
+			["2_func"] = [[
+				local utb = tonumber($uci_timeout_bal) or 120
+				return utb
+			]]
 		}
 	},
 
@@ -89,7 +95,10 @@ local rule_setting = {
 	event_datetime = {
 		note = [[ Дата актуального баланса в формате для Web-интерфейса. ]],
 		modifier = {
-			["1_func"] = [[ if ( tonumber($balance_time) ~= nil) then return(os.date("%Y-%m-%d %H:%M:%S", tonumber($balance_time))) else return "" end ]]
+			["1_func"] = [[
+				local bt = tonumber($balance_time) or 0
+				if (bt ~= 0) then return(os.date("%Y-%m-%d %H:%M:%S", bt)) else return "" end
+			]]
 		}
 	},
 
@@ -159,11 +168,15 @@ local rule_setting = {
 				local lbt = tonumber($lowbalance_timer) or false
 				local sb = tonumber($sim_balance) or false
 				local ubmin = tonumber($uci_balance_min) or false
-				local TIMER = lbt and (lbt + (os.time() - $os_time))
+				local r01t = tonumber($r01_timer) or 0
+				local r02lt = tonumber($r02_lastreg_timer) or 0
+				local TIMER = lbt and (lbt + (os.time() - tonumber($os_time)))
 				local BALANCE_OK = sb and ubmin and (sb > ubmin)
-				local SIM_NOT_REGISTERED = (tonumber($r02_lastreg_timer) and tonumber($r02_lastreg_timer) > 0)
-				local SIM_ABSENT = (tonumber($r01_timer) and tonumber($r01_timer) > 0)
+				local BALANCE_EMPTY = (sb == false)
+				local SIM_NOT_REGISTERED = (r02lt > 0)
+				local SIM_ABSENT = (r01t > 0)
 				if SIM_ABSENT then return 0
+				elseif BALANCE_EMPTY then return 0
 				elseif SIM_NOT_REGISTERED then return 0
 				elseif BALANCE_OK then return 0
 				else return TIMER or 0 end
@@ -205,8 +218,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_skip"] = [[
+				local lt = tonumber($lowbalance_timer) or 0
+				local utb = tonumber($uci_timeout_bal) or 0
 				local READY = 	( $switching == "" or $switching == "false" )
-				local TIMEOUT = ( tonumber($lowbalance_timer) and tonumber($lowbalance_timer) > tonumber($uci_timeout_bal) )
+				local TIMEOUT = ((lt + 10) > utb)
 				return ( not (READY and TIMEOUT) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
