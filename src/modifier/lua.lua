@@ -16,7 +16,6 @@ function func(varname, mdf_name, rule) --[[
 	local from_input = (not varlink.source) and mdf_name:sub(1,1) == "1"
 
 	local luacode = substitute(varname, rule, body, from_input, true)
-
 	local noerror, res = pcallchunk(luacode)
 	result = res or ""
 

@@ -23,7 +23,7 @@ local rule_setting = {
 	},
 
 	usb = {
-		note = [[ USB  ]],
+		note = [[ Состояние USB-порта: connected / disconnected  ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
@@ -32,6 +32,37 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
+	},
+
+	-- connected_usb_time = {
+	-- 	note = [[ Время когда USB порт установился в состояние "connected"  ]],
+	-- 	input = 0,
+	-- 	source = {
+	-- 		type = "ubus",
+	-- 		object = "tsmodem.driver",
+	-- 		method = "usb",
+	-- 		params = {},
+	-- 	},
+	-- 	modifier = {
+	-- 		["1_skip"] = [[ return ($usb == "disconnected" ) ]],
+	-- 		["2_bash"] = [[ jsonfilter -e $.time ]],
+	-- 	}
+	-- },
+
+	sim_ready = {
+		note = [[ Сим-карта в слоте? "true" / "false" ]],
+		--input = "true",
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "cpin",
+			params = {},
+		},
+		modifier = {
+			--["1_skip"] = [[ return ($usb == "disconnected") ]],
+			["2_bash"] = [[ jsonfilter -e $.value ]],
+			["3_func"] = [[ if $sim_ready == "" then return "*" else return tostring($sim_ready) end ]],
 		}
 	},
 
@@ -57,69 +88,21 @@ local rule_setting = {
 		note = [[ Таймер ожидания на попытки найти Сим-карту в слоте ]],
 		input = 0,
 		modifier = {
-			["1_skip"] = [[ local FIRST_ITERATION = (tonumber($os_time) == nil)
-				if FIRST_ITERATION then return true else return false end
-			]],
+			["1_skip"] = [[ return (not tonumber($os_time)) ]],
 			["2_func"] = [[
 				local wt = tonumber($wait_timer) or 0
+
+				local STEP = os.time() - tonumber($os_time)
+				if STEP > 50 then STEP = 2 end -- it uses when ntpd synced system time
+
 				if ($sim_ready == "true" or $do_switch == "true") then
 					return 0
 				else
-					return wt + (os.time() - tonumber($os_time))
+					return (wt + STEP)
 				end
 			]],
 			["3_save"] = [[ return $wait_timer ]]
 
-		}
-	},
-
-	os_time = {
-		note = [[ Время ОС на предыдущей итерации ]],
-		modifier = {
-			["1_func"] = [[ return os.time() ]],
-			["2_save"] = [[ return $os_time ]]
-		}
-	},
-
-	sim_ready = {
-		note = [[ Сим-карта в слоте? "true" / "false" ]],
-		--input = "true",
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "cpin",
-			params = {},
-		},
-		modifier = {
-			["1_skip"] = [[ return ($usb == "disconnected") ]],
-			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_func"] = [[ if $sim_ready == "" then return "*" else return tostring($sim_ready) end ]],
-		}
-	},
-
-	ready_time = {
-		note = [[ Время когда Сим-карта была замечена в слоте или момент переключения слотов ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "cpin",
-			params = {},
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
-		}
-	},
-
-	reset_timer = {
-		note = [[ Отсчёт секунд при отсутствии Сим-карты в слоте. ]],
-		input = "0", -- Set default value if you need "reset" variable before skipping
-		modifier = {
-			["1_skip"] = [[ return ($sim_ready == "true" or $usb == "disconnected") ]],
-			["2_func"] = [[
-				local rt = tonumber($ready_time) or 0
-				local TIMER = (os.time() - rt) or false
-				if TIMER then return TIMER else return "0" end
-			]],
 		}
 	},
 
@@ -148,6 +131,45 @@ local rule_setting = {
 		}
 	},
 
+	switching_time = {
+		note = [[ Время переключения Sim ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "switching",
+			params = {},
+			--cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+		}
+	},
+
+	reset_timer = {
+		note = [[ Отсчёт секунд при отсутствии Сим-карты в слоте. ]],
+		input = "0", -- Set default value if you need "reset" variable before skipping
+		modifier = {
+			["1_skip"] = [[ return (not tonumber($os_time)) ]],
+			["2_func"] = [[
+				local STEP = os.time() - tonumber($os_time)
+				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+
+				local SIM_OK = ($sim_ready == "true")
+				local USB_NOT_CONNECTED = ($usb == "disconnected")
+				local st = tonumber($switching_time) or 0
+				local JUST_SWITCHED = ((tonumber($os_time) - st) < 20)
+
+				local rt = tonumber($reset_timer) or 0
+				local TIMER = rt + STEP
+
+				if USB_NOT_CONNECTED then return 0
+				elseif JUST_SWITCHED then return 0
+				elseif SIM_OK then return 0
+				else return TIMER end
+			]],
+			["3_save"] = [[ return $reset_timer ]]
+		}
+	},
 
 
 	reset_modem = {
@@ -155,18 +177,26 @@ local rule_setting = {
 		input = "false",
 		modifier = {
 			["1_skip"] = [[
-				local SIM_OK = ($sim_ready == "true")
-				local USB_NOT_CONNECTED = ($usb == "disconnected")
-				local rt = tonumber($ready_time) or 0
-				local wt = tonumber($wait_timer) or 0
-				local t = tonumber($timeout) or 0
-				local JUST_SWITCHED = ( ((os.time() - rt) < 10) and ($sim_ready == "false") )
-				local NEAR_TO_NEXT_SWITCH = ((t - wt) <= 15)
-				if (SIM_OK or USB_NOT_CONNECTED or JUST_SWITCHED or NEAR_TO_NEXT_SWITCH) then return true else return false end
+				local rt = tonumber($reset_timer) or 0
+				return (rt < 20)
 			]],
-			["2_exec"] = [[ echo "~0:SIM.PWR=1\n\r" > /dev/ttyS1; sleep 2; echo "~0:SIM.EN=0\n\r" > /dev/ttyS1; sleep 2;  echo "~0:SIM.EN=1\n\r" > /dev/ttyS1; sleep 2; echo "~0:SIM.PWR=0\n\r" > /dev/ttyS1; ]],
+			["2_exec"] = [[
+				ubus call tsmodem.stm send '{"command":"~0:SIM.EN=0"}' &> /dev/null;
+				sleep 2;
+				ubus call tsmodem.stm send '{"command":"~0:SIM.EN=1"}' &> /dev/null;
+				sleep 2;
+				ubus call tsmodem.stm send '{"command":"~0:SIM.PWR=0"}' &> /dev/null;
+			]],
 			["3_func"] = [[ return "true" ]],
-			["4_frozen"] = [[ return 20 ]]
+			["4_frozen"] = [[ return 10 ]]
+		}
+	},
+
+	os_time = {
+		note = [[ Время ОС на предыдущей итерации ]],
+		modifier = {
+			["1_func"] = [[ return os.time() ]],
+			["2_save"] = [[ return $os_time ]]
 		}
 	},
 
@@ -212,16 +242,17 @@ function rule:make()
 	self:load("title"):modify():debug() 	-- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()	-- Use "overview" to include the variable to the all rules overview report in debug mode
 	self:load("usb"):modify():debug()
+	-- self:load("connected_usb_time"):modify():debug()
+	self:load("sim_ready"):modify():debug(overview)
+
 	self:load("timeout"):modify():debug()
 	self:load("wait_timer"):modify():debug(overview)
-	self:load("os_time"):modify():debug()
 
-	self:load("sim_ready"):modify():debug(overview)
-	self:load("ready_time"):modify():debug()
-    self:load("reset_timer"):modify():debug(overview)
 	self:load("do_switch"):modify():debug(overview)
+	self:load("switching_time"):modify():debug(overview)
+	self:load("reset_timer"):modify():debug(overview)
 	self:load("reset_modem"):modify():debug(overview)
-
+	self:load("os_time"):modify():debug()
 	self:load("send_ui"):modify():debug()
 end
 

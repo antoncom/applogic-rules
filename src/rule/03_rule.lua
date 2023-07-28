@@ -78,20 +78,6 @@ local rule_setting = {
 		}
 	},
 
-	balance_new = {
-		note = [[ Признак изменившегося баланса: true/false. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "balance",
-			params = {},
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]]
-		}
-	},
-
-
 	event_datetime = {
 		note = [[ Дата актуального баланса в формате для Web-интерфейса. ]],
 		modifier = {
@@ -142,7 +128,7 @@ local rule_setting = {
 	},
 
 	r01_timer = {
-		note = [[ Значение lastreg_timer из правила 01_rule ]],
+		note = [[ Значение wait_timer из правила 01_rule ]],
 		source = {
 			type = "rule",
 			rulename = "01_rule",
@@ -165,14 +151,17 @@ local rule_setting = {
         modifier = {
 			["1_skip"] = [[ return not tonumber($os_time) ]],
 			["2_func"] = [[
-				local lbt = tonumber($lowbalance_timer) or false
-				local sb = tonumber($sim_balance) or false
-				local ubmin = tonumber($uci_balance_min) or false
+				local STEP = os.time() - tonumber($os_time)
+				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+
+				local lbt = tonumber($lowbalance_timer) or 0
+				local sb = tonumber($sim_balance) or 0
+				local ubmin = tonumber($uci_balance_min) or 0
 				local r01t = tonumber($r01_timer) or 0
 				local r02lt = tonumber($r02_lastreg_timer) or 0
-				local TIMER = lbt and (lbt + (os.time() - tonumber($os_time)))
-				local BALANCE_OK = sb and ubmin and (sb > ubmin)
-				local BALANCE_EMPTY = (sb == false)
+				local TIMER = lbt + STEP
+				local BALANCE_OK = (sb > ubmin)
+				local BALANCE_EMPTY = (sb == 0)
 				local SIM_NOT_REGISTERED = (r02lt > 0)
 				local SIM_ABSENT = (r01t > 0)
 				if SIM_ABSENT then return 0
@@ -271,7 +260,6 @@ function rule:make()
 	self:load("uci_timeout_bal"):modify():debug()
 
 	self:load("balance_time"):modify():debug()
-	self:load("balance_new"):modify():debug()
 	self:load("event_datetime"):modify():debug()
 	self:load("sim_balance"):modify():debug()
 	self:load("balance_message"):modify():debug()

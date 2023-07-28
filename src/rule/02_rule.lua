@@ -89,28 +89,15 @@ local rule_setting = {
 		}
 	},
 
-	changed_reg_time = {
-		note = [[ Время последней успешной регистрации в сети или "", если неизвестно. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {},
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]]
-		}
-	},
-
-
 	lastreg_timer = {
 		note = [[ Отсчёт секунд при отсутствии REG ]],
 		input = 0, -- Set default value if you need "reset" variable before skipping
 		modifier = {
-			["1_skip"] = [[
-				local FIRST_ITERATION = (not tonumber($os_time))
-				return (SIM_NOT_OK or FIRST_ITERATION) ]],
+			["1_skip"] = [[ return (not tonumber($os_time)) ]],
 			["2_func"] = [[
+				local STEP = os.time() - tonumber($os_time)
+				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+
 				local netreg = tonumber($network_registration) or 0
 				local lastreg_t = tonumber($lastreg_timer) or 0
 				local SIM_NOT_OK = ($sim_ready ~= "true")
@@ -118,7 +105,7 @@ local rule_setting = {
 				local REG_OK = netreg and (netreg == 1 or netreg == 7 or netreg == -1)
 				if (REG_OK or SIM_NOT_OK or SWITCHING) then
 					return 0
-				else return ( lastreg_t + (os.time() - tonumber($os_time)) ) end
+				else return ( lastreg_t + STEP ) end
 			]],
             ["3_save"] = [[ return $lastreg_timer ]]
 		}
@@ -135,7 +122,7 @@ local rule_setting = {
 	iface_up = {
 		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
         modifier = {
-            ["1_skip"] = [[ return ($sim_ready ~= "true" or $switching ~= "false" ) ]],
+            ["1_skip"] = [[ return (($sim_ready ~= "true") or ($switching ~= "false") ) ]],
             ["2_bash"] = [[ ifconfig 3g-tsmodem 2>/dev/nul | sed -n '3p;3q' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
             ["3_func"] = [[ local lastreg_t = tonumber($lastreg_timer) or 0
 							if ($iface_up == "UP") then return "true"
@@ -176,7 +163,6 @@ local rule_setting = {
 				param_list = {
 					"sim_id",
 					"lastreg_timer",
-					"changed_reg_time",
 					"network_registration",
 					"lastreg_timer",
 					"do_switch",
@@ -214,7 +200,6 @@ function rule:make()
 
 	self:load("sim_ready"):modify():debug()
 	self:load("network_registration"):modify():debug()
-	self:load("changed_reg_time"):modify():debug()
 	self:load("lastreg_timer"):modify():debug(overview)
 	self:load("os_time"):modify():debug()
 	self:load("iface_up"):modify():debug()

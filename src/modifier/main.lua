@@ -41,9 +41,6 @@ function main:modify(varname, rule) --[[
 	-- TMPL
 	if(varlink["frozee"]) then
 		varlink.input = varlink["frozee"]
-		-- if(rule.ruleid == "04_rule" and varname == "do_switch") then
-		-- 	print("=== 04 frozee: ", varlink.input)
-		-- end
 	end
 
 	varlink.subtotal = varlink.subtotal or string.format("%s", tostring(varlink.input))

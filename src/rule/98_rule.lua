@@ -35,15 +35,16 @@ local rule_setting = {
 		note = [[ Сколько времени модем выключен (отсутствует /dev/ttyUSB2) ]],
 		input = 0,
 		modifier = {
-			["1_skip"] = [[ local FIRST_ITERATION = (tonumber($os_time) == nil)
-				if FIRST_ITERATION then return true else return false end
-			]],
+			["1_skip"] = [[ return (not tonumber($os_time)) ]],
 			["2_func"] = [[
+				local STEP = os.time() - tonumber($os_time)
+				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+
 				local it = tonumber($idle_time) or 0
 				if ($usb == "connected") then
 					return 0
 				else
-					return it + (os.time() - tonumber($os_time))
+					return (it + STEP)
 				end
 			]],
 			["3_save"] = [[ return $idle_time ]]
@@ -62,18 +63,20 @@ local rule_setting = {
 
     reinit_modem = {
 		note = [[ Перезапускает модем если USB порт /dev/ttyUSB2 отсутствует более 2 мин. ]],
-		source = {
-			type = "rule",
-			rulename = "01_rule",
-			varname = "usb",
-		},
 		modifier = {
 			["1_skip"] = [[
 				local it = tonumber($idle_time) or 0
 				return ($usb == "connected" or (it <= 120))
 			]],
-            ["2_exec"] = [[ ls /dev/ | grep ttyUSB2 || echo "~0:SIM.EN=0\n\r" > /dev/ttyS1; sleep 5; echo
- "~0:SIM.EN=1\n\r" > /dev/ttyS1; sleep 2; echo "~0:SIM.PWR=0\n\r" > /dev/ttyS1; ]],
+            ["2_exec"] = [[
+				ls /dev/ | grep ttyUSB2 || (
+					ubus call tsmodem.stm send '{"command":"~0:SIM.EN=0"}' &> /dev/null;
+					sleep 2;
+					ubus call tsmodem.stm send '{"command":"~0:SIM.EN=1"}' &> /dev/null;
+					sleep 2;
+					ubus call tsmodem.stm send '{"command":"~0:SIM.PWR=0"}' &> /dev/null;
+				)
+			]],
  			["3_func"] = [[ return "true" ]],
             ["4_frozen"] = [[ return 30 ]]
 		}

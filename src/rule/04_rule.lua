@@ -141,16 +141,16 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[ return not tonumber($os_time) ]],
 			["2_func"] = [[
+							local STEP = os.time() - tonumber($os_time)
+							if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+
 							local tmr = tonumber($lastping_timer) or 0
 							local utout = tonumber($uci_timeout_ping) or 120
 							local r01t = tonumber($r01_timer) or 0
 							local r02lt = tonumber($r02_lastreg_timer) or 0
 							local r03lt = tonumber($r03_lowbalance_timer) or 0
 
-							local TIMER = tmr + (os.time() - tonumber($os_time))
-							-- It helps when ntpd synces time
-							if (TIMER > (utout + 20)) then TIMEOUT = 0 end
-
+							local TIMER = tmr + STEP
 							local PING_OK = (tonumber($ping_status) and tonumber($ping_status) == 1)
 							local REG_NOT_OK = (r02lt > 0)
 							local BALANCE_NOT_OK = ((r03lt > 0) and ($sim_balance ~= "*") and ($sim_balance ~= ""))
