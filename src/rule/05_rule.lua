@@ -281,7 +281,7 @@ function rule:make()
 	self:load("os_time"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
-	self:load("send_ui"):modify():debug()
+	self:load("send_ui"):modify():debug(ONLY)
 end
 
 

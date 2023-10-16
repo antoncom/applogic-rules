@@ -66,50 +66,50 @@ local rule_setting = {
 		}
 	},
 
-    LED2_mode = {
-        note = [[ Режим мигания светодиода LED2. ]],
-        modifier = {
-            ["1_func"] = [[
-                            local no_blinking = "v0"
-                            local mode_1 = { name = "2G", blinking = "f200,200,200,800" }
-                            local mode_2 = { name = "3G", blinking = "f200,200,200,200,200,800" }
-                            local mode_3 = { scale = "4G", blinking = "f200,200,200,200,200,200,200,800" }
-                            if $network_registration ~= "1" then return no_blinking
-								elseif $switching == "true" then return no_blinking
-								elseif $netmode == "2G" then return mode_1.blinking
-                                elseif  $netmode == "3G" then return mode_2.blinking
-                                elseif  $netmode == "4G" then return mode_3.blinking
-                                else return no_blinking
-                            end
-                         ]],
-        },
-    },
+    -- LED2_mode = {
+    --     note = [[ Режим мигания светодиода LED2. ]],
+    --     modifier = {
+    --         ["1_func"] = [[
+    --                         local no_blinking = "v0"
+    --                         local mode_1 = { name = "2G", blinking = "f200,200,200,800" }
+    --                         local mode_2 = { name = "3G", blinking = "f200,200,200,200,200,800" }
+    --                         local mode_3 = { scale = "4G", blinking = "f200,200,200,200,200,200,200,800" }
+    --                         if $network_registration ~= "1" then return no_blinking
+	-- 							elseif $switching == "true" then return no_blinking
+	-- 							elseif $netmode == "2G" then return mode_1.blinking
+    --                             elseif  $netmode == "3G" then return mode_2.blinking
+    --                             elseif  $netmode == "4G" then return mode_3.blinking
+    --                             else return no_blinking
+    --                         end
+    --                      ]],
+    --     },
+    -- },
 
-	send_stm_at = {
-		note = [[ Отправка настроек светодиода LED2 ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.stm",
-			method = "send",
-			params = {
-                command = "~0:LED.2=$LED2_mode",
-            },
-		},
-		modifier = {
-            ["1_skip"] = [[
-                return ($LED2_mode == $previous)
-            ]]
-        }
-    },
+	-- send_stm_at = {
+	-- 	note = [[ Отправка настроек светодиода LED2 ]],
+	-- 	source = {
+	-- 		type = "ubus",
+	-- 		object = "tsmodem.stm",
+	-- 		method = "send",
+	-- 		params = {
+    --             command = "~0:LED.2=$LED2_mode",
+    --         },
+	-- 	},
+	-- 	modifier = {
+    --         ["1_skip"] = [[
+    --             return ($LED2_mode == $previous)
+    --         ]]
+    --     }
+    -- },
 
-    previous = {
-        note = [[ Режим мигания светодиода LED2 (на предыдущей итерации). ]],
-        modifier = {
-            ["1_func"] = [[
-                            return $LED2_mode
-                         ]],
-        },
-    },
+    -- previous = {
+    --     note = [[ Режим мигания светодиода LED2 (на предыдущей итерации). ]],
+    --     modifier = {
+    --         ["1_func"] = [[
+    --                         return $LED2_mode
+    --                      ]],
+    --     },
+    -- },
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -126,9 +126,9 @@ function rule:make()
     self:load("network_registration"):modify():debug()
 	self:load("switching"):modify():debug()
     self:load("netmode"):modify():debug()
-	self:load("LED2_mode"):modify():debug()
-	self:load("send_stm_at"):modify():debug()
-    self:load("previous"):modify():debug()
+	-- self:load("LED2_mode"):modify():debug()
+	-- self:load("send_stm_at"):modify():debug()
+    -- self:load("previous"):modify():debug()
 end
 
 

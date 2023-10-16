@@ -63,55 +63,55 @@ local rule_setting = {
 		},
 	},
 
-    LED1_mode = {
-        note = [[ Режим мигания светодиода LED1 ]],
-        modifier = {
-            ["1_func"] = [[
-                local no_blinking = "v0"
-                local mode_1 = { scale = 25, blinking = "f200,800" }
-                local mode_2 = { scale = 50, blinking = "f200,200,200,800" }
-                local mode_3 = { scale = 75, blinking = "f200,200,200,200,200,800" }
-                local mode_4 = { scale = 100, blinking = "f200,200,200,200,200,200,200,800" }
-				local signal = tonumber($signal) or 0
-                if $network_registration ~= "1" then return no_blinking
-					elseif (signal == 0) then return no_blinking
-					elseif ($switching == "true") then return no_blinking
-					elseif (signal <= mode_1.scale) then return mode_1.blinking
-	                elseif (signal > mode_1.scale and signal <= mode_2.scale) then return mode_2.blinking
-	                elseif (signal > mode_2.scale and signal <= mode_3.scale) then return mode_3.blinking
-	                elseif (signal > mode_3.scale and signal <= mode_4.scale) then return mode_4.blinking
-					else return no_blinking
-                end
-             ]],
-        },
-    },
+    -- LED1_mode = {
+    --     note = [[ Режим мигания светодиода LED1 ]],
+    --     modifier = {
+    --         ["1_func"] = [[
+    --             local no_blinking = "v0"
+    --             local mode_1 = { scale = 25, blinking = "f200,800" }
+    --             local mode_2 = { scale = 50, blinking = "f200,200,200,800" }
+    --             local mode_3 = { scale = 75, blinking = "f200,200,200,200,200,800" }
+    --             local mode_4 = { scale = 100, blinking = "f200,200,200,200,200,200,200,800" }
+	-- 			local signal = tonumber($signal) or 0
+    --             if $network_registration ~= "1" then return no_blinking
+	-- 				elseif (signal == 0) then return no_blinking
+	-- 				elseif ($switching == "true") then return no_blinking
+	-- 				elseif (signal <= mode_1.scale) then return mode_1.blinking
+	--                 elseif (signal > mode_1.scale and signal <= mode_2.scale) then return mode_2.blinking
+	--                 elseif (signal > mode_2.scale and signal <= mode_3.scale) then return mode_3.blinking
+	--                 elseif (signal > mode_3.scale and signal <= mode_4.scale) then return mode_4.blinking
+	-- 				else return no_blinking
+    --             end
+    --          ]],
+    --     },
+    -- },
 
 
-	send_stm_at = {
-		note = [[ Отправка настроек светодиода LED1 ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.stm",
-			method = "send",
-			params = {
-                command = "~0:LED.1=$LED1_mode",
-            },
-		},
-		modifier = {
-            ["1_skip"] = [[
-                return ($LED1_mode == $previous)
-            ]]
-        }
-    },
+	-- send_stm_at = {
+	-- 	note = [[ Отправка настроек светодиода LED1 ]],
+	-- 	source = {
+	-- 		type = "ubus",
+	-- 		object = "tsmodem.stm",
+	-- 		method = "send",
+	-- 		params = {
+    --             command = "~0:LED.1=$LED1_mode",
+    --         },
+	-- 	},
+	-- 	modifier = {
+    --         ["1_skip"] = [[
+    --             return ($LED1_mode == $previous)
+    --         ]]
+    --     }
+    -- },
 
-	previous = {
-		note = [[ Режим мигания светодиода LED1 (на предыдущей итерации). ]],
-		modifier = {
-			["1_func"] = [[
-							return $LED1_mode
-						 ]],
-		},
-	},
+	-- previous = {
+	-- 	note = [[ Режим мигания светодиода LED1 (на предыдущей итерации). ]],
+	-- 	modifier = {
+	-- 		["1_func"] = [[
+	-- 						return $LED1_mode
+	-- 					 ]],
+	-- 	},
+	-- },
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -128,9 +128,9 @@ function rule:make()
     self:load("network_registration"):modify():debug()
 	self:load("switching"):modify():debug()
     self:load("signal"):modify():debug()
-	self:load("LED1_mode"):modify():debug()
-	self:load("send_stm_at"):modify():debug()
-	self:load("previous"):modify():debug()
+	-- self:load("LED1_mode"):modify():debug()
+	-- self:load("send_stm_at"):modify():debug()
+	-- self:load("previous"):modify():debug()
 
 end
 
