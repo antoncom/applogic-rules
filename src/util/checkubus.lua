@@ -9,7 +9,7 @@ function check_ubus_object(conn, obj, method)
 				obj_exist = true
 				local signatures = conn:signatures(n)
 				for p, s in pairs(signatures) do
-					if method == p then
+					if (method == p or method == nil) then
 						method_exist = true
 						break
 					end

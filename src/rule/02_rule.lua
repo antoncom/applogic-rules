@@ -132,6 +132,41 @@ local rule_setting = {
         }
     },
 
+    event_datetime = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+		}
+	},
+	event_is_new = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.unread ]],
+		}
+	},
+	event_reg = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
+	},
+
 
 	do_switch = {
 		note = [[ Переключает слот, если SIM не зарегистрирована в GSM сети или нет соединения с интернет. ]],
@@ -171,6 +206,25 @@ local rule_setting = {
 			},
 		}
 	},
+	journal = {
+		modifier = {
+			["1_skip"] = [[ return false ]], -- if ($event_is_new == "true") then return false else return true end ]],
+			["2_func"] = [[return({
+					datetime = $event_datetime,
+					name = "Network registration staus was changed",
+					source = "Modem  (02-rule)",
+					command = "AT+CREG?",
+					response = $event_reg
+				})]],
+			["3_ui-update"] = {
+				param_list = { "journal" }
+			},
+			["4_frozen"] = [[ return 2 ]],
+			["5_store-db"] = {
+				param_list = { "journal" }	
+			}
+		}
+	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -192,6 +246,10 @@ function rule:make()
 		["lastreg_timer"] = { ["yellow"] = [[ return (tonumber($lastreg_timer) and tonumber($lastreg_timer) > 0) ]] },
 	}
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
+
+
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
 	self:load("switching"):modify():debug()
@@ -203,8 +261,12 @@ function rule:make()
 	self:load("lastreg_timer"):modify():debug(overview)
 	self:load("os_time"):modify():debug()
 	self:load("iface_up"):modify():debug()
+	self:load("event_datetime"):modify():debug()
+	self:load("event_is_new"):modify():debug()
+	self:load("event_reg"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
+	self:load("journal"):modify():debug()
 
 end
 

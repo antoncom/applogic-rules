@@ -12,7 +12,10 @@ require "applogic.modifier.save"
 require "applogic.modifier.shell"
 require "applogic.modifier.ui_update"
 require "applogic.modifier.exec"
--- require "applogic.modifier.init"
+require "applogic.modifier.mailsend"
+require "applogic.modifier.smssend"
+require "applogic.modifier.store_db"
+
 
 
 
@@ -78,6 +81,14 @@ function main:modify(varname, rule) --[[
 	                varlink.subtotal = bash(varname, mdf_name, mdf_body, rule)
 	            end
 
+	            if "mail" == mdf_name:sub(3) then
+	                varlink.subtotal = mailsend(varname, mdf_name, mdf_body, rule)
+	            end
+
+	            if "sms" == mdf_name:sub(3) then
+	                varlink.subtotal = smssend(varname, mdf_name, mdf_body, rule)
+	            end
+
 				if "save" == mdf_name:sub(3) then
 	                varlink.subtotal = save(varname, mdf_name, rule)
 	            end
@@ -92,6 +103,10 @@ function main:modify(varname, rule) --[[
 
 				if "ui-update" == mdf_name:sub(3) then
 					ui_update(varname, mdf_name, mdf_body, rule)
+				end
+
+				if "store-db" == mdf_name:sub(3) then
+					store_db(varname, mdf_name, mdf_body, rule)
 				end
 			end
 

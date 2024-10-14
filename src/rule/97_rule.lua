@@ -215,13 +215,6 @@ local rule_setting = {
 			},
 		}
 	},
-	os_time = {
-		note = [[ Время ОС на предыдущей итерации ]],
-        modifier= {
-            ["1_func"] = [[ return os.time() ]],
-            ["2_save"] = [[ return $os_time ]]
-        }
-    },
 	event_datetime = {
 		source = {
 			type = "ubus",
@@ -245,36 +238,32 @@ local rule_setting = {
 			["1_bash"] = [[ jsonfilter -e $.unread ]],
 		}
 	},
-    journal = {
+	event_reg = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
 		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-			["2_func"] = [[ 
-			local response 
-			if $sim_ready == "" then 
-				response = "not available" 
-			elseif $sim_ready == "false" then 
-				response = "not ready" 
-			else 
-				response = "ready" 
-			end
-			
-			return({ 
-				datetime = $event_datetime,
-				name = "Sim Card status",
-				source = "Modem  (01-rule)",
-				command = "AT+CPIN?",
-				response = response
-			}) 
-		]],
-			["3_ui-update"] = {
-				param_list = { "journal" }
-			},
-			["4_frozen"] = [[ return 2 ]],
-			["5_store-db"] = {
-				param_list = { "journal" }	
-			}
+			["1_bash"] = [[ jsonfilter -e $.value ]],
 		}
 	},
+	-- journal = {
+	-- 	modifier = {
+	-- 		["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+	-- 		["2_func"] = [[return({
+	-- 				datetime = $event_datetime,
+	-- 				name = "]] .. I18N.translate("Network registration staus was changed") .. [[",
+	-- 				source = "]] .. I18N.translate("Modem") .. [[",
+	-- 				command = "AT+CREG?",
+	-- 				response = $event_reg
+	-- 			})]],
+	-- 		["3_ui-update"] = {
+	-- 			param_list = { "journal" }
+	-- 		}
+	-- 	}
+	-- },
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -296,7 +285,7 @@ function rule:make()
 		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
 		["sim_ready"] = { ["yellow"] = [[ return ($sim_ready == "false" or $sim_ready == "*") ]] },
 		["reset_timer"] = { ["yellow"] = [[ return (tonumber($reset_timer) and tonumber($reset_timer) > 0) ]] },
-		["wait_timer"] = { ["yellow"] = [[ return (tonumber($wait_timer) and tonumber($wait_timer) > 0) ]] },
+		["wait_timer"] = { ["yellow"] = [[ return (tonumber($wait_timer) and tonumber($wait_timer) > 0) ]] }
 	}
 
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
@@ -320,7 +309,8 @@ function rule:make()
 	self:load("send_ui"):modify():debug()
 	self:load("event_datetime"):modify():debug()
 	self:load("event_is_new"):modify():debug()
-    --self:load("journal"):modify():debug()
+	self:load("event_reg"):modify():debug()
+	--self:load("journal"):modify():debug()
 end
 
 ---[[ Initializing. Don't edit the code below ]]---

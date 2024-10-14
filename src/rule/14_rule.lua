@@ -132,7 +132,18 @@ local rule_setting = {
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 		}
 	},
-
+	event_datetime = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "provider_name",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+		}
+	},
 	send_ui = {
 		note = [[ Индикация в веб-интерфейсе ]],
 		modifier = {
@@ -145,6 +156,36 @@ local rule_setting = {
 					"is_autodetect_provider",
 				}
 			},
+		}
+	},
+
+    event_is_new = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "provider_name",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.unread ]],
+		}
+	},
+    journal = {
+		modifier = {
+			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+			--["1_skip"] = [[ return false ]],
+			["2_func"] = [[return({
+					name = "Auto-detection of the provider in the active slot",
+					datetime = $event_datetime,
+					source = "Modem  (14-rule)",
+					command = "AT+COPS?",
+					response = $provider_name 
+				})]],
+                --  consider changing response to $is_autodetect_provider 
+			["3_ui-update"] = {
+				param_list = { "journal" }
+			},
+			["4_frozen"] = [[ return 2 ]]
 		}
 	},
 
@@ -169,6 +210,8 @@ function rule:make()
 		["is_autodetect_provider"] = { ["green"] = [[ return true ]] },
 	}
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
 
 	self:load("title"):modify():debug()
 	self:load("sim_id"):modify():debug()					-- текущий слот 0 / 1
@@ -179,6 +222,10 @@ function rule:make()
 	self:load("set_provider"):modify():debug(overview)				-- установить конфиг для текущего слота по результату автоопределения
 	self:load("provider_name"):modify():debug()				-- выдать в веб-интерфейс имя провайдера Belline, MTS, etc.
 	self:load("send_ui"):modify():debug()
+    self:load("event_datetime"):modify():debug()
+	self:load("event_is_new"):modify():debug()
+    self:load("journal"):modify():debug()
+
 end
 
 

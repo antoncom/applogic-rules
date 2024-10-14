@@ -94,6 +94,46 @@ local rule_setting = {
 			},
 		}
 	},
+	event_datetime = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+		}
+	},
+    event_is_new = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.unread ]],
+		}
+	},
+    journal = {
+		modifier = {
+			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+			["2_func"] = [[return({
+					datetime = $event_datetime,
+					name = "]] .. I18N.translate("The Watchdog rule for the modem") .. [[",
+					source = "]] .. I18N.translate("Modem  (98-rule)") .. [[",
+					command = "",
+					response = $reinit_modem
+				})]],
+                
+			["3_ui-update"] = {
+				param_list = { "journal" }
+			},
+			["4_frozen"] = [[ return 2 ]]
+		}
+	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -115,6 +155,10 @@ function rule:make()
 		["idle_time"] = { ["red"] = [[ return (tonumber($idle_time) and tonumber($idle_time) > 0) ]] },
 	}
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
+
+
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
 	self:load("usb"):modify():debug()
@@ -122,6 +166,9 @@ function rule:make()
 	self:load("os_time"):modify():debug()
 	self:load("reinit_modem"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
+	self:load("event_datetime"):modify():debug()
+    self:load("event_is_new"):modify():debug()
+    self:load("journal"):modify():debug()
 
 end
 

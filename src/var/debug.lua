@@ -125,6 +125,29 @@ function debug:source_ubus(object, method, params, result, noerror, src)
     end
 end
 
+function debug:source_subscribe(object, event_name, event_data, noerror, src)
+    local dvlink = debug[debug.ruleid].variables[debug.varname]
+    local rvlink = debug[debug.ruleid].rule.setting[self.varname]
+
+    if rvlink.source then
+        local src = string.format([[
+            source = {
+                type = "subscribe",
+                ubus = "%s",
+                event_name = "%s",
+            }
+        ]], object, event_name)
+        dvlink.source = {
+            ["type"] = "subscribe",
+            ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
+            ["value"] = pretty(event_data):gsub("\t", "  "),
+            ["noerror"] = noerror
+        }
+
+        debug:set_noerrors(dvlink, noerror)
+    end
+end
+
 function debug:source_uci(confdvlinkig, section, option, result, noerror)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
     if debug[debug.ruleid].rule.setting[self.varname].source then

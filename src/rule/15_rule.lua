@@ -153,7 +153,7 @@ local rule_setting = {
 
     a_balance_interval = {
         note = [[ Частота запроса баланса: 1-2 мин. в первые 10 мин активной SIM; 5..10 мин. при постоянной работе на данной SIM. ]],
-		input = 0,
+		input = 60,
         modifier= {
 			["1_skip"] = [[
 				local SIM_READY = ($sim_ready == "true")
@@ -320,6 +320,48 @@ local rule_setting = {
 			},
 		}
 	},
+	event_datetime = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "balance",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+		}
+	},
+
+    event_is_new = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "balance",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.unread ]],
+		}
+	},
+    journal = {
+		modifier = {
+			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+			["2_func"] = [[return({
+					datetime = $event_datetime,
+					name = "]] .. I18N.translate("Periodic balance checking, and switching the slot if the balance has never been received.") .. [[",
+					source = "]] .. I18N.translate("Modem  (15-rule)") .. [[",
+					command = "AT+CUSD",
+					response = $current_balance_state 
+				})]],
+                
+			["3_ui-update"] = {
+				param_list = { "journal" }
+			},
+			["4_frozen"] = [[ return 2 ]]
+		}
+	},
+
 
 }
 
@@ -344,6 +386,10 @@ function rule:make()
 		["a_balance_interval"] = { ["green"] = [[ return true ]] },
 	}
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
+
+
 	self:load("title"):modify():debug()
 	self:load("sim_id"):modify():debug()
 	self:load("sim_ready"):modify():debug(overview)
@@ -366,6 +412,10 @@ function rule:make()
 	self:load("send_command"):modify():debug(overview)     			-- Отправка АТ-команды модему, напр. AT+CUSD=1,#102#,15
 	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
+	self:load("event_datetime"):modify():debug()
+
+    self:load("event_is_new"):modify():debug()
+    self:load("journal"):modify():debug()
 
 end
 

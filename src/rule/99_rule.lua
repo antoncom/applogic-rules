@@ -121,6 +121,54 @@ local rule_setting = {
 			},
 		}
 	},
+	event_datetime = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+		}
+	},
+
+    event_is_new = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.unread ]],
+		}
+	},
+    journal = {
+		modifier = {
+			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+			["2_func"] = [[
+			local response 
+			if $switching == "true" then 
+				response = "switching sim cards" 
+			else 
+				response = "no switching" 
+			end
+			return({
+					datetime = $event_datetime,
+					name = "открывания/закрывания шторки 'Переключение Сим' в веб-интерфейсе",
+					source = "Modem  (99-rule)",
+					command = "-",
+					response = response
+				})]],
+                
+			["3_ui-update"] = {
+				param_list = { "journal" }
+			},
+			["4_frozen"] = [[ return 2 ]]
+		}
+	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -131,6 +179,9 @@ function rule:make()
 	debug_mode.level = "ERROR"
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
+
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
 
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
@@ -143,7 +194,9 @@ function rule:make()
 	-- self:load("r15_do_switch"):modify():debug()
 	self:load("do_switch"):modify():debug()
 	self:load("send_ui"):modify():debug()
-
+	self:load("event_datetime"):modify():debug()
+	self:load("event_is_new"):modify():debug()
+    self:load("journal"):modify():debug()
 end
 
 ---[[ Initializing. Don't edit the code below ]]---

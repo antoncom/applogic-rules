@@ -1,5 +1,7 @@
 
 local last_mdfr_name = require "applogic.util.last_mdfr_name"
+local util = require "luci.util"
+
 
 function frozen(varname, rule, mdf_name) --[[
     To froze variable value once it calculated first time.
@@ -34,10 +36,13 @@ function frozen(varname, rule, mdf_name) --[[
         if (tonumber(result) and (noerror == true)) then
             local delay = result and tonumber(result)
             if delay and delay > 0 and delay < max_seconds then
+                if (type(varlink.subtotal == "table")) then
+                    varlink.subtotal = util.serialize_json(varlink.subtotal)
+                end
                 varlink.frozen = {
                     seconds = delay,
                     cancel_time = os.time() + delay,
-                    value = string.format("%s", varlink.subtotal),
+                    value = tostring(varlink.subtotal),
                     value_after = value_after_unfroze
                 }
                 frozen_value = varlink.frozen.value

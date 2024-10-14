@@ -238,7 +238,45 @@ local rule_setting = {
 				}
 			},
 		}
-	}
+	},
+	event_datetime = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+		}
+	},
+    event_is_new = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "reg",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.unread ]],
+		}
+	},
+    journal = {
+		modifier = {
+			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+			-- datetime = $event_datetime,
+			["2_func"] = [[return({
+					name = "Sim card switched due to signal below the norm",
+					source = "Modem  (05-rule),
+					command = "AT+CSQ",
+				})]], -- response = $signal
+			["3_ui-update"] = {
+				param_list = { "journal" }
+			},
+			["4_frozen"] = [[ return 2 ]]
+		}
+	},
 
 }
 
@@ -261,6 +299,8 @@ function rule:make()
 		["low_signal_timer"] = { ["yellow"] = [[ return (tonumber($low_signal_timer) and tonumber($low_signal_timer) > 0) ]] },
 	}
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
 
 	self:load("title"):modify():debug()
 	self:load("sim_id"):modify():debug()
@@ -282,6 +322,9 @@ function rule:make()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
+	self:load("event_datetime"):modify():debug()
+    self:load("event_is_new"):modify():debug()
+    self:load("journal"):modify():debug()
 end
 
 

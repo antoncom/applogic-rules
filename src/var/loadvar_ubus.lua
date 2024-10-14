@@ -24,9 +24,16 @@ function loadvar_ubus:load(varname, rule)
 	local method = string.format("%s", (varlink.source.method or ""))
 	local params = util.clone((varlink.source.params or {}))
 
+	--util.dumptable(params)
 	-- Substitute values from matched variables
-	for par_name, par_value in util.vspairs(params) do
-		params[par_name] = substitute(varname, rule, par_value, false)
+	for par_name, par_value in util.kspairs(params) do
+		if(par_name == "match") then
+			for match_name, match_value in util.kspairs(params["match"]) do
+			 	params["match"][match_name] = substitute(varname, rule, match_value, false)	
+		end
+		else
+			params[par_name] = substitute(varname, rule, par_value, false)
+		end
 	end
 
 	--cache_key = md5.sumhexa(varname..obj..method..util.serialize_json(params))

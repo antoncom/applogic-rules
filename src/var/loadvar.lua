@@ -53,6 +53,7 @@ local loadvar_metatable = {
 		local loadvar_uci = require "applogic.var.loadvar_uci"
 		local loadvar_bash = require "applogic.var.loadvar_bash"
 		local loadvar_rule = require "applogic.var.loadvar_rule"
+		local loadvar_subscribed = require "applogic.var.loadvar_subscribed"
 
 		local setting = rule.setting
 		local varlink = rule.setting[varname]
@@ -62,7 +63,14 @@ local loadvar_metatable = {
 		rule.variterator = rule.variterator + 1
 		varlink.order = rule.variterator
 
-		varlink.subtotal = nil
+		-- TODO
+		-- Убедиться что второй вариант рабтотает верно.
+		--1) varlink.subtotal = nil
+		--2)
+		varlink.subtotal = varlink.subtotal or nil
+
+		-- end of TODO
+
 		-- If user missed input/output declaration in the rule
 		varlink.input = varlink.input or ""
 		--varlink.output = varlink.output or tostring(varlink.input)
@@ -99,6 +107,10 @@ local loadvar_metatable = {
 
 				if "rule" == varlink.source.type then
 					varlink.subtotal = loadvar_rule:load(varname, rule, varlink.source.rulename, varlink.source.varname)
+				end
+
+				if "subscribe" == varlink.source.type then
+					loadvar_subscribed:load(varname, rule)
 				end
 			end
 		end

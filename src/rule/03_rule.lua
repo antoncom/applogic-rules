@@ -3,6 +3,8 @@ local rule_init = require "applogic.util.rule_init"
 local log = require "applogic.util.log"
 local I18N = require "luci.i18n"
 
+local util = require "luci.util"
+
 local rule = {}
 local rule_setting = {
 	title = {
@@ -111,6 +113,7 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.comment ]],
+			--["2_bash"] = [[ sed s/\"//g ]],
 		}
 	},
 
@@ -182,6 +185,18 @@ local rule_setting = {
 		}
 	},
 
+	event_is_new = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "balance",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.unread ]],
+		}
+	},
+
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
 		source = {
@@ -232,8 +247,38 @@ local rule_setting = {
 				}
 			},
 		}
-	}
+	},
+
+	journal = {
+		modifier = { --and (string.len($balance_message) > 0))
+			["1_skip"] = [[if ($event_is_new == "true")  then return false else return true end ]],
+			["2_func"] = [[
+			local response
+			if (string.len($balance_message) > 0) then
+				response = $balance_message
+			else
+				response = "balance not available"
+			end
+			return({
+					datetime = $event_datetime,
+					name = "Получено значение баланса SIM-карты",
+					source = "Modem (03-rule)",
+					command = "balance",
+					response = response
+				})]],
+			["3_ui-update"] = {
+				param_list = { "journal" }
+			},
+			["4_frozen"] = [[ return 2 ]],
+			["5_store-db"] = {
+				param_list = { "journal" }
+			}
+		}
+	},
 }
+
+--ussd = $ussd_command
+-- balance = $balance_message
 
 -- Use "ERROR", "INFO" to override the debug level
 -- Use /etc/config/applogic to change the debug level
@@ -254,6 +299,10 @@ function rule:make()
 		["lowbalance_timer"] = { ["yellow"] = [[ return (tonumber($lowbalance_timer) and tonumber($lowbalance_timer) > 0) ]] },
 	}
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
+
+
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
 	self:load("uci_balance_min"):modify():debug()
@@ -268,9 +317,11 @@ function rule:make()
 	self:load("r02_lastreg_timer"):modify():debug()
 	self:load("lowbalance_timer"):modify():debug(overview)
 	self:load("os_time"):modify():debug()
+	self:load("event_is_new"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
+	self:load("journal"):modify():debug()
 end
 
 

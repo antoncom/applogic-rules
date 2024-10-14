@@ -13,8 +13,6 @@ local debug_cli = require "applogic.var.debug_cli"
 local report = require "applogic.util.report"
 
 
-
-
 --[[ Restore UCI config of Applogic once the debug stopped by Ctrl-C ]]
 local signal = require("posix.signal")
 signal.signal(signal.SIGINT, function(signum)
@@ -61,7 +59,7 @@ local rules_setting = {
 }
 
 function rules:init()
-	rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
+	rules.cache_ubus, rules.cache_uci, rules.cache_bash, rules.subscriptions = {}, {}, {}, {}
 end
 
 function rules:clear_cache()
@@ -147,6 +145,24 @@ function rules:make_ubus()
 
 end
 
+-- function rules:subscribe_ubus(payload)
+--   local sub = {
+--     notify = function(msg, name)
+
+--     	print("APPLOGIC SUBCRIBED: ")
+--     	print("Msg: " .. util.serialize_json(msg))
+--     	print("Name: " .. name)
+--     	print("-------" .. payload)
+      
+--     end
+--   }
+--   local sr = rules.conn:subscribe("tsmodem.driver", sub)
+--   print("==== result of subscription")
+--   print(sr)
+--   util.dumptable(sub)
+-- end
+
+
 function rules:make()
 	local rules_path = "/usr/lib/lua/applogic/rule"
 	local id, rules = '', self.setting.rules_list.target
@@ -167,13 +183,15 @@ function rules:check_driver_automation()
 	if checkubus(rules.conn, "tsmodem.driver", "automation") then
 		automation = util.ubus("tsmodem.driver", "automation", {})
 		driver_mode = automation and automation["mode"] or ""
+
+		rules.state.mode = driver_mode
 	end
-	return driver_mode
+	--return driver_mode
 end
 
 function rules:run_all()
 	local user_session_alive = rules:check_driver_automation()
-	if (rules:check_driver_automation() == "run") then
+	--if (rules:check_driver_automation() == "run") then
 		local rules_list = self.setting.rules_list.target
 		local state = ''
 
@@ -189,14 +207,15 @@ function rules:run_all()
 
 			-- DEBUG: Print all vars table
 			if rule.debug_mode.enabled then
-				local rule_has_error = rule.debug_mode.level == "ERROR" and rule.debug.noerror == false
+				local rule_has_error = rule.debug_mode.level == "ERROR" and (rule.debug and rule.debug.noerror and rule.debug.noerror == false)
 				local report_anyway_mode = rule.debug_mode.level == "INFO"
-				if rule_has_error or report_anyway_mode then
-					rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
-					rule.debug.report(rule):clear()
+				if rule.debug then
+					if rule_has_error or report_anyway_mode then
+						rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
+						rule.debug.report(rule):clear()
+					end
+					rule.debug.noerror = true
 				end
-
-				rule.debug.noerror = true
 			end
 		end
 
@@ -207,7 +226,7 @@ function rules:run_all()
 		rules:clear_cache()
 		rules.iteration = rules.iteration + 1
 
-	end
+	--end
 end
 
 function rules:overview(rules_list, iteration)
@@ -221,6 +240,8 @@ local metatable = {
 	__call = function(table)
 		table.setting = rules_setting
 		local tick = table.setting.tick_size_default
+
+		table:init()
 
 		table:make_ubus()
 		table:make()
