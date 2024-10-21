@@ -138,15 +138,18 @@ local rule_setting = {
 			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
 			["2_func"] = [[return({
 					datetime = $event_datetime,
-					name = "LED2 LED flashing - Communication mode (2G, 3G or 4G)",
+					name = "Изменился статус сети (2G, 3G or 4G)",
 					source = "Modem  (07-rule)",
+					command = "AT+CNSMOD?",
+					response = $netmode
 				})]],
-				-- command = "$LED2_mode",
-				-- response = $LED2_mode,
 			["3_ui-update"] = {
 				param_list = { "journal" }
 			},
-			["4_frozen"] = [[ return 2 ]]
+			["4_store-db"] = {
+				param_list = { "journal" }
+			},
+			["5_frozen"] = [[ return 5 ]]
 		}
 	},
 }

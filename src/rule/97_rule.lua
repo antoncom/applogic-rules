@@ -249,21 +249,6 @@ local rule_setting = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 		}
 	},
-	-- journal = {
-	-- 	modifier = {
-	-- 		["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-	-- 		["2_func"] = [[return({
-	-- 				datetime = $event_datetime,
-	-- 				name = "]] .. I18N.translate("Network registration staus was changed") .. [[",
-	-- 				source = "]] .. I18N.translate("Modem") .. [[",
-	-- 				command = "AT+CREG?",
-	-- 				response = $event_reg
-	-- 			})]],
-	-- 		["3_ui-update"] = {
-	-- 			param_list = { "journal" }
-	-- 		}
-	-- 	}
-	-- },
 }
 
 -- Use "ERROR", "INFO" to override the debug level

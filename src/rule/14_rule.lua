@@ -173,7 +173,6 @@ local rule_setting = {
     journal = {
 		modifier = {
 			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-			--["1_skip"] = [[ return false ]],
 			["2_func"] = [[return({
 					name = "Auto-detection of the provider in the active slot",
 					datetime = $event_datetime,
@@ -181,11 +180,13 @@ local rule_setting = {
 					command = "AT+COPS?",
 					response = $provider_name 
 				})]],
-                --  consider changing response to $is_autodetect_provider 
 			["3_ui-update"] = {
 				param_list = { "journal" }
 			},
-			["4_frozen"] = [[ return 2 ]]
+			["4_store-db"] = {
+				param_list = { "journal" }
+			},
+			["5_frozen"] = [[ return 2 ]]
 		}
 	},
 

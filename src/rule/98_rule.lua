@@ -124,14 +124,17 @@ local rule_setting = {
 					datetime = $event_datetime,
 					name = "]] .. I18N.translate("The Watchdog rule for the modem") .. [[",
 					source = "]] .. I18N.translate("Modem  (98-rule)") .. [[",
-					command = "",
+					command = "watchdog",
 					response = $reinit_modem
 				})]],
                 
 			["3_ui-update"] = {
 				param_list = { "journal" }
 			},
-			["4_frozen"] = [[ return 2 ]]
+			["4_store-db"] = {
+				param_list = { "journal" }
+			},
+			["5_frozen"] = [[ return 2 ]]
 		}
 	},
 }

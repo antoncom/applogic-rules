@@ -270,11 +270,15 @@ local rule_setting = {
 					name = "Sim card switched due to signal below the norm",
 					source = "Modem  (05-rule),
 					command = "AT+CSQ",
-				})]], -- response = $signal
+					response = $signal
+				})]],
 			["3_ui-update"] = {
 				param_list = { "journal" }
 			},
-			["4_frozen"] = [[ return 2 ]]
+			["4_store-db"] = {
+				param_list = { "journal" }
+			},
+			["5_frozen"] = [[ return 2 ]]
 		}
 	},
 

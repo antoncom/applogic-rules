@@ -6,7 +6,7 @@ local I18N = require "luci.i18n"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Checking the subscription feature..",
+		input = "Правило журналирования при отправке SMS",
 	},
 
 	sms_sent_ok = {
@@ -65,6 +65,10 @@ local rule_setting = {
 			["3_ui-update"] = {
 				param_list = { "journal" }
 			},
+			["4_store-db"] = {
+				param_list = { "journal" }
+			},
+
 		}
 	},
 

@@ -320,49 +320,6 @@ local rule_setting = {
 			},
 		}
 	},
-	event_datetime = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "balance",
-			params = {}
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
-		}
-	},
-
-    event_is_new = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "balance",
-			params = {}
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
-		}
-	},
-    journal = {
-		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-			["2_func"] = [[return({
-					datetime = $event_datetime,
-					name = "]] .. I18N.translate("Periodic balance checking, and switching the slot if the balance has never been received.") .. [[",
-					source = "]] .. I18N.translate("Modem  (15-rule)") .. [[",
-					command = "AT+CUSD",
-					response = $current_balance_state 
-				})]],
-                
-			["3_ui-update"] = {
-				param_list = { "journal" }
-			},
-			["4_frozen"] = [[ return 2 ]]
-		}
-	},
-
-
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -412,10 +369,6 @@ function rule:make()
 	self:load("send_command"):modify():debug(overview)     			-- Отправка АТ-команды модему, напр. AT+CUSD=1,#102#,15
 	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
-	self:load("event_datetime"):modify():debug()
-
-    self:load("event_is_new"):modify():debug()
-    self:load("journal"):modify():debug()
 
 end
 

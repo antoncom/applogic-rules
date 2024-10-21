@@ -264,15 +264,15 @@ local rule_setting = {
 					name = "Получено значение баланса SIM-карты",
 					source = "Modem (03-rule)",
 					command = "balance",
-					response = response
+					["response"] = response
 				})]],
 			["3_ui-update"] = {
 				param_list = { "journal" }
 			},
-			["4_frozen"] = [[ return 2 ]],
-			["5_store-db"] = {
+			["4_store-db"] = {
 				param_list = { "journal" }
-			}
+			},
+			["5_frozen"] = [[ return 2 ]],
 		}
 	},
 }

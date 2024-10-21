@@ -112,45 +112,6 @@ local rule_setting = {
 						 ]],
 		},
 	},
-	event_datetime = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {}
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
-		}
-	},
-    event_is_new = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {}
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
-		}
-	},
-    journal = {
-		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-			["2_func"] = [[return({
-					datetime = $event_datetime,
-					name = "LED1 flashing - signal strength",
-					source = "Modem  (06-rule)",
-					command = "AT+CREG?",
-					response = $network_registration,
-				})]],
-			["3_ui-update"] = {
-				param_list = { "journal" }
-			},
-			["4_frozen"] = [[ return 2 ]]
-		}
-	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -173,9 +134,6 @@ function rule:make()
 	self:load("LED1_mode"):modify():debug()
 	self:load("send_stm_at"):modify():debug()
 	self:load("previous"):modify():debug()
-	self:load("event_datetime"):modify():debug()
-    self:load("event_is_new"):modify():debug()
-    self:load("journal"):modify():debug()
 end
 
 

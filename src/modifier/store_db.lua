@@ -3,7 +3,7 @@ local json = require "cjson"
 local leveldb = require 'lualeveldb'
 
 -- Define the LevelDB database path
-local db_path = "/etc/leveldb/journal.db"  -- Database path
+local db_path = "/var/spool/tsmodem/journal.db"  -- Database path
 
 -- Function to store data in the database using db_utils
 function store_db(varname, mdf_name, modifier, rule)
