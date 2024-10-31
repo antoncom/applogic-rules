@@ -31,7 +31,9 @@ callinit() {
 }
 run() {
     uci set applogic.debug_mode.enable='0'
+    uci delete applogic.debug_mode.rule
     uci commit
+
     sleep 1
     exec /usr/bin/lua /usr/lib/lua/applogic/app.lua
     RETVAL=$?
