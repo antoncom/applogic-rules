@@ -123,8 +123,7 @@ local rule_setting = {
 		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
         modifier = {
             ["1_skip"] = [[ return (($sim_ready ~= "true") or ($switching ~= "false") ) ]],
-            --["2_bash"] = [[ ifconfig 3g-TSMODEM 2>/dev/nul | sed -n '3p;3q' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
-            ["2_bash"] = [[ ifconfig 3g-TSMODEM 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
+            ["2_bash"] = [[ ifconfig 3g-tsmodem 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
             ["3_func"] = [[ local lastreg_t = tonumber($lastreg_timer) or 0
 							if ($iface_up == "UP") then return "true"
 							elseif lastreg_t < 30 then return "*"

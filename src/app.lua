@@ -37,6 +37,8 @@ end)
 --local F = require "posix.fcntl"
 --local U = require "posix.unistd"
 
+os.execute("mkdir -p /var/spool/tsmodem/journal.db")
+
 
 local rules = {}
 rules.iteration = 1
