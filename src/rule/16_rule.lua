@@ -16,7 +16,7 @@ local rule_setting = {
 			object = "uci",
 			method = "get",
 			params = {
-				config = "tsmodem_sms_commands",
+				config = "tsmsmscomm",
 				type = "remote_control",
 				option = "trusted_phone",
 			}
@@ -33,7 +33,7 @@ local rule_setting = {
 			object = "uci",
 			method = "get",
 			params = {
-				config = "tsmodem_sms_commands",
+				config = "tsmsmscomm",
 				type = "sms_command",
 				option = "sms_command",
 			}
@@ -74,7 +74,7 @@ local rule_setting = {
 			object = "uci",
 			method = "get",
 			params = {
-				config = "tsmodem_sms_commands",
+				config = "tsmsmscomm",
 				type = "remote_control",
 				option = "trusted_email",
 				match = {
@@ -120,6 +120,26 @@ local rule_setting = {
 				end
 			]],
 		}
+	},
+
+	shell_command = {
+		note = [[ Реальная shell-команда ]],
+		source = {
+			type = "ubus",
+			object = "uci",
+			method = "get",
+			params = {
+				config = "tsmsmscomm",
+				type = "sms_command",
+				option = "shell_command",
+				match = {
+					sms_command = "$sms_command"
+				}
+			}
+		},
+        modifier = {
+            ["1_bash"] = [[ jsonfilter -e $.values.*.shell_command ]],
+        }
 	},
 
 	sms_response_file = {
@@ -244,10 +264,7 @@ local rule_setting = {
 					response = $sms_command
 				})]],
                 
-			["3_ui-update"] = {
-				param_list = { "journal" }
-			},
-			["5_store-db"] = {
+			["3_store-db"] = {
 				param_list = { "journal" }
 			},
 			["4_frozen"] = [[ return 5 ]],
@@ -279,10 +296,11 @@ function rule:make()
 	self:load("sms_is_read"):modify():debug()
 
 	self:load("sms_command"):modify():debug()
-	self:load("sms_response_file"):modify():debug()
-	self:load("execute_sms"):modify():debug()
-	self:load("sms_send"):modify():debug()
-	self:load("email_send"):modify():debug()
+	self:load("shell_command"):modify():debug()
+	--self:load("sms_response_file"):modify():debug()
+	--self:load("execute_sms"):modify():debug()
+	--self:load("sms_send"):modify():debug()
+	--self:load("email_send"):modify():debug()
 
 	
 	-- self:load("allowed_commands"):modify():debug()

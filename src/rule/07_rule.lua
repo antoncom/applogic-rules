@@ -62,7 +62,8 @@ local rule_setting = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
 			["2_ui-update"] = {
 				param_list = { "sim_id", "netmode" }
-			}
+			},
+			--["3_frozen"] = [[ return 10 ]]
 		}
 	},
 
@@ -114,7 +115,7 @@ local rule_setting = {
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "reg",
+			method = "netmode",
 			params = {}
 		},
 		modifier = {
@@ -126,7 +127,7 @@ local rule_setting = {
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "reg",
+			method = "netmode",
 			params = {}
 		},
 		modifier = {
@@ -135,21 +136,17 @@ local rule_setting = {
 	},
     journal = {
 		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+			["1_skip"] = [[ if ($event_is_new == "false" or $LED2_mode == $previous) then return true else return false end ]],
 			["2_func"] = [[return({
 					datetime = $event_datetime,
 					name = "Изменился статус сети (2G, 3G or 4G)",
 					source = "Modem  (07-rule)",
 					command = "AT+CNSMOD?",
-					response = $netmode
+					response = tostring($netmode)
 				})]],
-			["3_ui-update"] = {
+			["3_store-db"] = {
 				param_list = { "journal" }
 			},
-			["4_store-db"] = {
-				param_list = { "journal" }
-			},
-			["5_frozen"] = [[ return 5 ]]
 		}
 	},
 }
@@ -165,6 +162,15 @@ function rule:make()
 
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
+
+	local all_rules = rule.parent.setting.rules_list.target
+
+	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	if (r01_wait_timer and r01_wait_timer > 0) then 
+		if rule.debug_mode.enabled then print("------ 07_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
 
 
 	self:load("title"):modify():debug()

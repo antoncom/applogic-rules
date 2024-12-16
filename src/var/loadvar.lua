@@ -130,8 +130,15 @@ local loadvar_metatable = {
 				local report_by_cli = (debug_cli.rule and debug_cli.rule == rule.ruleid)
 				local overview_by_cli = (debug_cli.rule and debug_cli.rule == "overview")
 
+
+				--[[ В режиме debug для правила будем показывать также debug для переменной 
+					 в том случае, если при её обработке возникла ошибка.
+					 Это поможет сразу выводить в консоль таблицу дебага переменной.
+				]]
+				local error_in_var = rule and rule.debug and rule.debug.variables[varname] and (rule.debug.variables[varname].noerror == false)
+
 				if report_by_cli then -- debug var by CLI like this: "applogic debug 01_rule sim_id"
-					if (util.contains(debug_cli.showvar, varname)) then
+					if (error_in_var or util.contains(debug_cli.showvar, varname)) then
 					 	rule.debug.report(rule):print_var(varname, "INFO", rule.iteration)
 					end
 				elseif overview_by_cli then

@@ -249,30 +249,35 @@ local rule_setting = {
 		}
 	},
 
+	provider_id = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "provider_name",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.comment ]],
+		}
+	},
+
 	journal = {
-		modifier = { --and (string.len($balance_message) > 0))
-			["1_skip"] = [[if ($event_is_new == "true")  then return false else return true end ]],
+		modifier = {
+			["1_skip"] = [[if ($event_is_new == "true" and (string.len($balance_message) > 0) )  then return false else return true end ]],
 			["2_func"] = [[
-			local response
-			if (string.len($balance_message) > 0) then
-				response = $balance_message
-			else
-				response = "balance not available"
-			end
 			return({
 					datetime = $event_datetime,
 					name = "Получено значение баланса SIM-карты",
 					source = "Modem (03-rule)",
-					command = "balance",
-					["response"] = response
+					command = $ussd_command,
+					["response"] = $balance_message,
+					ussd_command = $ussd_command,
+					provider_id = $provider_id
 				})]],
-			["3_ui-update"] = {
+			["3_store-db"] = {
 				param_list = { "journal" }
 			},
-			["4_store-db"] = {
-				param_list = { "journal" }
-			},
-			["5_frozen"] = [[ return 2 ]],
+			["4_frozen"] = [[ return 2 ]],
 		}
 	},
 }
@@ -302,6 +307,15 @@ function rule:make()
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
+	local all_rules = rule.parent.setting.rules_list.target
+
+	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	if (r01_wait_timer and r01_wait_timer > 0) then 
+		if rule.debug_mode.enabled then print("------ 03_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
+
 
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
@@ -321,6 +335,7 @@ function rule:make()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
+	self:load("provider_id"):modify():debug()
 	self:load("journal"):modify():debug()
 end
 

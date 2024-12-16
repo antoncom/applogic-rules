@@ -132,6 +132,7 @@ local rule_setting = {
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 		}
 	},
+
 	event_datetime = {
 		source = {
 			type = "ubus",
@@ -172,21 +173,17 @@ local rule_setting = {
 	},
     journal = {
 		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+			["1_skip"] = [[ if ($event_is_new == "true" and $new_provider_id ~= $old_provider_id and $provider_name ~= "" and tostring($sim_id)) then return false else return true end ]],
 			["2_func"] = [[return({
-					name = "Auto-detection of the provider in the active slot",
+					name = "Автоопределение провайдера в слоте SIM-" .. (tonumber($sim_id)+1),
 					datetime = $event_datetime,
 					source = "Modem  (14-rule)",
 					command = "AT+COPS?",
 					response = $provider_name 
 				})]],
-			["3_ui-update"] = {
+			["3_store-db"] = {
 				param_list = { "journal" }
 			},
-			["4_store-db"] = {
-				param_list = { "journal" }
-			},
-			["5_frozen"] = [[ return 2 ]]
 		}
 	},
 
@@ -213,6 +210,15 @@ function rule:make()
 
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
+
+	local all_rules = rule.parent.setting.rules_list.target
+
+	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	if (r01_wait_timer and r01_wait_timer > 0) then 
+		if rule.debug_mode.enabled then print("------ 14_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
 
 	self:load("title"):modify():debug()
 	self:load("sim_id"):modify():debug()					-- текущий слот 0 / 1

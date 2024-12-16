@@ -30,11 +30,26 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "switching",
 			params = {},
-			--cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-            ["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
+            --["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
+		}
+	},
+
+	event_datetime = {
+		note = [[ Статус переключения Sim: true / false. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "switching",
+			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))',
 		}
 	},
 
@@ -121,6 +136,39 @@ local rule_setting = {
 			},
 		}
 	},
+	journal = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "switching",
+			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		},
+		modifier = {
+			["1_skip"] = [[ 
+				if ($switching ~= "true") then return true else return false end 
+			]],
+			["2_func"] = [[
+				local jsonc = require "luci.jsonc"
+				local switching_data = string.sub('$journal',2,-2)
+
+				switching_data, errmsg = jsonc.parse(switching_data)
+				local info_source = switching_data.comment or ""
+				local info_command = switching_data.command or ""
+				return({ 
+					datetime = $event_datetime,
+					name = "Переключение СИМ-карты",
+					source = info_source,
+					command = info_command,
+					response = "OK"
+				})
+			]],
+			["3_store-db"] = {
+				param_list = { "journal" }	
+			},
+			["4_frozen"] = [[ return 10 ]]
+		}
+	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -132,12 +180,17 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
+	local overview = {
+		["sim_id"] = { ["red"] = [[ return($sim_id ~= "0" and $sim_id ~= "1") ]] },
+	}
+
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
-	self:load("sim_id"):modify():debug()
+	self:load("sim_id"):modify():debug(overview)
 	self:load("switching"):modify():debug()
+	self:load("event_datetime"):modify():debug()
 	self:load("r01_do_switch"):modify():debug()
 	-- self:load("r02_do_switch"):modify():debug()
 	-- self:load("r03_do_switch"):modify():debug()
@@ -146,6 +199,7 @@ function rule:make()
 	-- self:load("r15_do_switch"):modify():debug()
 	self:load("do_switch"):modify():debug()
 	self:load("send_ui"):modify():debug()
+	self:load("journal"):modify():debug()
 end
 
 ---[[ Initializing. Don't edit the code below ]]---

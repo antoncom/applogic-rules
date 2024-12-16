@@ -46,7 +46,7 @@ function main:modify(varname, rule) --[[
 		varlink.input = varlink["frozee"]
 	end
 
-	varlink.subtotal = varlink.subtotal or string.format("%s", tostring(varlink.input))
+	varlink.subtotal = varlink.subtotal or tostring(varlink.input)
 
 	if varlink.modifier then --and #util.keys(varlink.modifier) > 0 then
         for mdf_name, mdf_body in util.kspairs(varlink.modifier) do

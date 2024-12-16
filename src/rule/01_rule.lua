@@ -9,6 +9,60 @@ local rule_setting = {
 		input = "Правило переключения если нет Cим-карты в слоте",
 	},
 
+	switching = {
+		note = [[ Статус переключения Sim: true / false. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "switching",
+			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+            --["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
+		}
+	},
+
+	switch_time = {
+		note = [[ Время переключения Sim ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "switching",
+			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+		}
+	},
+
+	event_datetime = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "cpin",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.time ]],
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+		}
+	},
+
+	event_is_new = {
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "cpin",
+			params = {}
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.unread ]],
+		}
+	},
+
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
 		source = {
@@ -35,21 +89,6 @@ local rule_setting = {
 		}
 	},
 
-	-- connected_usb_time = {
-	-- 	note = [[ Время когда USB порт установился в состояние "connected"  ]],
-	-- 	input = 0,
-	-- 	source = {
-	-- 		type = "ubus",
-	-- 		object = "tsmodem.driver",
-	-- 		method = "usb",
-	-- 		params = {},
-	-- 	},
-	-- 	modifier = {
-	-- 		["1_skip"] = [[ return ($usb == "disconnected" ) ]],
-	-- 		["2_bash"] = [[ jsonfilter -e $.time ]],
-	-- 	}
-	-- },
-
 	sim_ready = {
 		note = [[ Сим-карта в слоте? "true" / "false" ]],
 		--input = "true",
@@ -60,9 +99,10 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			--["1_skip"] = [[ return ($usb == "disconnected") ]],
-			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_func"] = [[ if $sim_ready == "" then return "*" else return tostring($sim_ready) end ]],
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+			["2_func"] = [[ local unknown = ($usb == "disconnected" or $switching == "true") 
+							if unknown then return "" else return $sim_ready end
+						 ]],
 		}
 	},
 
@@ -107,7 +147,7 @@ local rule_setting = {
 	},
 
 	do_switch = {
-		note = [[ Переключает слот, если SIM-карта на найдена в текущем слоте  ]],
+		note = [[ Переключает слот, если SIM-карта не найдена в текущем слоте  ]],
 		input = "false",
 		source = {
 			type = "ubus",
@@ -126,22 +166,8 @@ local rule_setting = {
 				return ( not (SIMID_OK and USB_OK and TIMEOUT and SIM_NOT_READY) )
 			]],
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_func"] = [[ return tostring($do_switch) ]],
+			--["3_func"] = [[ return tostring($do_switch) ]],
 			["4_frozen"] = [[ return 10 ]]
-		}
-	},
-
-	switching_time = {
-		note = [[ Время переключения Sim ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "switching",
-			params = {},
-			--cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
 		}
 	},
 
@@ -156,7 +182,7 @@ local rule_setting = {
 
 				local SIM_OK = ($sim_ready == "true")
 				local USB_NOT_CONNECTED = ($usb == "disconnected")
-				local st = tonumber($switching_time) or 0
+				local st = tonumber($switch_time) or 0
 				local JUST_SWITCHED = ((tonumber($os_time) - st) < 20)
 
 				local rt = tonumber($reset_timer) or 0
@@ -208,54 +234,31 @@ local rule_setting = {
 					"sim_id",
 					"wait_timer",
 					"reset_timer",
-					"sim_ready",
 					"timeout",
 					"do_switch",
+					"sim_ready",
+					"switching"
 				}
 			},
 		}
 	},
-	os_time = {
-		note = [[ Время ОС на предыдущей итерации ]],
-        modifier= {
-            ["1_func"] = [[ return os.time() ]],
-            ["2_save"] = [[ return $os_time ]]
-        }
-    },
-	event_datetime = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {}
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
-		}
-	},
-	event_is_new = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {}
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
-		}
-	},
+
+
     journal = {
 		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+			["1_skip"] = [[ 
+				if ($event_is_new == "true" and ($sim_ready == "true" or $sim_ready == "false")) then return false else return true end 
+			]],
 			["2_func"] = [[ 
 			local response 
 			if $sim_ready == "" then 
 				response = "not available" 
 			elseif $sim_ready == "false" then 
 				response = "not ready" 
-			else 
-				response = "ready" 
+			elseif $sim_ready == "true" then 
+				response = "ready"
+			else
+				response = $sim_ready
 			end
 			
 			return({ 
@@ -266,13 +269,9 @@ local rule_setting = {
 				response = response
 			}) 
 		]],
-			["3_ui-update"] = {
-				param_list = { "journal" }
-			},
-			["4_store-db"] = {
+			["3_store-db"] = {
 				param_list = { "journal" }	
 			},
-			["5_frozen"] = [[ return 2 ]]
 		}
 	},
 }
@@ -290,7 +289,7 @@ function rule:make()
 	-- Green, Yellow and Red are measure of importance for Application logic
 	-- Green is for timers and some passive variables,
 	-- Yellow is for that vars which switches logic - affects to normal application behavior
-	-- Red is for some extraordinal application ehavior, like watchdog, etc.
+	-- Red is for some extraordinal application behavior, like watchdog, etc.
 	local overview = {
 		["reset_modem"] = { ["yellow"] = [[ return ($reset_modem == "true") ]] },
 		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
@@ -304,23 +303,25 @@ function rule:make()
 
 
 	self:load("title"):modify():debug() 	-- Use debug(ONLY) to check the var only
+	self:load("switching"):modify():debug(overview)
+	self:load("switch_time"):modify():debug(overview)
+
+	self:load("event_datetime"):modify():debug()
+	self:load("event_is_new"):modify():debug()
+
 	self:load("sim_id"):modify():debug()	-- Use "overview" to include the variable to the all rules overview report in debug mode
 	self:load("usb"):modify():debug()
-	-- self:load("connected_usb_time"):modify():debug()
 	self:load("sim_ready"):modify():debug(overview)
 
 	self:load("timeout"):modify():debug()
 	self:load("wait_timer"):modify():debug(overview)
 
 	self:load("do_switch"):modify():debug(overview)
-	self:load("switching_time"):modify():debug(overview)
 	self:load("reset_timer"):modify():debug(overview)
 	self:load("reset_modem"):modify():debug(overview)
 	self:load("os_time"):modify():debug()
 	self:load("send_ui"):modify():debug()
-	self:load("event_datetime"):modify():debug()
-	self:load("event_is_new"):modify():debug()
-    --self:load("journal"):modify():debug()
+    self:load("journal"):modify():debug()
 end
 
 ---[[ Initializing. Don't edit the code below ]]---

@@ -29,11 +29,17 @@ end
 function db_utils.insert_journal(db_file, ruleid, journal)
     -- Check current number of entries
     local entries = db_utils.list_journal_entries(db_file)
+
+    print("Total records in the DB: " .. tostring(entries))
     
     -- If we exceed max elements, delete the oldest
     if #entries >= max_elements then
         db_utils.delete_oldest_entry(db_file, entries)
     end
+
+    entries = db_utils.list_journal_entries(db_file)
+
+    print("After deleting, the total records in the DB: " .. tostring(entries))
     
     -- Insert the new entry
     local data = {

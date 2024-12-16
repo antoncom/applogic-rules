@@ -1,13 +1,18 @@
 local util = require "luci.util"
 local json = require "cjson"
-local leveldb = require 'lualeveldb'
+--local leveldb = require 'lualeveldb'
+local uci = require "luci.model.uci".cursor()
+local ubus = require "ubus"
+
+
 
 -- Define the LevelDB database path
-local db_path = "/var/spool/tsmodem/journal.db"  -- Database path
+local inmemory_db_path = uci:get("tsmjournal", "database", "inmemory")
+local ondisk_db_path = uci:get("tsmjournal", "database", "ondisk")
+
 
 -- Function to store data in the database using db_utils
 function store_db(varname, mdf_name, modifier, rule)
-    util.perror("store_db called!")
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
 
@@ -21,7 +26,7 @@ function store_db(varname, mdf_name, modifier, rule)
         for i = 1, #param_list do
             name = param_list[i]
             if name == varname then
-                if util.contains({ "journal_reg", "journal_usb", "journal_stm" }, name) then
+                if util.contains({ "journal_reg", "journal_usb", "journal_stm", "journal_userbalance" }, name) then
                     name = "journal"
                 end
                 params[name] = varlink.subtotal or ""
@@ -31,35 +36,8 @@ function store_db(varname, mdf_name, modifier, rule)
         end
         params["ruleid"] = rule.ruleid
 
-        local opt = leveldb.options()
-        opt.createIfMissing = true
-        opt.errorIfExists = false
-        
-        local key = os.time() .. "_" .. rule.ruleid
-        local success, err = pcall(function()
-            -- Open the database
-            db = leveldb.open(opt, db_path)
-            
-            -- Perform the put operation
-            db:put(key, json.encode(params))
-            
-            -- Close the database
-            leveldb.close(db)
-        end)
-        
-        -- Handle potential errors
-        
-        if not success then
-            noerror = false
-            if rule.debug_mode.enabled then
-                result = "Error storing data in LevelDB: " .. err
-                -- debug(varname, rule):modifier(mdf_name, param_list, result, noerror)
-            end
-        else
-            if rule.debug_mode.enabled then
-                --debug(varname, rule):modifier(mdf_name, param_list, serialized_data, noerror)
-            end
-        end
+        util.ubus("tsmodem.journal", "send", params)
+
     end
 end
 

@@ -15,7 +15,7 @@ function frozen(varname, rule, mdf_name) --[[
     local max_seconds = 31536000
     local noerror = true
     local frozen_value = ""
-    local seconds_to_froze = 0
+    local result = 0
     local value_after_unfroze = nil
 
     local body = varlink.modifier[mdf_name]
@@ -28,23 +28,24 @@ function frozen(varname, rule, mdf_name) --[[
         noerror, res = pcallchunk(luacode)
 
         if (type(res) == "table") then
-            seconds_to_froze = res[1] or 0
+            result = res[1] or 0
             value_after_unfroze = res[2] or nil
         else
-            seconds_to_froze = res or 0
+            result = res or 0
         end
 
-        if (tonumber(seconds_to_froze) and (noerror == true)) then
-            local delay = seconds_to_froze and tonumber(seconds_to_froze)
+        if (tonumber(result) and (noerror == true)) then
+            local delay = result and tonumber(result)
             if delay and delay > 0 and delay < max_seconds then
-                if (type(varlink.subtotal) == "table") then
+                if (type(varlink.subtotal == "table")) then
                     varlink.subtotal = util.serialize_json(varlink.subtotal)
-                elseif (type(varlink.subtotal) == "number" or type(varlink.subtotal) == "string") then
+                elseif (type(varlink.subtotal == "number") or type(varlink.subtotal == "string")) then
                     varlink.subtotal = tostring(varlink.subtotal)
                 end
                 varlink.frozen = {
                     seconds = delay,
                     cancel_time = os.time() + delay,
+                    --value = tostring(varlink.subtotal),
                     value = tostring(varlink.subtotal),
                     value_after = value_after_unfroze
                 }
@@ -67,7 +68,7 @@ function frozen(varname, rule, mdf_name) --[[
     -- Check delay and unfroze variable's value if time is up
     if (noerror == true) then
         if varlink.frozen and varlink.frozen.cancel_time then
-            -- Update Frozen modifier seconds_to_froze (for debug)
+            -- Update Frozen modifier result (for debug)
             --frozen_value = tostring(varlink.frozen.value)
             frozen_value = varlink.frozen.value
             local now = os.time()
@@ -87,8 +88,8 @@ function frozen(varname, rule, mdf_name) --[[
                 if rule.debug_mode.enabled then
                     local remains = varlink.frozen.cancel_time - now
                     local seconds = varlink.frozen.seconds
-                    seconds_to_froze = string.format("%s", seconds)
-                    debug(varname, rule):modifier(mdf_name, "Frozen duration:", seconds_to_froze, noerror)
+                    result = string.format("%s", seconds)
+                    debug(varname, rule):modifier(mdf_name, "Frozen duration:", result, noerror)
                 end
             end
         end

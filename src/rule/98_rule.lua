@@ -23,12 +23,16 @@ local rule_setting = {
 	},
 
 	usb = {
-		note = [[ Статус USB-подключения модема: connected/disconnected ]],
+		note = [[ Состояние USB-порта: connected / disconnected  ]],
 		source = {
-			type = "rule",
-			rulename = "01_rule",
-			varname = "usb",
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "usb",
+			params = {},
 		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
 	},
 
     idle_time = {
@@ -110,7 +114,7 @@ local rule_setting = {
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
-			method = "reg",
+			method = "usb",
 			params = {}
 		},
 		modifier = {
@@ -122,19 +126,15 @@ local rule_setting = {
 			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
 			["2_func"] = [[return({
 					datetime = $event_datetime,
-					name = "]] .. I18N.translate("The Watchdog rule for the modem") .. [[",
-					source = "]] .. I18N.translate("Modem  (98-rule)") .. [[",
+					name = "Изенилось состояние порта /dev/ttyUSB2",
+					source = "Modem  (98-rule)",
 					command = "watchdog",
-					response = $reinit_modem
+					response = $usb
 				})]],
-                
-			["3_ui-update"] = {
+			["3_store-db"] = {
 				param_list = { "journal" }
 			},
-			["4_store-db"] = {
-				param_list = { "journal" }
-			},
-			["5_frozen"] = [[ return 2 ]]
+			--["4_frozen"] = [[ return 2 ]]
 		}
 	},
 }

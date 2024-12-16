@@ -224,7 +224,7 @@ local rule_setting = {
 			["1_skip"] = [[
 				local lt = tonumber($lastping_timer) or 0
 				local utp = tonumber($uci_timeout_ping) or 0
-				local READY = 	( $switching == "false" )
+				local READY = 	( $switching ~= "true" )
 				local TIMEOUT = ( lt > utp )
 				return ( not (READY and TIMEOUT) )
 			]],
@@ -251,7 +251,7 @@ local rule_setting = {
 	journal = {
 		modifier = {
 			["1_skip"] = [[ 
-				if ($event_is_new == "true") then return false else return true end ]],
+				if ($event_is_new == "true" and tonumber($ping_status)) then return false else return true end ]],
 			["2_func"] = [[return({
 					datetime = $event_datetime,
 					name = "]] .. I18N.translate("Изменилось состояние PING") .. [[",
@@ -259,13 +259,10 @@ local rule_setting = {
 					command = "ping 8.8.8.8",
 					response = $ping_status
 				})]],
-			["3_ui-update"] = {
+			["3_store-db"] = {
 				param_list = { "journal" }
 			},
-			["4_store-db"] = {
-				param_list = { "journal" }
-			},
-			["5_frozen"] = [[ return 2 ]]
+			["4_frozen"] = [[ return 2 ]]
 		}
 	},
 }
@@ -292,6 +289,29 @@ function rule:make()
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
+	local all_rules = rule.parent.setting.rules_list.target
+
+	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	if (r01_wait_timer and r01_wait_timer > 0) then 
+		if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
+
+	-- Пропускаем выполнения правила, если СИМ не зарегистрирована в сети
+	local r02_lastreg_timer = tonumber(all_rules["02_rule"].setting.lastreg_timer.output)
+	if (r02_lastreg_timer and r02_lastreg_timer > 0) then 
+		if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r02_lastreg_timer > 0 -----") end
+		return 
+	end
+
+	-- Пропускаем выполнения правила, если отрицательный баланс на счету Sim-карты
+	local r03_sim_balance = tonumber(all_rules["03_rule"].setting.sim_balance.output)
+	if (r03_sim_balance and r03_sim_balance <= 0) then 
+		if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r03_sim_balance < 0 -----") end
+		return 
+	end
+
 
 	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()
@@ -310,6 +330,7 @@ function rule:make()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
 	self:load("event_datetime"):modify():debug()
+	self:load("event_is_new"):modify():debug()
 	self:load("send_ui"):modify():debug()
 	self:load("journal"):modify():debug(overview)
 

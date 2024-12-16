@@ -2,6 +2,8 @@ local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.util.rule_init"
 local log = require "applogic.util.log"
 local I18N = require "luci.i18n"
+local util = require "luci.util"
+
 
 local rule = {}
 local rule_setting = {
@@ -21,6 +23,15 @@ local rule_setting = {
 		}
     },
 
+    uci_signal_before = {
+		note = [[ Предыдущее значение минимального уровень сигнала в конфиге. ]],
+			source = {
+			type = "rule",
+			rulename = "05_rule",
+			varname = "uci_signal_min"
+		},
+	},
+
 	uci_signal_min = {
 		note = [[ Минимальный уровень сигнала, заданный в конфиге для данной Сим, %. ]],
 		source = {
@@ -38,7 +49,8 @@ local rule_setting = {
 			["2_func"] = [[
 				local usm = tonumber($uci_signal_min) or 5
 				return usm
-			]]
+			]],
+			["3_save"] = [[ return $uci_signal_min ]]
 		}
 	},
 
@@ -76,13 +88,23 @@ local rule_setting = {
 		},
 	},
 
-	signal = {
-		note = [[ Уровень сигнала сотового оператора, %. ]],
+	json_signal = {
+		note = [[ Уровень сигнала сотового оператора, JSON. ]],
 		source = {
 			type = "ubus",
 			object = "tsmodem.driver",
 			method = "signal",
 			params = {},
+		},
+	},
+
+
+	signal = {
+		note = [[ Уровень сигнала сотового оператора, %. ]],
+		source = {
+			type = "rule",
+			rulename = "05_rule",
+			varname = "json_signal"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
@@ -90,10 +112,10 @@ local rule_setting = {
 				local s = tonumber($signal) or 0
 				if (s > 0) then return s else return "" end
 			]],
-			["3_frozen"] = [[
-				local s = tonumber($signal) or 0
-				if(s > 0) then return 10 else return 0 end
-			]],
+			-- ["3_frozen"] = [[
+			-- 	local s = tonumber($signal) or 0
+			-- 	if(s > 0) then return 10 else return 0 end
+			-- ]],
 		},
 	},
 
@@ -199,7 +221,7 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
+			--["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
 		}
 	},
 
@@ -241,22 +263,20 @@ local rule_setting = {
 	},
 	event_datetime = {
 		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {}
+			type = "rule",
+			rulename = "05_rule",
+			varname = "json_signal"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))',
 		}
 	},
     event_is_new = {
 		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {}
+			type = "rule",
+			rulename = "05_rule",
+			varname = "json_signal"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.unread ]],
@@ -264,21 +284,28 @@ local rule_setting = {
 	},
     journal = {
 		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-			-- datetime = $event_datetime,
+			["1_skip"] = [[ 
+				local s = tonumber($signal) or 0
+				local lst = tonumber($low_signal_timer) or 0
+				local ucm = tonumber($uci_signal_min)
+				local ucmb = tonumber($uci_signal_before) or ucm
+				local LOW_SIGNAL = (lst > 0)
+				local ISNEW = ($event_is_new == "true")
+				local USER_UPDATE_SETTING = (ucmb ~= ucm and ucm > s)
+				if (tonumber($signal) and ((LOW_SIGNAL and ISNEW) or USER_UPDATE_SETTING)) then
+					return false else return true
+				end
+			]],
 			["2_func"] = [[return({
-					name = "Sim card switched due to signal below the norm",
-					source = "Modem  (05-rule),
+					datetime = $event_datetime,
+					name = "Низкий уровень сигнала базовой станции",
+					source = "Modem  (05-rule)",
 					command = "AT+CSQ",
-					response = $signal
+					response = tostring($signal .. "%" .. " (при норме  " .. $uci_signal_min .."%)")
 				})]],
-			["3_ui-update"] = {
+			["3_store-db"] = {
 				param_list = { "journal" }
 			},
-			["4_store-db"] = {
-				param_list = { "journal" }
-			},
-			["5_frozen"] = [[ return 2 ]]
 		}
 	},
 
@@ -303,17 +330,27 @@ function rule:make()
 		["low_signal_timer"] = { ["yellow"] = [[ return (tonumber($low_signal_timer) and tonumber($low_signal_timer) > 0) ]] },
 	}
 
-	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	-- Пропускаем выполнение правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
+
+	local all_rules = rule.parent.setting.rules_list.target
+	
+	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	if (r01_wait_timer and r01_wait_timer > 0) then 
+		if rule.debug_mode.enabled then print("------ 05_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
 
 	self:load("title"):modify():debug()
 	self:load("sim_id"):modify():debug()
+	self:load("uci_signal_before"):modify():debug()
 	self:load("uci_signal_min"):modify():debug()
 	self:load("uci_timeout_signal"):modify():debug()
 	self:load("network_registration"):modify():debug()
+	
+	self:load("json_signal"):modify():debug()
 	self:load("signal"):modify():debug()
-	-- self:load("signal_time"):modify():debug()
-	-- self:load("signal_normal_last_time"):modify():debug()
 
 	self:load("r01_timer"):modify():debug()
 	self:load("r02_lastreg_timer"):modify():debug()

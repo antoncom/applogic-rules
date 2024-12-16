@@ -152,7 +152,7 @@ local rule_setting = {
 	},
 
     a_balance_interval = {
-        note = [[ Частота запроса баланса: 1-2 мин. в первые 10 мин активной SIM; 5..10 мин. при постоянной работе на данной SIM. ]],
+        note = [[ Частота запроса баланса: 1-2 мин. - в первые 10 мин активной SIM; Затем 15..45 мин. при постоянной работе на данной SIM. ]],
 		input = 60,
         modifier= {
 			["1_skip"] = [[
@@ -177,10 +177,10 @@ local rule_setting = {
 					-- it uses to coordinate chek balance interval (15_rule) and switch SIM on low balance (03_rule)
 					return math.random (ubt+10, ubt*2)
 				else
-					return math.random (600, 900)
+					return math.random (900, 2700) -- 15..45 mins
 				end
 			]],
-			["3_save"] = [[ return $a_balance_interval ]],
+			--["3_save"] = [[ return $a_balance_interval ]],
 			["4_frozen"] = [[
 				local NOT_CALCULATED_AGAIN_TIME = tonumber($a_balance_interval) and (tonumber($a_balance_interval) + 10)
 				return NOT_CALCULATED_AGAIN_TIME or 0
@@ -194,8 +194,9 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[
 				local JUST_STARTED = (not tonumber($os_time))
-				local BALANCE_UNDEFINED = (not tonumber($current_balance_state))
-				return JUST_STARTED or BALANCE_UNDEFINED
+				--local BALANCE_UNDEFINED = (not tonumber($current_balance_state))
+				--return JUST_STARTED or BALANCE_UNDEFINED
+				return JUST_STARTED
 			]],
 			["2_func"] = [[
 				local STEP = os.time() - tonumber($os_time)
@@ -269,7 +270,7 @@ local rule_setting = {
         modifier = {
             ["1_skip"] = [[
 				local pid = tonumber($provider_id) or 0
-				local t = tonumber($timer)
+				local t = tonumber($timer) or 0
 				local USSD_OK = ($ussd_command ~= "")
 				local SIM_OK = ($sim_ready == "true")
 				local PROVIDER_IDENTIFIED = (pid ~= 0)
@@ -277,7 +278,7 @@ local rule_setting = {
                 local BALANCE_OK = tonumber($current_balance_state)
                 local BALANCE_FAIL = ($current_balance_state == "")
                 local BALANCE_IN_PROGRESS = ($current_balance_state == "*")
-				local NOBODY_SWITCHING = ($switching == "false")
+				local NOBODY_SWITCHING = ($switching == "false" or $switching == "")
                 local READY_TO_SEND = SIM_OK and PROVIDER_IDENTIFIED and TIME_TO_REQUEST and (BALANCE_OK or BALANCE_FAIL) and (not BALANCE_IN_PROGRESS) and NOBODY_SWITCHING
                 if USSD_OK and READY_TO_SEND then return false else return true end
             ]],
@@ -341,10 +342,23 @@ function rule:make()
 		["timeout"] = { ["yellow"] = [[ return (tonumber($timeout) and tonumber($timeout) < 600) ]] },
 		["send_command"] = { ["yellow"] = [[ return ($send_command == "true") ]] },
 		["a_balance_interval"] = { ["green"] = [[ return true ]] },
+		["timer"] = { ["green"] =  [[ 
+			local t = tonumber($timer)
+			return (t and t > 0)
+		]] },
 	}
 
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
+
+	local all_rules = rule.parent.setting.rules_list.target
+
+	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	if (r01_wait_timer and r01_wait_timer > 0) then 
+		if rule.debug_mode.enabled then print("------ 15_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
 
 
 	self:load("title"):modify():debug()
@@ -361,7 +375,7 @@ function rule:make()
 	self:load("uci_balance_timeout"):modify():debug()
 	self:load("a_balance_interval"):modify():debug(overview) 			-- С какой частотой запрашивать баланс у провайдера
 
-    self:load("timer"):modify():debug()            					-- Отсчёт интервалов
+    self:load("timer"):modify():debug(overview)            					-- Отсчёт интервалов
 	self:load("wait_balance"):modify():debug()     					-- Количество времени, данное для попыток получения баланса
 	self:load("timeout"):modify():debug(overview)          			-- Отсчёт таймаута - сколько ждать получения валидного баланса
 	self:load("os_time"):modify():debug()
