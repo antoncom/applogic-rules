@@ -3,6 +3,8 @@ local util = require "luci.util"
 local log = require "applogic.util.log"
 local md5 = require "md5" -- https://github.com/keplerproject/md5/blob/master/tests/test.lua
 local checkubus = require "applogic.util.checkubus"
+local cjson = require "cjson"
+
 
 local loadvar_subscribed = {}
 
@@ -13,14 +15,13 @@ local loadvar_subscribed = {}
 -- её значение успели воспринять все другие перменные правила при обработке своих значений.
 
 loadvar_subscribed.queue = {
-	-- [0] = {
-	--		event_name = name,
-	--		payload = msg,
-	-- }
-
-	-- При этом msg содержит таблицу вида:
-	-- msg = {
-	--    answer = "AT+CMGS: 405 OK"      -- OK, ERROR
+	-- ["network.interface"] = {
+	--		[0] = {
+	--			["name"] = name,
+	--			["msg"] = msg,
+	--			["subscribers"] = { varlink1, varlink2, etc},	-- ссылки на переменные правил, которые нужно будет загрузить данными по подписке
+	--			["iteration"] = nil								-- на какой итерации данные загрузятся в varlink.input
+	--		}
 	-- }
 }	
 
@@ -29,113 +30,94 @@ loadvar_subscribed.queue = {
 loadvar_subscribed_current_value = nil
 -- Пример:
 -- {
---		event_name = name,
---		payload = msg,
---		rules_iteration = nil		-- указывает на которой итерации правил переменая была загружена данным значением
+	--	["name"] = name,
+	--	["msg"] = msg,
+	--	["subscribers"] = { varlink1, varlink2, etc},			-- ссылки на переменные правил, которые нужно будет загрузить данными по подписке
+	--	["iteration"] = nil										-- на какой итерации данные загрузились в varlink.input
 -- }
 
 -- Данная колбэк функция выполняется в ответ на поступившее событие на шине UBUS
-function loadvar_subscribed:cb_subscribe(varlink)
-	return function(msg, name)
-		if(varlink.source.event_name == name) then
-			local data = {
-				event_name = name,
-				payload = msg,
+-- Функция помещает данные о событии в очередь loadvar_subscribed.queue
+function loadvar_subscribed:cb_subscribe() 
+	return function(ubus_objname, evmsg, evname, rule, match_msg, match_name)
+		if ((evname == match_name or match_name == "") and loadvar_subscribed:matched_evmsg(evmsg, match_msg)) then
+			local ev = {
+				["name"] = evname,
+				["msg"] = evmsg,
+				["subscribers"] = {},		-- {varlink1, varlink2, etc}
+				["iteration"] = rule.iteration	-- номер итерации на которой событие добвлено в очередь
 			}
-			table.insert(loadvar_subscribed.queue, util.clone(data, true))
-
-			print("+++ New value on subscription for [" .. name .. "] event!")
-			util.dumptable(data)
+			table.insert(rule.parent.subscription[ubus_objname], util.clone(ev, true))
+			print("++++ INSERTED TO SUBSCRIPTION: " .. ubus_objname .. " " .. evmsg.interface)
 		end
 	end
+end
+
+function loadvar_subscribed:matched_evmsg(ev, pattern)
+	local msg_matched = false
+	local evmsg = ev
+	if not evmsg then return end
+
+	for attr,value in util.kspairs(pattern) do
+		if (evmsg[attr] and evmsg[attr] == value) then
+			msg_matched = true
+			break
+		end
+	end
+	return msg_matched
+
 end
 
 function loadvar_subscribed:load(varname, rule)
 	local debug
 	if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
 
-	local setting = rule.setting
 	local varlink = rule.setting[varname]
+	local subscription = rule.parent.subscription
 
-	local subscribe_opertor_id = ""
 	local result = {}
 	local noerror = true
 	local err = ""
 
 	--[[ LOAD FROM UBUS ON SUBSCRIBTION ]]
-	local object = string.format("%s", (varlink.source.ubus or ""))
-	local event_name = string.format("%s", (varlink.source.event_name or ""))
+	local ubus_objname = string.format("%s", (varlink.source.ubus or ""))
+	local match_name = string.format("%s", (varlink.source.event_name or ""))
+	local match_msg = varlink.source.match or {}
 
-	noerror, err = checkubus(rule.conn, object)
+	noerror, err = checkubus(rule.conn, ubus_objname)
 	if noerror then
 
-		-- If UBUS has an [object] where some event with [event_name] is fired
-		-- then only one subscribing method is run all over all rules.
-		-- It avoids duplicating of subscription method for the same UBUS object/event
-		subscribe_opertor_id = "subscribed_"..rule.ruleid.."_"..varname.."_"..object.."_"..event_name
-		
-		if (not rule.subscriptions[subscribe_opertor_id]) then
-			--print("I'm going to make subscription like this: " .. subscribe_opertor_id)
-			local variable = rule:subscribe_ubus(varlink.source.ubus, loadvar_subscribed:cb_subscribe(varlink))
-			rule.subscriptions[subscribe_opertor_id] = "Just made subscriptions for " .. subscribe_opertor_id
-		else
-			--print("[tsmsms] No subscribe_ubus() done for [" .. subscribe_opertor_id .. "], as it has been already operated before.")
-		end
 
-		-- Значение загруженное в переменную по подписке должно хранится не более 2-х итераций всех правил.
-		-- Если очередь поступивших по подписке значений содержит более 1 элемента,
-		-- то спустя 2 цикла мы загружаем следующее значение из очереди в переменую заместо старого значения (поступившего ранее)
-		-- Если очередь пуста (то есть не поступило следующих значений по подписке),
-		-- то очищаем переменную
+		-- Если на данный UBUS-объект ещё не было подписки
+		-- то создаём таблицу для очереди будущих событий, поступающих от данного ubus-объекта
+		if (not subscription[ubus_objname]) then
+			subscription[ubus_objname] = {}
 
-		-- Берём первые данные из очереди поступивших значений
-		-- Присваиваем номер итерации, на которой переменная была загружена
-		-- А также функцию проверки is_lived_twice() показывающую что данное значение "живет" в переменной уже 2 итерации
-
-		if(not (type(loadvar_subscribed_current_value) == "table")) then
-			if(#loadvar_subscribed.queue > 0) then
-				loadvar_subscribed_current_value = table.remove(loadvar_subscribed.queue, 1)
-				loadvar_subscribed_current_value["rules_iteration"] = tostring(rule.iteration)
-				loadvar_subscribed_current_value["is_lived_twice"] = function()
-					return ((rule.iteration - tonumber(loadvar_subscribed_current_value["rules_iteration"])) == 2)
-				end
-				loadvar_subscribed_current_value["lives_on"] = function()
-					return (rule.iteration - tonumber(loadvar_subscribed_current_value["rules_iteration"]))
-				end
-			end
-		else
-			-- На следующей итерации, если текущее значение присутствует
-			-- то проверяем его на признак is_lived_twice()
-			-- Если да - очищаем переменную
-			-- if loadvar_subscribed_current_value.is_lived_twice() then
-			-- 	loadvar_subscribed_current_value = nil
-			-- end
-			if (loadvar_subscribed_current_value.lives_on() == 1) then
-
-				result = util.clone(loadvar_subscribed_current_value, true)
-				noerror = result["payload"] and result["payload"]["answer"]
-				if not noerror then 
-					err = "[loadvar_subscribed.lua]: No payload found!"
-				end
-			
-			elseif (loadvar_subscribed_current_value.lives_on() == 2) then
-				result = nil
-				loadvar_subscribed_current_value = nil
-				noerror = true
-			end
+			-- и подписываемся на шину ubus
+			rule:subscribe_ubus(varlink.source.ubus, loadvar_subscribed:cb_subscribe(), rule, match_msg, match_name)
 		end
 
 
-		varlink.subtotal = result and util.serialize_json(result) or ""
-
+		-- Если подписка на данный ubus-объект уже есть,
+		-- Смотрим нет ли уже в очереди событий в данного объекта
+		if (#subscription[ubus_objname] > 0) then
+			-- Если есть, то загружаем в нашу переменную данные, поступившие по подписке,
+			-- но только в том случае, если данные соответствуюи имени события и отбору по содержимому сообщения
+			local ev = subscription[ubus_objname][1]
+			if ((ev.name == match_name or match_name == "") and loadvar_subscribed:matched_evmsg(ev.msg, match_msg)) then
+				varlink.subtotal = util.serialize_json(ev.msg)
+			else
+				-- пропускаем загрузку по подписке, т.к. событие не удовлетворяет matched-условиям
+			end
+		end
 	end
 
 
 	if rule.debug_mode.enabled then
 		if (noerror) then
-			debug(varname, rule):source_subscribe(object, event_name, varlink.subtotal, noerror, varlink.source)
+			debug(varname, rule):source_subscribe(ubus_objname, match_name, varlink.subtotal, noerror, varlink.source)
 		else
-			debug(varname, rule):source_subscribe(object, event_name, err, noerror, varlink.source)
+			debug(varname, rule):source_subscribe(ubus_objname, match_name, err, noerror, varlink.source)
 		end
 	end
 

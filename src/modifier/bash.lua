@@ -21,20 +21,18 @@ function bash(varname, mdf_name, mdf_body, rule) --[[
 	-- we need to prepend "echo ... | " before new bash command
 
 	local command_extra = ""
-	if varlink.subtotal:len() > 0 then
+	if (varlink.subtotal:len() > 0 and varlink.subtotal ~= "\"\"" and varlink.subtotal ~= "''") then
 		-- Remove "'" from bash command to prevent errors
 		rule.setting[varname].subtotal = rule.setting[varname].subtotal:gsub("'", "")
 		command_extra = string.format("echo '%s' | %s", rule.setting[varname].subtotal, command)
-	else
-		command_extra = string.format("%s", command)
-	end
 
-	command_extra = command_extra:gsub("%c", "")
-	--if varname == "ussd_command" then print("COMMAND_EXTRA=", command_extra) end
-	result = sys.process.exec({"/bin/sh", "-c", command_extra }, true, true, true)
+		command_extra = command_extra:gsub("%c", "")
+		--if varname == "ussd_command" then print("COMMAND_EXTRA=", command_extra) end
+		result = sys.process.exec({"/bin/sh", "-c", command_extra }, true, true, true)
 
-	if result.stdout then
-		result.stdout = result.stdout:gsub("%c", "")
+		if result.stdout then
+			result.stdout = result.stdout:gsub("%c", "")
+		end
 	end
 
 	noerror = (not result.stderr)

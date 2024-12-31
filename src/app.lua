@@ -37,11 +37,10 @@ end)
 --local F = require "posix.fcntl"
 --local U = require "posix.unistd"
 
-os.execute("mkdir -p /var/spool/tsmodem/journal.db")
-
 
 local rules = {}
 rules.iteration = 1
+rules.subscription = {}
 rules.ubus_object = {}
 rules.conn = nil
 rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
@@ -57,16 +56,37 @@ local rules_setting = {
 	rules_list = {
 		target = {},
 	},
-	tick_size_default = 1600	-- use 1900 ms interval in debug mode
+	tick_size_default = 200	-- use 1900 ms interval in debug mode
 }
 
 function rules:init()
-	rules.cache_ubus, rules.cache_uci, rules.cache_bash, rules.subscriptions = {}, {}, {}, {}
+	rules.cache_ubus, rules.cache_uci, rules.cache_bash, rules.subscription = {}, {}, {}, {}
 end
 
 function rules:clear_cache()
 	rules.cache_ubus, rules.cache_uci, rules.cache_bash = nil, nil, nil
 	rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
+end
+
+
+-- Выдавливаем из очереди событий, поступивших по подписке
+-- самый старый элемнт, который прожил в очереди уже 2 итерации
+function rules:push_next_subscribed()
+
+	for objname, queue in util.kspairs(rules.subscription) do
+--print("REMOVE OLD SUBSCRIPTION..." .. objname .. " #queue: " .. tostring(#queue) .. " iter:" .. tostring(rules.iteration))
+		if (#queue > 0) then
+			for idx,ev in ipairs(queue) do
+--print("idx: " .. tostring(idx) .. " " .. tostring(ev.iteration))
+				if (rules.iteration - ev.iteration) > 2 then
+--print("----- REMOVE FROM SUBSCRIPTION: " .. objname)
+--util.dumptable(rules.subscription[objname])
+--print("===========")
+					table.remove(rules.subscription[objname], idx)
+				end
+			end
+		end
+	end
 end
 
 function rules:make_ubus()
@@ -226,6 +246,7 @@ function rules:run_all()
 		end
 
 		rules:clear_cache()
+		rules:push_next_subscribed()
 		rules.iteration = rules.iteration + 1
 
 	--end

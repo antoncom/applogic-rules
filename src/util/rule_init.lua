@@ -10,9 +10,10 @@ function rule_init(table, rule_setting, parent)
 
     if not table.setting then
         table.setting = rule_setting
-        table.iteration = 0
+        --table.iteration = 0
     end
 
+    table.iteration = parent.iteration
     table.ubus = parent.ubus_object
     table.conn = parent.conn
     table.debug_mode = debug_mode   -- It will be overrided automatically when edit rule:make() functiom in the rule file
@@ -60,12 +61,15 @@ function rule_init(table, rule_setting, parent)
     -- в том случае если в заданную переменную правила необходимо
     -- загружать исходные данные по подписке.
     
-    function table:subscribe_ubus(ubus_obj, callback)
+    function table:subscribe_ubus(ubus_obj, callback, rule, match_msg, match_name)
         local sub = {
             notify = function(msg, name)
-                callback(msg, name)
+                callback(ubus_obj, msg, name, rule, match_msg, match_name)
             end
         }
+        print("####### SUBSCRIBE UBUS #########")
+        print("## " .. ubus_obj .. " callback func: ")
+        print(callback)
         table.conn:subscribe(ubus_obj, sub)
 
         -- we will keep subscribe functions here
