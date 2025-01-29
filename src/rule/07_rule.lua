@@ -168,7 +168,7 @@ function rule:make()
 	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
 	if (r01_wait_timer and r01_wait_timer > 0) then 
-		if rule.debug_mode.enabled then print("------ 07_rule SKIPPED as r01_wait_timer > 0 -----") end
+		--if rule.debug_mode.enabled then print("------ 07_rule SKIPPED as r01_wait_timer > 0 -----") end
 		return 
 	end
 

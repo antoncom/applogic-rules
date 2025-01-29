@@ -136,7 +136,7 @@ function debug:source_subscribe(object, event_name, event_data, noerror, src)
                 ubus = "%s",
                 event_name = "%s",
             }
-        ]], object, event_name)
+        ]], tostring(object), tostring(event_name))
         dvlink.source = {
             ["type"] = "subscribe",
             ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),

@@ -342,6 +342,81 @@ function report:overview(rules, iteration)
 end
 
 
+function report:queu(rules, iteration)
+	local ftable = ft.new()
+	local check = ""
+	local current_row
+	local queu = rules.subscription.queu
+	local varlist = rules.subscription.vars
+
+	function getEvname(evmatch)
+		return evmatch.evname
+	end
+
+	function getMatch(evmatch)
+		local varlinks = evmatch.subscribed_vars
+		if #varlinks > 0 then
+			return util.serialize_json(varlinks[1].source.match)
+		else
+			return ""
+		end
+	end
+
+	function getTotalEvents(evmatch)
+		local events = evmatch.events
+		--print("--- REPORT -- evmatch: ", evmatch.evname)
+		--util.dumptable(util.keys(evmatch))
+
+		return #events
+	end
+
+	function getVarnames(evmatch)
+		-- local varnotes = ""
+		-- for _,var in ipairs(evmatch.subscribed_vars) do
+		-- 	varnotes = varnotes .. var.note .. ", "
+		-- end
+		-- return varnotes
+		return table.concat(evmatch.subscribed_varnames, " ")
+	end
+
+	ftable:set_cell_prop(ft.ANY_ROW, 1, ft.CPROP_TEXT_ALIGN, ft.ALIGNED_LEFT)
+	ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_ROW_TYPE, ft.ROW_HEADER)
+
+	current_row = 1
+	ftable:write_ln("Подписка переменных на события UBUS", "#"..tostring(iteration))
+	ftable:add_separator()
+
+	current_row = 2
+	ftable:write_ln("UBUS OBJ", "EVENT NAME", "FILTER", "VARS", "EVNUM")
+	ftable:add_separator()
+
+	for ubusobj, evmatches in util.kspairs(queu) do
+		for evmatch_key, evmatch in util.kspairs(evmatches) do
+			local evtotal = getTotalEvents(evmatch)
+			local evname = evmatch.evname
+			local varnames = getVarnames(evmatch)
+			local evmatch_humanread = getMatch(evmatch)
+			ftable:write_ln(ubusobj, evname, evmatch_humanread, varnames, evtotal)
+		end
+	end
+
+	-- CELL SPANS
+	ftable:set_cell_span(1, 1, 5) -- title row
+
+
+		-- CELLS STYLE
+	ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
+	ftable:set_cell_prop(2, ft.ANY_COLUMN, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
+	ftable:set_cell_prop(ft.ANY_ROW, 1, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
+	--ftable:set_cell_prop(1, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+
+	-- Setup border style
+	ftable:set_border_style(ft[style])
+	-- Print ftable
+	print(tostring(ftable))
+
+end
+
 
 function report:clear()
 	-- clear error statuses, but keep debug data untouched, as they are linked to real rule ongoing data

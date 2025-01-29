@@ -67,18 +67,6 @@ local rule_setting = {
 		}
 	},
 
-	network_registration = {
-		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {},
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
-		}
-	},
 
 	ping_status = {
 		note = [[ Результат PING-а сети ]],
@@ -87,11 +75,10 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "ping",
 			params = {},
+			--cached = "no"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			--["2_save"] = [[ return $ping_status ]],
-			--["3_frozen"] = [[ if tostring($ping_status) == "1" then return 10 else return 0 end ]]
 		}
 	},
 	event_datetime = {
@@ -106,57 +93,7 @@ local rule_setting = {
 			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
 		}
 	},
-	event_is_new = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "ping",
-			params = {}
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
-		}
-	},
 
-	r01_timer = {
-		note = [[ Значение таймера отсутствия Сим-карты в слоте ]],
-		source = {
-			type = "rule",
-			rulename = "01_rule",
-			varname = "wait_timer"
-		},
-	},
-
-	r02_lastreg_timer = {
-		note = [[ Значение таймера отсутствия регистрации в сети ]],
-		source = {
-			type = "rule",
-			rulename = "02_rule",
-			varname = "lastreg_timer"
-		},
-	},
-
-	r03_lowbalance_timer = {
-		note = [[ Значение таймера низкого баланса ]],
-		source = {
-			type = "rule",
-			rulename = "03_rule",
-			varname = "lowbalance_timer"
-		},
-	},
-
-	sim_balance = {
-		note = [[ Сумма баланса на текущей Сим-карте, руб. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "balance",
-			params = {},
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
-		}
-	},
 
 	lastping_timer = {
 		note = [[ Отсчёт секунд при отсутствии PING в сети. ]],
@@ -169,19 +106,9 @@ local rule_setting = {
 
 							local tmr = tonumber($lastping_timer) or 0
 							local utout = tonumber($uci_timeout_ping) or 120
-							local r01t = tonumber($r01_timer) or 0
-							local r02lt = tonumber($r02_lastreg_timer) or 0
-							local r03lt = tonumber($r03_lowbalance_timer) or 0
-
 							local TIMER = tmr + STEP
 							local PING_OK = (tonumber($ping_status) and tonumber($ping_status) == 1)
-							local REG_NOT_OK = (r02lt > 0)
-							local BALANCE_NOT_OK = ((r03lt > 0) and ($sim_balance ~= "*") and ($sim_balance ~= ""))
-							local SIM_NOT_OK = (r01t > 0)
-							if REG_NOT_OK then return 0
-							elseif BALANCE_NOT_OK then return 0
-							elseif SIM_NOT_OK then return 0
-							elseif PING_OK then return 0
+							if PING_OK then return 0
 							else return TIMER end
 		 	]],
 			["3_save"] = [[ return $lastping_timer ]]
@@ -250,19 +177,17 @@ local rule_setting = {
 	},
 	journal = {
 		modifier = {
-			["1_skip"] = [[ 
-				if ($event_is_new == "true" and tonumber($ping_status)) then return false else return true end ]],
-			["2_func"] = [[return({
+			["1_func"] = [[return({
 					datetime = $event_datetime,
 					name = "]] .. I18N.translate("Изменилось состояние PING") .. [[",
 					source = "]] .. I18N.translate("Modem (04-rule)") .. [[",
 					command = "ping 8.8.8.8",
 					response = $ping_status
 				})]],
-			["3_store-db"] = {
+			["2_store-db"] = {
 				param_list = { "journal" }
 			},
-			["4_frozen"] = [[ return 2 ]]
+			["3_frozen"] = [[ return 2 ]]
 		}
 	},
 }
@@ -308,7 +233,7 @@ function rule:make()
 	-- Пропускаем выполнения правила, если отрицательный баланс на счету Sim-карты
 	local r03_sim_balance = tonumber(all_rules["03_rule"].setting.sim_balance.output)
 	if (r03_sim_balance and r03_sim_balance <= 0) then 
-		if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r03_sim_balance < 0 -----") end
+		--if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r03_sim_balance < 0 -----") end
 		return 
 	end
 
@@ -319,18 +244,12 @@ function rule:make()
 	self:load("host"):modify():debug()
     self:load("uci_timeout_ping"):modify():debug()
 
-    self:load("network_registration"):modify():debug()
     self:load("ping_status"):modify():debug()
-	self:load("r01_timer"):modify():debug()
-	self:load("r02_lastreg_timer"):modify():debug()
-	self:load("r03_lowbalance_timer"):modify():debug()
-    self:load("sim_balance"):modify():debug()
 	self:load("lastping_timer"):modify():debug(overview)
 	self:load("os_time"):modify():debug()
 	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
 	self:load("event_datetime"):modify():debug()
-	self:load("event_is_new"):modify():debug()
 	self:load("send_ui"):modify():debug()
 	self:load("journal"):modify():debug(overview)
 

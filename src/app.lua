@@ -11,6 +11,11 @@ local checkubus = require "applogic.util.checkubus"
 local debug_mode = require "applogic.debug_mode"
 local debug_cli = require "applogic.var.debug_cli"
 local report = require "applogic.util.report"
+local md5 = require "md5"
+
+local profile = require "applogic.util.profile"
+
+print(profile)
 
 
 --[[ Restore UCI config of Applogic once the debug stopped by Ctrl-C ]]
@@ -40,7 +45,10 @@ end)
 
 local rules = {}
 rules.iteration = 1
-rules.subscription = {}
+rules.subscription = {
+	queu = {},
+	vars = {}
+}
 rules.ubus_object = {}
 rules.conn = nil
 rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
@@ -60,34 +68,191 @@ local rules_setting = {
 }
 
 function rules:init()
-	rules.cache_ubus, rules.cache_uci, rules.cache_bash, rules.subscription = {}, {}, {}, {}
-end
-
-function rules:clear_cache()
-	rules.cache_ubus, rules.cache_uci, rules.cache_bash = nil, nil, nil
 	rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
 end
 
+function rules:clear_cache()
+	--rules.cache_ubus, rules.cache_uci, rules.cache_bash = nil, nil, nil
+	rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
+	collectgarbage()
 
--- Выдавливаем из очереди событий, поступивших по подписке
--- самый старый элемнт, который прожил в очереди уже 2 итерации
-function rules:push_next_subscribed()
+end
 
-	for objname, queue in util.kspairs(rules.subscription) do
---print("REMOVE OLD SUBSCRIPTION..." .. objname .. " #queue: " .. tostring(#queue) .. " iter:" .. tostring(rules.iteration))
-		if (#queue > 0) then
-			for idx,ev in ipairs(queue) do
---print("idx: " .. tostring(idx) .. " " .. tostring(ev.iteration))
-				if (rules.iteration - ev.iteration) > 2 then
---print("----- REMOVE FROM SUBSCRIPTION: " .. objname)
---util.dumptable(rules.subscription[objname])
---print("===========")
-					table.remove(rules.subscription[objname], idx)
+-- Пробежать по всем переменным всех правил
+
+-- Создать подписки (функции обработчики), удовлетворяющие evname, event_matched.
+-- Такая функйия подписи будет просто складывать подходящие события в очередь
+
+-- Создать пустую очередь для вновь поступающих событий
+-- Создать функцию-диспетчер, который будет загружать события в переменные
+-- при возникновении события.
+-- Структура очереди:
+--	rules.subscription.queu = {
+--		["network.interface"] = {
+--			[evmatch_1] = {
+--				evname = "interface.up",						-- Имя события
+--				subscribed_vars = {varlink1, varlink2},			-- Данный список клонируется в vars_to_load
+--				subscribed_varnames = {"[21_rule]: upvar", [21_rule]: downvar"},			-- Данный список клонируется в vars_to_load
+--				events = {										-- при поступлении события в очередь
+--					[1] = {
+--						msg = {},
+--						name = "",
+--						md5 = {"f4556ff3f17bb744ec8819b42bc1291c"}		-- Содержит контрольную сумму добавленного в очередь события
+--						vars_to_load = { varlink1 }				-- Когда все переменые прогрузятся
+--					}											-- данное событие удаляется из очереди
+--				}
+--			},
+--			[evmatch_2] = {
+--				evname = "interface.down",						-- Имя события
+--				subscribed_vars = {varlink1, varlink2},
+--				events = {
+--					[1] = {
+--						msg = {},
+--						name = "",
+--						md5 = {"f4556ff3f17bb744ec8819b42bc1291c"}		-- Содержит контрольную сумму добавленного в очередь события
+--						vars_to_load = { varlink1 }				-- Когда все переменые прогрузятся
+--					}											-- данное событие удаляется из очереди
+--				}
+--			},
+--		},
+--	}
+--  rules.subscription.vars = {									-- Здесь храним список всех переменных, загружаемых по подписке
+--		varlink1, varlink2, varlink3							-- При возикновении события из них берутся matched
+--	}															-- чтобы не все события помещать в очередь, а только соответствующие условию matched
+
+
+function rules:matched_evmsg(ev, pattern)
+	local msg_matched = false
+	local evmsg = ev
+	if not evmsg then return end
+
+	for attr,value in util.kspairs(pattern) do
+		if (evmsg[attr] and evmsg[attr] == value) then
+			msg_matched = true
+			break
+		end
+	end
+	return msg_matched
+
+end
+
+function evuuid(name, match)
+	return md5.sumhexa(tostring(name)..tostring(util.serialize_json(match)))
+end
+
+--	--[[ Диспетчер раскладывает поступающие события по очередям ]]
+rules.subscription.dispatcher = function(ubusobj, evname, evmsg) 
+	-- Проверяем события на дубли. Если повторно возникает - не добавляем в очередь
+	function chekDuplucates(md5, events)
+		local res = false
+		for _, ev in ipairs(events) do
+			if ev["md5"] == md5 then
+				res = true
+				break
+			end
+		end
+		return res
+	end
+	-- пробегаем по списку переменных rules.subscription.vars
+	for _,v in ipairs(rules.subscription.vars) do
+		-- если событие соответствует условию matched в какой-либо переменной
+		if(rules:matched_evmsg(evmsg, v.source.match) == true) then
+			local evmatch_md5 = evuuid(evname, v.source.match)
+			if (rules.subscription.queu[ubusobj] and rules.subscription.queu[ubusobj][evmatch_md5]) then
+				-- Отсекаем события дубли, имеющие местj при подписке, например, на объект network.interface
+				local name_message_md5 = evuuid(evname,evmsg)
+				local events = rules.subscription.queu[ubusobj][evmatch_md5].events
+				if (chekDuplucates(name_message_md5, events) == false) then
+					local qu_item = {
+						msg = evmsg,
+						name = evname,
+						md5 = name_message_md5,
+						vars_to_load = util.clone(rules.subscription.queu[ubusobj][evmatch_md5].subscribed_vars, false)
+					}
+					-- добавляем в очередь
+					table.insert(rules.subscription.queu[ubusobj][evmatch_md5].events, qu_item)
 				end
 			end
 		end
 	end
 end
+
+rules.subscription.removeEvent = function(ubusobj, evmatch_md5, varlink)
+	local evmatch = rules.subscription.queu[ubusobj] and rules.subscription.queu[ubusobj][evmatch_md5] or false
+	if (evmatch) then
+		local event = evmatch.events[1] or false
+		if (event) then
+			local subscribed_vars = evmatch.subscribed_vars
+			local vars_to_load = event.vars_to_load
+			-- Если для данного события есть подписанные переменные
+			if util.contains(subscribed_vars, varlink) then
+				-- Если в списке переменных к загрузке есть данная переменная
+				if (util.contains(vars_to_load, varlink)) then
+					local i = false
+					-- Удаляем переменную из списка загруженных
+					for j,vlink in ipairs(vars_to_load) do
+						if vlink == varlink then
+							i = j
+							break
+						end
+					end
+					if (i) then 
+						table.remove(vars_to_load, i) 
+					end
+				elseif (#vars_to_load == 0) then
+					-- если список загруженных переменных пуст - удаляем данное событие из очереди
+					table.remove(evmatch.events, 1)
+				end
+			end
+		end
+	--util.dumptable(rules.subscription.queu)
+	end
+end
+
+function rules:make_subscription(rule)
+	for varname, varlink in pairs(rule.setting) do
+		if (varlink["source"] and varlink["source"]["type"] == "subscribe") then
+			-- Записываем переменную в список всех, имеющих подписки
+			table.insert(rules.subscription.vars, rule.setting[varname])
+
+			-- Формируем каркас пустой очереди
+			local ubus_objname = varlink["source"]["ubus"]
+			local evname = varlink["source"]["evname"]
+			local event_match = varlink["source"]["match"]
+			local evmatch_md5 = evuuid(evname, event_match)
+			rules.subscription.queu[ubus_objname] = rules.subscription.queu[ubus_objname] or {}
+			rules.subscription.queu[ubus_objname][evmatch_md5] = rules.subscription.queu[ubus_objname][evmatch_md5] or {
+				["evname"] = evname,
+				subscribed_vars = {},
+				subscribed_varnames = {}, -- for debug needs only
+				events = {}
+			}
+			if (not util.contains(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_vars, varlink)) then
+				table.insert(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_vars, varlink)
+				if (debug_cli.rule and debug_cli.rule == "queu") then
+					local vr_name = "[" .. rule.ruleid .. " | " .. varname .. "]"
+					table.insert(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_varnames, vr_name)
+				end
+			end
+
+			-- Подписываемся на UBUS
+			for ubusname,_ in util.kspairs(rules.subscription.queu) do
+				local sub = {
+			        notify = function(msg, name)
+			            rules.subscription.dispatcher(ubusname, name, msg)
+			        end
+			    }
+			    rules.conn:subscribe(ubusname, sub)
+			end
+
+
+			--print("======= QUEU =========")
+			--util.dumptable(rules.subscription.queu)
+
+		end
+	end
+end
+
 
 function rules:make_ubus()
 	self.conn = ubus.connect()
@@ -167,35 +332,16 @@ function rules:make_ubus()
 
 end
 
--- function rules:subscribe_ubus(payload)
---   local sub = {
---     notify = function(msg, name)
-
---     	print("APPLOGIC SUBCRIBED: ")
---     	print("Msg: " .. util.serialize_json(msg))
---     	print("Name: " .. name)
---     	print("-------" .. payload)
-      
---     end
---   }
---   local sr = rules.conn:subscribe("tsmodem.driver", sub)
---   print("==== result of subscription")
---   print(sr)
---   util.dumptable(sub)
--- end
-
 
 function rules:make()
 	local rules_path = "/usr/lib/lua/applogic/rule"
-	local id, rules = '', self.setting.rules_list.target
+	local id, ruleshome = '', self.setting.rules_list.target
 
 	local files = flist({path = rules_path, grep = ".lua"})
 	for i=1, #files do
 		id = util.split(files[i], '.lua')[1]
-		rules[id] = require("applogic.rule." .. id)
+		ruleshome[id] = require("applogic.rule." .. id)
 	end
-
-	--util.dumptable(rules)
 end
 
 
@@ -212,6 +358,8 @@ function rules:check_driver_automation()
 end
 
 function rules:run_all()
+--profile.start()
+
 	local user_session_alive = rules:check_driver_automation()
 	--if (rules:check_driver_automation() == "run") then
 		local rules_list = self.setting.rules_list.target
@@ -245,11 +393,19 @@ function rules:run_all()
 			rules:overview(rules_list,rules.iteration)
 		end
 
+		if (debug_cli.rule and debug_cli.rule == "queu") then
+			report:queu(rules, iteration)
+		end
+
 		rules:clear_cache()
-		rules:push_next_subscribed()
+		--rules:push_next_subscribed()
 		rules.iteration = rules.iteration + 1
 
 	--end
+-- execute code that will be profiled
+--profile.stop()
+-- report for the top 10 functions, sorted by execution time
+--print(profile.report(10))
 end
 
 function rules:overview(rules_list, iteration)

@@ -31,9 +31,7 @@ callinit() {
 }
 run() {
     uci set applogic.debug_mode.enable='0'
-    uci delete applogic.debug_mode.rule
     uci commit
-
     sleep 1
     exec /usr/bin/lua /usr/lib/lua/applogic/app.lua
     RETVAL=$?
@@ -49,6 +47,9 @@ debug() {
     uci set applogic.debug_mode.enable='1'
     [ -n "$RULE" ] || {
         uci set applogic.debug_mode.rule="overview"
+    }
+    [ -n "$RULE" ] && [ "$RULE" == "queu" ] && {
+        uci set applogic.debug_mode.rule=queu
     }
     [ -n "$RULE" ] && {
         uci set applogic.debug_mode.rule=$RULE

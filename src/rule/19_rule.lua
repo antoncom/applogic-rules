@@ -6,7 +6,7 @@ local I18N = require "luci.i18n"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Журналирование - статус интерфейса PPTP VPN",
+		input = "Журналирование - статус интерфейса TSMODEM",
 	},
 	up_ifname = {
 		note = [[ Имя сетевого интерфейса, который up ]],
@@ -15,7 +15,7 @@ local rule_setting = {
 			type = "subscribe",
 			ubus = "network.interface",
 			evname = "interface.update",
-			match = { interface = "pptpvpn"}
+			match = { interface = "tsmodem"}
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.interface ]],
@@ -29,7 +29,7 @@ local rule_setting = {
 			type = "subscribe",
 			ubus = "network.interface",
 			evname = "interface.down",
-			match = { interface = "pptpvpn"}
+			match = { interface = "tsmodem"}
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.interface ]],
@@ -40,15 +40,15 @@ local rule_setting = {
 	journal = {
 		input = "",
 		modifier = {
-			["1_skip"] = [[ if ($up_ifname == "pptpvpn" or $down_ifname == "pptpvpn") then return false else return true end ]],
+			["1_skip"] = [[ if ($up_ifname == "tsmodem" or $down_ifname == "tsmodem") then return false else return true end ]],
 			["2_func"] = [[ 
-				local up = ($up_ifname == "pptpvpn") and "UP"
-				local down = ($down_ifname == "pptpvpn") and "DOWN"
+				local up = ($up_ifname == "tsmodem") and "UP"
+				local down = ($down_ifname == "tsmodem") and "DOWN"
 				local out = up or down
 				return({ 
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = "Изменился статус интерфейса PPTPVPN",
-					source = "Network  (20-rule)",
+					name = "Изменился статус интерфейса TSMODEM",
+					source = "Network  (19-rule)",
 					command = "subscribe network.interface",
 					response = out
 				}) 
@@ -72,14 +72,10 @@ function rule:make()
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
-	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
-	local all_rules = rule.parent.setting.rules_list.target
-	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
-
 	self:load("title"):modify():debug()
 	self:load("up_ifname"):modify():debug()
 	self:load("down_ifname"):modify():debug()
-	self:load("journal"):modify():debug()
+    self:load("journal"):modify():debug()
 end
 
 

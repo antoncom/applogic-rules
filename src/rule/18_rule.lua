@@ -14,7 +14,8 @@ local rule_setting = {
 		source = {
 			type = "subscribe",
 			ubus = "tsmodem.driver",
-			event_name = "SMS-SENT-OK",
+			evname = "SMS-SENT-OK",
+			match = {},
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.payload.answer ]]
@@ -26,7 +27,8 @@ local rule_setting = {
 		source = {
 			type = "subscribe",
 			ubus = "tsmodem.driver",
-			event_name = "SMS-SENT-ERROR",
+			evname = "SMS-SENT-ERROR",
+			match = {},
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.payload.answer ]]
@@ -85,6 +87,14 @@ function rule:make()
 
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	-- if rule.parent.state.mode == "stop" then return end
+
+	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	local all_rules = rule.parent.setting.rules_list.target
+	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	if (r01_wait_timer and r01_wait_timer > 0) then 
+		--if rule.debug_mode.enabled then print("------ 18_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
 
 	self:load("title"):modify():debug() 	-- Use debug(ONLY) to check the var only
 	self:load("sms_sent_ok"):modify():debug()	-- Use "overview" to include the variable to the all rules overview report in debug mode

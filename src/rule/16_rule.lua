@@ -286,6 +286,14 @@ function rule:make()
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
+	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	local all_rules = rule.parent.setting.rules_list.target
+	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	if (r01_wait_timer and r01_wait_timer > 0) then 
+		--if rule.debug_mode.enabled then print("------ 15_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
+
 	
 	self:load("title"):modify():debug()
 	self:load("trusted_phones"):modify():debug()

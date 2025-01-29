@@ -122,7 +122,7 @@ local rule_setting = {
 	iface_up = {
 		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
         modifier = {
-            ["1_skip"] = [[ return (($sim_ready ~= "true") or ($switching ~= "false") ) ]],
+            ["1_skip"] = [[ return (not ($sim_ready == "true" and $switching ~= "true") ) ]],
             ["2_bash"] = [[ ifconfig 3g-tsmodem 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
             ["3_func"] = [[ local lastreg_t = tonumber($lastreg_timer) or 0
 							if ($iface_up == "UP") then return "true"
@@ -250,7 +250,7 @@ function rule:make()
 	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
 	if (r01_wait_timer and r01_wait_timer > 0) then 
-		if rule.debug_mode.enabled then print("------ 02_rule SKIPPED as r01_wait_timer > 0 -----") end
+		--if rule.debug_mode.enabled then print("------ 02_rule SKIPPED as r01_wait_timer > 0 -----") end
 		return 
 	end
 
