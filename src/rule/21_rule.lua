@@ -42,12 +42,12 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[ if ($up_ifname == "openvpn" or $down_ifname == "openvpn") then return false else return true end ]],
 			["2_func"] = [[ 
-				local up = ($up_ifname == "openvpn") and "UP"
-				local down = ($down_ifname == "openvpn") and "DOWN"
+				local up = ($up_ifname == "openvpn") and "OpenVPN UP"
+				local down = ($down_ifname == "openvpn") and "OpenVPN DOWN"
 				local out = up or down
 				return({ 
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = "Изменился статус интерфейса OPENVPN",
+					name = "Изменился статус сетевого интерфейса",
 					source = "Network  (21-rule)",
 					command = "subscribe network.interface",
 					response = out

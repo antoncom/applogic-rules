@@ -15,7 +15,7 @@ local rule_setting = {
 			type = "subscribe",
 			ubus = "network.interface",
 			evname = "interface.update",
-			match = { interface = "pptpvpn"}
+			match = { interface = "vpnpptp"}
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.interface ]],
@@ -29,7 +29,7 @@ local rule_setting = {
 			type = "subscribe",
 			ubus = "network.interface",
 			evname = "interface.down",
-			match = { interface = "pptpvpn"}
+			match = { interface = "vpnpptp"}
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.interface ]],
@@ -40,14 +40,14 @@ local rule_setting = {
 	journal = {
 		input = "",
 		modifier = {
-			["1_skip"] = [[ if ($up_ifname == "pptpvpn" or $down_ifname == "pptpvpn") then return false else return true end ]],
+			["1_skip"] = [[ if ($up_ifname == "vpnpptp" or $down_ifname == "vpnpptp") then return false else return true end ]],
 			["2_func"] = [[ 
-				local up = ($up_ifname == "pptpvpn") and "UP"
-				local down = ($down_ifname == "pptpvpn") and "DOWN"
+				local up = ($up_ifname == "vpnpptp") and "PPTP UP"
+				local down = ($down_ifname == "vpnpptp") and "PPTP DOWN"
 				local out = up or down
 				return({ 
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = "Изменился статус интерфейса PPTPVPN",
+					name = "Изменился статус интерфейса",
 					source = "Network  (20-rule)",
 					command = "subscribe network.interface",
 					response = out

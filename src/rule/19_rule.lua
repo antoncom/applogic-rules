@@ -42,12 +42,12 @@ local rule_setting = {
 		modifier = {
 			["1_skip"] = [[ if ($up_ifname == "tsmodem" or $down_ifname == "tsmodem") then return false else return true end ]],
 			["2_func"] = [[ 
-				local up = ($up_ifname == "tsmodem") and "UP"
-				local down = ($down_ifname == "tsmodem") and "DOWN"
+				local up = ($up_ifname == "tsmodem") and "Tsmodem UP"
+				local down = ($down_ifname == "tsmodem") and "Tsmodem DOWN"
 				local out = up or down
 				return({ 
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = "Изменился статус интерфейса TSMODEM",
+					name = "Изменился статус интерфейса сетевого интерфейса",
 					source = "Network  (19-rule)",
 					command = "subscribe network.interface",
 					response = out
