@@ -6,7 +6,7 @@ local I18N = require "luci.i18n"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Журналирование - статус интерфейса TSMODEM",
+		input = "Журналирование - статус интерфейса MODEM",
 	},
 	up_ifname = {
 		note = [[ Имя сетевого интерфейса, который up ]],
@@ -15,7 +15,7 @@ local rule_setting = {
 			type = "subscribe",
 			ubus = "network.interface",
 			evname = "interface.update",
-			match = { interface = "tsmodem"}
+			match = { interface = "modem"}
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.interface ]],
@@ -29,7 +29,7 @@ local rule_setting = {
 			type = "subscribe",
 			ubus = "network.interface",
 			evname = "interface.down",
-			match = { interface = "tsmodem"}
+			match = { interface = "modem"}
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.interface ]],
@@ -40,10 +40,10 @@ local rule_setting = {
 	journal = {
 		input = "",
 		modifier = {
-			["1_skip"] = [[ if ($up_ifname == "tsmodem" or $down_ifname == "tsmodem") then return false else return true end ]],
+			["1_skip"] = [[ if ($up_ifname == "modem" or $down_ifname == "modem") then return false else return true end ]],
 			["2_func"] = [[ 
-				local up = ($up_ifname == "tsmodem") and "Tsmodem UP"
-				local down = ($down_ifname == "tsmodem") and "Tsmodem DOWN"
+				local up = ($up_ifname == "modem") and "Modem UP"
+				local down = ($down_ifname == "modem") and "Modem DOWN"
 				local out = up or down
 				return({ 
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
@@ -69,7 +69,7 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	-- Пропускаем выполнние правила, если модуль tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
 	self:load("title"):modify():debug()
