@@ -32,7 +32,7 @@ callinit() {
 run() {
     uci set applogic.debug_mode.enable='0'
     uci commit
-    sleep 1
+    sleep 5
     exec /usr/bin/lua /usr/lib/lua/applogic/app.lua
     RETVAL=$?
 }
