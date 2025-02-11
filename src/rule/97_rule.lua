@@ -35,21 +35,6 @@ local rule_setting = {
 		}
 	},
 
-	-- connected_usb_time = {
-	-- 	note = [[ Время когда USB порт установился в состояние "connected"  ]],
-	-- 	input = 0,
-	-- 	source = {
-	-- 		type = "ubus",
-	-- 		object = "tsmodem.driver",
-	-- 		method = "usb",
-	-- 		params = {},
-	-- 	},
-	-- 	modifier = {
-	-- 		["1_skip"] = [[ return ($usb == "disconnected" ) ]],
-	-- 		["2_bash"] = [[ jsonfilter -e $.time ]],
-	-- 	}
-	-- },
-
 	sim_ready = {
 		note = [[ Сим-карта в слоте? "true" / "false" ]],
 		--input = "true",
@@ -280,7 +265,6 @@ function rule:make()
 	self:load("title"):modify():debug() 	-- Use debug(ONLY) to check the var only
 	self:load("sim_id"):modify():debug()	-- Use "overview" to include the variable to the all rules overview report in debug mode
 	self:load("usb"):modify():debug()
-	-- self:load("connected_usb_time"):modify():debug()
 	self:load("sim_ready"):modify():debug(overview)
 
 	self:load("timeout"):modify():debug()

@@ -113,7 +113,7 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.comment ]],
-			--["2_bash"] = [[ sed s/\"//g ]],
+			["2_bash"] = [[ sed s/\"//g ]],
 		}
 	},
 

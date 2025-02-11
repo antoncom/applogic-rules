@@ -123,7 +123,7 @@ local rule_setting = {
 		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
         modifier = {
             ["1_skip"] = [[ return (not ($sim_ready == "true" and $switching ~= "true") ) ]],
-            ["2_bash"] = [[ ifconfig 3g-tsmodem 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
+            ["2_bash"] = [[ ifconfig 3g-modem 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
             ["3_func"] = [[ local lastreg_t = tonumber($lastreg_timer) or 0
 							if ($iface_up == "UP") then return "true"
 							elseif lastreg_t < 30 then return "*"
@@ -263,7 +263,7 @@ function rule:make()
 
 	self:load("sim_ready"):modify():debug()
 	self:load("network_registration"):modify():debug()
-	self:load("lastreg_timer"):modify():debug(overview)
+	self:load("lastreg_timer"):modify():debug()
 	self:load("os_time"):modify():debug()
 	self:load("iface_up"):modify():debug()
 	self:load("event_datetime"):modify():debug()
