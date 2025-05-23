@@ -5,6 +5,7 @@ local last_mdfr_name = require "applogic.util.last_mdfr_name"
 
 require "applogic.modifier.skip"
 require "applogic.modifier.lua"
+require "applogic.modifier.lua_func"
 require "applogic.modifier.bash"
 require "applogic.modifier.frozen"
 require "applogic.modifier.trigger"
@@ -76,6 +77,10 @@ function main:modify(varname, rule) --[[
 	            if "func" == mdf_name:sub(3) then
 	                varlink.subtotal = func(varname, mdf_name, rule)
 	            end
+
+				if "lua-func" == mdf_name:sub(3) then
+					varlink.subtotal = lua_func(varname, mdf_name, rule)
+				end
 
 	            if "bash" == mdf_name:sub(3) then
 	                varlink.subtotal = bash(varname, mdf_name, mdf_body, rule)

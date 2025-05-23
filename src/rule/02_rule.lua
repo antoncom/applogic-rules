@@ -114,7 +114,10 @@ local rule_setting = {
     os_time = {
 		note = [[ Время ОС на предыдущей итерации ]],
         modifier= {
-            ["1_func"] = [[ return os.time() ]],
+            -- ["1_func"] = [[ return os.time() ]],
+			["1_lua-func"] = function ()
+				return os.time()
+			end,
             ["2_save"] = [[ return $os_time ]]
         }
     },
