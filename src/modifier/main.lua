@@ -60,7 +60,6 @@ function main:modify(varname, rule) --[[
 						is_skip = skip(varname, rule)
 					elseif "skip-func" == mdf_name:sub(3) then
 						is_skip = skip_func(varname, rule)
-						print(is_skip)
 					end
 
 					if is_skip then
