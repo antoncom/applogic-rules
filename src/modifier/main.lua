@@ -4,6 +4,7 @@ local last_mdfr_name = require "applogic.util.last_mdfr_name"
 
 
 require "applogic.modifier.skip"
+require "applogic.modifier.skip_func"
 require "applogic.modifier.lua"
 require "applogic.modifier.lua_func"
 require "applogic.modifier.bash"
@@ -52,20 +53,28 @@ function main:modify(varname, rule) --[[
 	if varlink.modifier then --and #util.keys(varlink.modifier) > 0 then
         for mdf_name, mdf_body in util.kspairs(varlink.modifier) do
 			if not varlink.frozen  then
-	            if "skip" == mdf_name:sub(3) then
-	                local is_skip = skip(varname, rule)
-	                if is_skip then
+	            if "skip" == mdf_name:sub(3) or "skip-func" == mdf_name:sub(3) then
+	                local is_skip
+
+					if "skip" == mdf_name:sub(3) then
+						is_skip = skip(varname, rule)
+					elseif "skip-func" == mdf_name:sub(3) then
+						is_skip = skip_func(varname, rule)
+						print(is_skip)
+					end
+
+					if is_skip then
 						-- Если указать у переменной input = "some value"
 						-- то перед отменой обработки присвоить переменно йзначение из input
 						-- иначе в переменной останется хранится последнее расчётное значение (из output)
 						--varlink.subtotal = varlink.input or varlink.output or ""
-					   if rule["default"][varname].input then
-						   varlink.input = string.format("%s", rule["default"][varname].input) -- cloning default input
-						   varlink.subtotal = string.format("%s",varlink.input)
-					   else
-						   varlink.subtotal = string.format("%s",varlink.output)
-					   end
-	                    break
+						if rule["default"][varname].input then
+							varlink.input = string.format("%s", rule["default"][varname].input) -- cloning default input
+							varlink.subtotal = string.format("%s",varlink.input)
+						else
+							varlink.subtotal = string.format("%s",varlink.output)
+						end
+	                	break
 	                end
 	            end
 				if "trigger" == mdf_name:sub(3) then
