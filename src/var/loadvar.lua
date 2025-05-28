@@ -46,6 +46,7 @@ local loadvar_metatable = {
 
 		local modifier = require "applogic.modifier.main"
 		local skipped = require "applogic.modifier.skip"
+		local skipped_func = require "applogic.modifier.skip_func"
 		local frozen = require "applogic.modifier.frozen"
 		local last_mdfr_name = require "applogic.util.last_mdfr_name"
 
@@ -82,6 +83,12 @@ local loadvar_metatable = {
 		-- Check if the variable skipped
 		local skipped = varlink.modifier and #util.keys(varlink.modifier) > 0 and varlink.modifier["1_skip"]
 		skipped = skipped and skip(varname, rule)
+
+		-- Check if the variable skipped (lua function method)
+		local skipped_function_method = varlink.modifier and #util.keys(varlink.modifier) > 0 and varlink.modifier["1_skip-func"]
+		skipped_function_method = skipped_function_method and skip_func(varname, rule)
+
+		skipped = skipped or skipped_function_method
 
 		-- Check if the variable is frozen
 		local frozened = varlink.frozen

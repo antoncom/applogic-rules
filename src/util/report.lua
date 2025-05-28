@@ -174,7 +174,7 @@ function report:print_rule(level, iteration)
 				local passlogic = ""
 				if vars[varname]["modifier"] then
 					for name, mdf in util.kspairs(vars[varname]["modifier"]) do
-						if "skip" == name:sub(3) then
+						if "skip" == name:sub(3) or "skip-func" == name:sub(3) then
 							if mdf["value"] then
 								passlogic = "[skip]"
 								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
