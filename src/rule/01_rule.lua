@@ -9,6 +9,20 @@ local rule_setting = {
 		input = "Правило переключения если нет Cим-карты в слоте",
 	},
 
+	resetting = {
+		note = [[ Статус ресета модема. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "resetting",
+			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
+	},
+
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
 		source = {
@@ -20,7 +34,6 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-            --["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
 		}
 	},
 
@@ -47,7 +60,9 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+			["2_lua-func"] = function (vars)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			end
 		}
 	},
 
@@ -100,9 +115,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ local unknown = ($usb == "disconnected" or $switching == "true") 
-							if unknown then return "" else return $sim_ready end
-						 ]],
+			["2_lua-func"] = function (vars)
+				local unknown = (vars.usb == "disconnected" or vars.switching == "true") 
+				if unknown then return "" else return vars.sim_ready end
+			end
 		}
 	},
 
@@ -128,20 +144,24 @@ local rule_setting = {
 		note = [[ Таймер ожидания на попытки найти Сим-карту в слоте ]],
 		input = 0,
 		modifier = {
-			["1_skip"] = [[ return (not tonumber($os_time)) ]],
-			["2_func"] = [[
-				local wt = tonumber($wait_timer) or 0
+			["1_skip-func"] = function (vars)
+				return (not tonumber(vars.os_time))
+			end,
+			["2_lua-func"] = function (vars)
+				local wt = tonumber(vars.wait_timer) or 0
 
-				local STEP = os.time() - tonumber($os_time)
+				local STEP = os.time() - tonumber(vars.os_time)
 				if STEP > 50 then STEP = 2 end -- it uses when ntpd synced system time
 
-				if ($sim_ready == "true" or $do_switch == "true") then
+				if (vars.sim_ready == "true" or vars.do_switch == "true") then
 					return 0
 				else
 					return (wt + STEP)
 				end
-			]],
-			["3_save"] = [[ return $wait_timer ]]
+			end,
+			["3_save-func"] = function (vars)
+				return vars.wait_timer
+			end
 
 		}
 	},
@@ -156,18 +176,19 @@ local rule_setting = {
 			params = { rule = "01_rule"},
 		},
 		modifier = {
-			["1_skip"] = [[
-				local SIMID_OK = ($sim_id == "0" or $sim_id == "1")
-				local USB_OK = 	( $usb == "connected" )
-				local wt = tonumber($wait_timer) or 0
-				local t = tonumber($timeout) or 0
+			["1_skip-func"] = function (vars)
+				local SIMID_OK = (vars.sim_id == "0" or vars.sim_id == "1")
+				local USB_OK = 	( vars.usb == "connected" )
+				local wt = tonumber(vars.wait_timer) or 0
+				local t = tonumber(vars.timeout) or 0
 				local TIMEOUT = (wt >= t)
-				local SIM_NOT_READY = ($sim_ready == "false")
-				return ( not (SIMID_OK and USB_OK and TIMEOUT and SIM_NOT_READY) )
-			]],
+				local SIM_NOT_READY = (vars.sim_ready == "false")
+				local NOT_SWITCHING = (vars.switching ~= "true")
+				local NOT_RESETTING = (vars.resetting ~= "true")
+				return ( not (SIMID_OK and USB_OK and TIMEOUT and SIM_NOT_READY and NOT_SWITCHING and NOT_RESETTING) )
+			end,
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			--["3_func"] = [[ return tostring($do_switch) ]],
-			["4_frozen"] = [[ return 10 ]]
+			["3_frozen"] = [[ return 10 ]]
 		}
 	},
 
@@ -175,25 +196,30 @@ local rule_setting = {
 		note = [[ Отсчёт секунд при отсутствии Сим-карты в слоте. ]],
 		input = "0", -- Set default value if you need "reset" variable before skipping
 		modifier = {
-			["1_skip"] = [[ return (not tonumber($os_time)) ]],
-			["2_func"] = [[
-				local STEP = os.time() - tonumber($os_time)
+			["1_skip-func"] = function (vars)
+				return (not tonumber(vars.os_time))
+			end,
+			["2_lua-func"] = function (vars)
+				local v_ost = tonumber(vars.os_time) or 0
+				local STEP = os.time() - v_ost
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local SIM_OK = ($sim_ready == "true")
-				local USB_NOT_CONNECTED = ($usb == "disconnected")
-				local st = tonumber($switch_time) or 0
-				local JUST_SWITCHED = ((tonumber($os_time) - st) < 20)
+				local SIM_OK = (vars.sim_ready == "true")
+				local USB_NOT_CONNECTED = (vars.usb == "disconnected")
+				local st = tonumber(vars.switch_time) or 0
+				local JUST_SWITCHED = ((v_ost - st) < 20)
 
-				local rt = tonumber($reset_timer) or 0
+				local rt = tonumber(vars.reset_timer) or 0
 				local TIMER = rt + STEP
 
 				if USB_NOT_CONNECTED then return 0
 				elseif JUST_SWITCHED then return 0
 				elseif SIM_OK then return 0
 				else return TIMER end
-			]],
-			["3_save"] = [[ return $reset_timer ]]
+			end,
+			["3_save-func"] = function (vars)
+				return vars.reset_timer
+			end
 		}
 	},
 
@@ -201,19 +227,20 @@ local rule_setting = {
 	reset_modem = {
 		note = [[ Подать сигнал сброса на модем через каждые 20 сек. ]],
 		input = "false",
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "do_reset",
+			params = { rule = "01_rule"},
+		},
 		modifier = {
-			["1_skip"] = [[
-				local rt = tonumber($reset_timer) or 0
-				return (rt < 20)
-			]],
-			["2_exec"] = [[
-				ubus call tsmodem.stm send '{"command":"~0:SIM.EN=0"}' &> /dev/null;
-				sleep 2;
-				ubus call tsmodem.stm send '{"command":"~0:SIM.EN=1"}' &> /dev/null;
-				sleep 2;
-				ubus call tsmodem.stm send '{"command":"~0:SIM.PWR=0"}' &> /dev/null;
-			]],
-			["3_func"] = [[ return "true" ]],
+			["1_skip-func"] = function (vars)
+				local rt = tonumber(vars.reset_timer) or 0
+				return (rt < 20 or vars.resetting == "true" or vars.switching == "true")
+			end,
+			["2_lua-func"] = function (vars)
+				return "true"
+			end,
 			["4_frozen"] = [[ return 10 ]]
 		}
 	},
@@ -221,8 +248,12 @@ local rule_setting = {
 	os_time = {
 		note = [[ Время ОС на предыдущей итерации ]],
 		modifier = {
-			["1_func"] = [[ return os.time() ]],
-			["2_save"] = [[ return $os_time ]]
+			["1_lua-func"] = function (vars)
+				return os.time()
+			end,
+			["2_save-func"] = function (vars)
+				return vars.os_time
+			end
 		}
 	},
 
@@ -246,29 +277,29 @@ local rule_setting = {
 
     journal = {
 		modifier = {
-			["1_skip"] = [[ 
-				if ($event_is_new == "true" and ($sim_ready == "true" or $sim_ready == "false")) then return false else return true end 
-			]],
-			["2_func"] = [[ 
-			local response 
-			if $sim_ready == "" then 
-				response = "not available" 
-			elseif $sim_ready == "false" then 
-				response = "not ready" 
-			elseif $sim_ready == "true" then 
-				response = "ready"
-			else
-				response = $sim_ready
-			end
-			
-			return({ 
-				datetime = $event_datetime,
-				name = "Sim Card status",
-				source = "Modem  (01-rule)",
-				command = "AT+CPIN?",
-				response = response
-			}) 
-		]],
+			["1_skip-func"] = function (vars)
+				if (vars.event_is_new == "true" and (vars.sim_ready == "true" or vars.sim_ready == "false")) then return false else return true end 
+			end,
+			["2_lua-func"] = function (vars)
+				local response 
+				if vars.sim_ready == "" then 
+					response = "not available" 
+				elseif vars.sim_ready == "false" then 
+					response = "not ready" 
+				elseif vars.sim_ready == "true" then 
+					response = "ready"
+				else
+					response = vars.sim_ready
+				end
+				
+				return({ 
+					datetime = vars.event_datetime,
+					name = "Sim Card status",
+					source = "Modem  (01-rule)",
+					command = "AT+CPIN?",
+					response = response
+				}) 
+			end,
 			["3_store-db"] = {
 				param_list = { "journal" }	
 			},
@@ -303,6 +334,7 @@ function rule:make()
 
 
 	self:load("title"):modify():debug() 	-- Use debug(ONLY) to check the var only
+	self:load("resetting"):modify():debug(overview)
 	self:load("switching"):modify():debug(overview)
 	self:load("switch_time"):modify():debug(overview)
 

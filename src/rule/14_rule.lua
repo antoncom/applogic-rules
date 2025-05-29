@@ -30,7 +30,6 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "reg",
 			params = {},
-			--filter = "value"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
@@ -56,7 +55,6 @@ local rule_setting = {
 
 	old_provider_id = {
 		note = [[ Определить текущую настройку - идентификатор провайдера ]],
-		-- input = "",
 		source = {
 			type = "ubus",
 			object = "uci",
@@ -82,11 +80,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_skip"] = [[
-				local netreg = tonumber($network_registration)
+			["1_skip-func"] = function (vars)
+				local netreg = tonumber(vars.network_registration)
 				local REG_OK = 	netreg and (netreg >= 0 and netreg <=5)
 				return ( not REG_OK )
-			]],
+			end,
 			["2_bash"] = [[ jsonfilter -e $.comment ]],		-- 22099, etc
 		}
 	},
@@ -95,20 +93,20 @@ local rule_setting = {
 		note = [[ Автоматически установить настройки Сим для определённого провайдера ]],
 		input = "false",
 		modifier = {
-			["1_skip"] = [[
-				local ALREADY_SET = ($old_provider_id == $new_provider_id)
-				local EMPTY_OLD = ($old_provider_id == "")
-				local EMPTY_NEW = ($new_provider_id == "")
-				local MANUAL_SET = ($is_autodetect_provider == "0")
+			["1_skip-func"] = function (vars)
+				local ALREADY_SET = (vars.old_provider_id == vars.new_provider_id)
+				local EMPTY_OLD = (vars.old_provider_id == "")
+				local EMPTY_NEW = (vars.new_provider_id == "")
+				local MANUAL_SET = (vars.is_autodetect_provider == "0")
 				return (ALREADY_SET or EMPTY_OLD or EMPTY_NEW or MANUAL_SET)
-			]],
-			["2_func"] = [[
-				local sid = $sim_id
+			end,
+			["2_lua-func"] = function (vars)
+				local sid = vars.sim_id
 				local uci = require "luci.model.uci".cursor()
-				uci:set("tsmodem","sim_"..sid,"provider",$new_provider_id)
+				uci:set("tsmodem","sim_"..sid,"provider",vars.new_provider_id)
 				uci:commit("tsmodem")
 				return "true"
-			]],
+			end,
 			["3_frozen"] = [[ return 6 ]]
 		}
 	},
@@ -123,12 +121,12 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_skip"] = [[
-				local NEW_PROVIDER_IDENTIFIED = tonumber($new_provider_id)
-				local nr = tonumber($network_registration)
+			["1_skip-func"] = function (vars)
+				local NEW_PROVIDER_IDENTIFIED = tonumber(vars.new_provider_id)
+				local nr = tonumber(vars.network_registration)
 				local REG_OK = 	nr and ((nr >= 0) and (nr <= 8))
 				return not (REG_OK and NEW_PROVIDER_IDENTIFIED)
-			]],
+			end,
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 		}
 	},
@@ -142,7 +140,9 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+			["2_lua-func"] = function (vars)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			end
 		}
 	},
 	send_ui = {
@@ -173,14 +173,18 @@ local rule_setting = {
 	},
     journal = {
 		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true" and $new_provider_id ~= $old_provider_id and $provider_name ~= "" and tostring($sim_id)) then return false else return true end ]],
-			["2_func"] = [[return({
-					name = "Автоопределение провайдера в слоте SIM-" .. (tonumber($sim_id)+1),
-					datetime = $event_datetime,
+			["1_skip-func"] = function (vars)
+				if (vars.event_is_new == "true" and vars.new_provider_id ~= vars.old_provider_id and vars.provider_name ~= "" and tostring(vars.sim_id)) then return false else return true end
+			end,
+			["2_lua-func"] = function (vars)
+				return({
+					name = "Автоопределение провайдера в слоте SIM-" .. (tonumber(vars.sim_id)+1),
+					datetime = vars.event_datetime,
 					source = "Modem  (14-rule)",
 					command = "AT+COPS?",
-					response = $provider_name 
-				})]],
+					response = vars.provider_name 
+				})
+			end,
 			["3_store-db"] = {
 				param_list = { "journal" }
 			},

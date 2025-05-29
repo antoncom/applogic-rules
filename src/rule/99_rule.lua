@@ -34,7 +34,6 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-            --["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
 		}
 	},
 
@@ -49,7 +48,9 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))',
+			["2_lua-func"] = function (vars)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			end,
 		}
 	},
 
@@ -110,15 +111,15 @@ local rule_setting = {
 	do_switch = {
 		note = [[ Статус do_switch  ]],
 		modifier = {
-			["1_func"] = [[
-				local DO_SWITCH = ($r01_do_switch == "true"
-								or $r02_do_switch == "true"
-								or $r03_do_switch == "true"
-								or $r04_do_switch == "true"
-								or $r05_do_switch == "true"
-								or $r15_do_switch == "true")
+			["1_lua-func"] = function (vars)
+				local DO_SWITCH = (vars.r01_do_switch == "true"
+								or vars.r02_do_switch == "true"
+								or vars.r03_do_switch == "true"
+								or vars.r04_do_switch == "true"
+								or vars.r05_do_switch == "true"
+								or vars.r15_do_switch == "true")
 				if DO_SWITCH then return "true" else return "false" end
-			]],
+			end,
 			["2_frozen"] = [[ if $do_switch == "true" then return 10 else return 0 end ]]
 
 		}
@@ -145,24 +146,24 @@ local rule_setting = {
 			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
-			["1_skip"] = [[ 
-				if ($switching ~= "true") then return true else return false end 
-			]],
-			["2_func"] = [[
+			["1_skip-func"] = function (vars)
+				if (vars.switching ~= "true") then return true else return false end 
+			end,
+			["2_lua-func"] = function (vars)
 				local jsonc = require "luci.jsonc"
-				local switching_data = string.sub('$journal',2,-2)
+				local switching_data = string.sub(vars.journal,2,-2)
 
 				switching_data, errmsg = jsonc.parse(switching_data)
 				local info_source = switching_data.comment or ""
 				local info_command = switching_data.command or ""
 				return({ 
-					datetime = $event_datetime,
+					datetime = vars.event_datetime,
 					name = "Переключение СИМ-карты",
 					source = info_source,
 					command = info_command,
 					response = "OK"
 				})
-			]],
+			end,
 			["3_store-db"] = {
 				param_list = { "journal" }	
 			},

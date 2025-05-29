@@ -59,30 +59,32 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[ if (tonumber($signal)) then return $signal else return "-" end ]],
+			["2_lua-func"] = function (vars)
+				if (tonumber(vars.signal)) then return vars.signal else return "-" end 
+			end,
 		},
 	},
 
     LED1_mode = {
         note = [[ Режим мигания светодиода LED1 ]],
         modifier = {
-            ["1_func"] = [[
+            ["1_lua-func"] = function (vars)
                 local no_blinking = "v0"
                 local mode_1 = { scale = 25, blinking = "f200,800" }
                 local mode_2 = { scale = 50, blinking = "f200,200,200,800" }
                 local mode_3 = { scale = 75, blinking = "f200,200,200,200,200,800" }
                 local mode_4 = { scale = 100, blinking = "f200,200,200,200,200,200,200,800" }
-				local signal = tonumber($signal) or 0
-                if $network_registration ~= "1" then return no_blinking
+				local signal = tonumber(vars.signal) or 0
+                if vars.network_registration ~= "1" then return no_blinking
 					elseif (signal == 0) then return no_blinking
-					elseif ($switching == "true") then return no_blinking
+					elseif (vars.switching == "true") then return no_blinking
 					elseif (signal <= mode_1.scale) then return mode_1.blinking
 	                elseif (signal > mode_1.scale and signal <= mode_2.scale) then return mode_2.blinking
 	                elseif (signal > mode_2.scale and signal <= mode_3.scale) then return mode_3.blinking
 	                elseif (signal > mode_3.scale and signal <= mode_4.scale) then return mode_4.blinking
 					else return no_blinking
                 end
-             ]],
+             end,
         },
     },
 
@@ -98,18 +100,18 @@ local rule_setting = {
             },
 		},
 		modifier = {
-            ["1_skip"] = [[
-                return ($LED1_mode == $previous)
-            ]]
+            ["1_skip-func"] = function (vars)
+                return (vars.LED1_mode == vars.previous)
+            end
         }
     },
 
 	previous = {
 		note = [[ Режим мигания светодиода LED1 (на предыдущей итерации). ]],
 		modifier = {
-			["1_func"] = [[
-							return $LED1_mode
-						 ]],
+			["1_lua-func"] = function (vars)
+				return vars.LED1_mode
+			end,
 		},
 	},
 }

@@ -46,10 +46,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[
-				local usm = tonumber($uci_signal_min) or 5
+			["2_lua-func"] = function (vars)
+				local usm = tonumber(vars.uci_signal_min) or 5
 				return usm
-			]],
+			end,
 			["3_save"] = [[ return $uci_signal_min ]]
 		}
 	},
@@ -68,10 +68,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[
-				local uts = tonumber($uci_timeout_signal) or 121
+			["2_lua-func"] = function (vars)
+				local uts = tonumber(vars.uci_timeout_signal) or 121
 				return uts
-			]]
+			end
 		}
 	},
 
@@ -108,14 +108,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[
-				local s = tonumber($signal) or 0
+			["2_kua-func"] = function (vars)
+				local s = tonumber(vars.signal) or 0
 				if (s > 0) then return s else return "" end
-			]],
-			-- ["3_frozen"] = [[
-			-- 	local s = tonumber($signal) or 0
-			-- 	if(s > 0) then return 10 else return 0 end
-			-- ]],
+			end,
 		},
 	},
 
@@ -172,23 +168,25 @@ local rule_setting = {
 		note = [[ Отсчитывает секунды, если уровень сигнала ниже нормы, сек. ]],
 		input = 0,
 		modifier = {
-			["1_skip"] = [[ return not tonumber($os_time) ]],
-			["2_func"] = [[
-				local STEP = os.time() - tonumber($os_time)
+			["1_skip-func"] = function (vars)
+				return not tonumber(vars.os_time)
+			end,
+			["2_lua-func"] = function (vars)
+				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local r01t = tonumber($r01_timer) or 0
-				local r02lt = tonumber($r02_lastreg_timer) or 0
-				local r03lt = tonumber($r03_lowbalance_timer) or 0
-				local r04lt = tonumber($r04_lastping_timer) or 0
-				local lst = tonumber($low_signal_timer) or 0
-				local s = tonumber($signal) or 0
-				local usm = tonumber($uci_signal_min) or 0
+				local r01t = tonumber(vars.r01_timer) or 0
+				local r02lt = tonumber(vars.r02_lastreg_timer) or 0
+				local r03lt = tonumber(vars.r03_lowbalance_timer) or 0
+				local r04lt = tonumber(vars.r04_lastping_timer) or 0
+				local lst = tonumber(vars.low_signal_timer) or 0
+				local s = tonumber(vars.signal) or 0
+				local usm = tonumber(vars.uci_signal_min) or 0
 				local TIMER = lst + STEP
 
 				local PING_NOT_OK = (r04lt > 0)
 				local REG_NOT_OK = (r02lt > 0)
-				local BALANCE_NOT_OK = ((r03lt > 0) and ($sim_balance ~= "*") and ($sim_balance ~= ""))
+				local BALANCE_NOT_OK = ((r03lt > 0) and (vars.sim_balance ~= "*") and (vars.sim_balance ~= ""))
 				local SIM_NOT_OK = (r01t > 0)
 				local SIGNAL_OK = (s > usm)
 				if REG_NOT_OK then return 0
@@ -197,16 +195,22 @@ local rule_setting = {
 				elseif PING_NOT_OK then return 0
 				elseif SIGNAL_OK then return 0
 				else return TIMER end
-			]],
-			["3_save"] = [[ return $low_signal_timer ]]
+			end,
+			["3_save-func"] = function (vars)
+				return vars.low_signal_timer
+			end
 		}
 	},
 
 	os_time = {
 		note = [[ Текущее время системы (вспомогательная переменная) ]],
 		modifier= {
-			["1_func"] = [[ return os.time() ]],
-			["2_save"] = [[ return $os_time ]]
+			["1_lua-func"] = function (vars)
+				return os.time()
+			end,
+			["2_save-func"] = function (vars)
+				return vars.os_time
+			end
 		}
 	},
 
@@ -221,7 +225,6 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			--["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
 		}
 	},
 
@@ -235,13 +238,13 @@ local rule_setting = {
 			params = { rule = "05_rule"},
 		},
 		modifier = {
-			["1_skip"] = [[
-				local READY = 	( $switching == "" or $switching == "false" )
-				local lst = tonumber($low_signal_timer) or 0
-				local uts = tonumber($uci_timeout_signal) or 0
+			["1_skip-func"] = function (vars)
+				local READY = 	( vars.switching == "" or vars.switching == "false" )
+				local lst = tonumber(vars.low_signal_timer) or 0
+				local uts = tonumber(vars.uci_timeout_signal) or 0
 				local TIMEOUT = ( lst > uts )
 				return ( not (READY and TIMEOUT) )
-			]],
+			end,
 			["2_bash"] = [[ jsonfilter -e $.value ]],
 			["3_frozen"] = [[ return 10 ]]
 
@@ -269,7 +272,9 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))',
+			["2_lua-func"] = function (vars)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			end
 		}
 	},
     event_is_new = {
@@ -284,25 +289,27 @@ local rule_setting = {
 	},
     journal = {
 		modifier = {
-			["1_skip"] = [[ 
-				local s = tonumber($signal) or 0
-				local lst = tonumber($low_signal_timer) or 0
-				local ucm = tonumber($uci_signal_min)
-				local ucmb = tonumber($uci_signal_before) or ucm
+			["1_skip-func"] = function (vars)
+				local s = tonumber(vars.signal) or 0
+				local lst = tonumber(vars.low_signal_timer) or 0
+				local ucm = tonumber(vars.uci_signal_min)
+				local ucmb = tonumber(vars.uci_signal_before) or ucm
 				local LOW_SIGNAL = (lst > 0)
-				local ISNEW = ($event_is_new == "true")
+				local ISNEW = (vars.event_is_new == "true")
 				local USER_UPDATE_SETTING = (ucmb ~= ucm and ucm > s)
-				if (tonumber($signal) and ((LOW_SIGNAL and ISNEW) or USER_UPDATE_SETTING)) then
+				if (tonumber(vars.signal) and ((LOW_SIGNAL and ISNEW) or USER_UPDATE_SETTING)) then
 					return false else return true
 				end
-			]],
-			["2_func"] = [[return({
-					datetime = $event_datetime,
+			end,
+			["2_lua-func"] = function (vars)
+				return({
+					datetime = vars.event_datetime,
 					name = "Низкий уровень сигнала базовой станции",
 					source = "Modem  (05-rule)",
 					command = "AT+CSQ",
-					response = tostring($signal .. "%" .. " (при норме  " .. $uci_signal_min .."%)")
-				})]],
+					response = tostring(vars.signal .. "%" .. " (при норме  " .. vars.uci_signal_min .."%)")
+				})
+			end,
 			["3_store-db"] = {
 				param_list = { "journal" }
 			},
@@ -338,7 +345,7 @@ function rule:make()
 	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
 	if (r01_wait_timer and r01_wait_timer > 0) then 
-		--if rule.debug_mode.enabled then print("------ 05_rule SKIPPED as r01_wait_timer > 0 -----") end
+		if rule.debug_mode.enabled then print("------ 05_rule SKIPPED as r01_wait_timer > 0 -----") end
 		return 
 	end
 

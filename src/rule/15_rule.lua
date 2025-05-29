@@ -41,9 +41,13 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_skip"] = [[ return ($sim_ready == "true") ]],
+			["1_skip-func"] = function (vars)
+				return (vars.sim_ready == "true")
+			end,
 			["2_bash"] = [[ jsonfilter -e $.time ]],
-			["3_save"] = [[ return $sim_not_ready_last_time ]],
+			["3_save-func"] = function (vars)
+				return vars.sim_not_ready_last_time
+			end,
 		}
 	},
 
@@ -84,7 +88,9 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_skip"] = [[ return ($usb == "disconnected" ) ]],
+			["1_skip-func"] = function (vars)
+				return (vars.usb == "disconnected" )
+			end,
 			["2_bash"] = [[ jsonfilter -e $.time ]],
 		}
 	},
@@ -116,7 +122,9 @@ local rule_setting = {
             },
         },
         modifier = {
-			["1_skip"] = [[ return not (tonumber($provider_id) and ($provider_id ~= 0)) ]],
+			["1_skip-func"] = function (vars)
+				return not (tonumber(vars.provider_id) and (vars.provider_id ~= 0))
+			end,
             ["2_bash"] = [[ jsonfilter -e $.value ]]
         }
     },
@@ -155,32 +163,32 @@ local rule_setting = {
         note = [[ Частота запроса баланса: 1-2 мин. - в первые 10 мин активной SIM; Затем 15..45 мин. при постоянной работе на данной SIM. ]],
 		input = 60,
         modifier= {
-			["1_skip"] = [[
-				local SIM_READY = ($sim_ready == "true")
-				local OS_TIME_READY = tonumber($os_time)
-				local USBTIME_OK = tonumber($connected_usb_time)
-				local BALANCE_OK = tonumber($current_balance_state)
+			["1_skip-func"] = function (vars)
+				local SIM_READY = (vars.sim_ready == "true")
+				local OS_TIME_READY = tonumber(vars.os_time)
+				local USBTIME_OK = tonumber(vars.connected_usb_time)
+				local BALANCE_OK = tonumber(vars.current_balance_state)
 				local SKIP_IF = not (SIM_READY and OS_TIME_READY and BALANCE_OK and USBTIME_OK)
 				return SKIP_IF
-			]],
-			["2_func"] = [[
-				local STEP = os.time() - tonumber($os_time)
+			end,
+			["2_lua-func"] = function (vars)
+				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
 				local beginning = 180
-				local snrlt = tonumber($sim_not_ready_last_time) or 0
+				local snrlt = tonumber(vars.sim_not_ready_last_time) or 0
 				local JUST_STARTED = (snrlt == 0)
 				local SIM_JUST_INSERTED = ((snrlt > 0) and (os.time() - snrlt) < beginning )
-				local IS_USB_RECENTLY_CONNECTED = ((tonumber($os_time) - tonumber($connected_usb_time)) < 900)
+				local IS_USB_RECENTLY_CONNECTED = ((tonumber(vars.os_time) - tonumber(vars.connected_usb_time)) < 900)
 				if (JUST_STARTED or SIM_JUST_INSERTED or IS_USB_RECENTLY_CONNECTED) then
-					local ubt = tonumber($uci_balance_timeout) or 120
+					local ubt = tonumber(vars.uci_balance_timeout) or 120
 					-- it uses to coordinate chek balance interval (15_rule) and switch SIM on low balance (03_rule)
 					return math.random (ubt+10, ubt*2)
 				else
 					return math.random (900, 2700) -- 15..45 mins
 				end
-			]],
-			--["3_save"] = [[ return $a_balance_interval ]],
+			end,
+			--["3_save-func"] = [[ return $a_balance_interval ]],
 			["4_frozen"] = [[
 				local NOT_CALCULATED_AGAIN_TIME = tonumber($a_balance_interval) and (tonumber($a_balance_interval) + 10)
 				return NOT_CALCULATED_AGAIN_TIME or 0
@@ -192,31 +200,32 @@ local rule_setting = {
 		note = [[ Отсчёт интервалов получения баланса ]],
 		input = 0, -- Set default value if you need "reset" variable before skipping
 		modifier = {
-			["1_skip"] = [[
-				local JUST_STARTED = (not tonumber($os_time))
-				--local BALANCE_UNDEFINED = (not tonumber($current_balance_state))
-				--return JUST_STARTED or BALANCE_UNDEFINED
+			["1_skip-func"] = function (vars)
+				local JUST_STARTED = (not tonumber(vars.os_time))
 				return JUST_STARTED
-			]],
-			["2_func"] = [[
-				local STEP = os.time() - tonumber($os_time)
+			end,
+			["2_lua-func"] = function (vars)
+				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
-
-				local SIM_OK = ($sim_ready == "true")
-				local t = tonumber($timer) or 0
-				local bi = tonumber($a_balance_interval) or 0
+				local SIM_OK = (vars.sim_ready == "true")
+				local t = tonumber(vars.timer) or 0
+				local bi = tonumber(vars.a_balance_interval) or 0
                 if (SIM_OK and (t < bi)) then
                     return ( t + STEP )
                 else return 0 end
-			]],
-            ["3_save"] = [[ return $timer ]]
+			end,
+            ["3_save-func"] = function (vars)
+            	return vars.timer
+            end
 		}
 	},
 
 	wait_balance = {
 		note = [[ Максимальное значение timeout, после которого прекращаются неудачные попытки получить баланс ]],
 		modifier= {
-			["1_func"] = [[ return 600 ]],
+			["1_lua-func"] = function (vars)
+				return 600
+			end,
 		}
 	},
 
@@ -224,25 +233,25 @@ local rule_setting = {
 		note = [[ Таймаут - сколько ждать получения валидного значения баланса ]],
 		input = 600, -- Set default value if you need "reset" variable before skipping
 		modifier = {
-			["1_skip"] = [[
-				return not tonumber($os_time)
-			]],
-			["2_func"] = [[
-				local STEP = os.time() - tonumber($os_time)
+			["1_skip-func"] = function (vars)
+				return not tonumber(vars.os_time)
+			end,
+			["2_lua-func"] = function (vars)
+				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local tut = tonumber($timeout) or 0
-				local BALANCE_VALID = (tonumber($current_balance_state))
-				local BALANCE_FAIL = ($current_balance_state == "")
+				local tut = tonumber(vars.timeout) or 0
+				local BALANCE_VALID = (tonumber(vars.current_balance_state))
+				local BALANCE_FAIL = (vars.current_balance_state == "")
 
-				if (BALANCE_VALID or BALANCE_FAIL) then return $wait_balance
+				if (BALANCE_VALID or BALANCE_FAIL) then return vars.wait_balance
 				elseif (tut > 0) then
 					return ( tut - STEP )
 				else
-					return $wait_balance
+					return vars.wait_balance
 				end
-			]],
-			["3_save"] = [[ return $timeout ]]
+			end,
+			["3_save-func"] = function (vars) return vars.timeout end
 		}
 	},
 
@@ -250,8 +259,8 @@ local rule_setting = {
     os_time = {
 		note = [[ Текущее время системы (вспомогательная переменная) ]],
         modifier= {
-            ["1_func"] = [[ return os.time() ]],
-            ["2_save"] = [[ return $os_time ]]
+            ["1_lua-func"] = function (vars) return os.time() end,
+            ["2_save-func"] = function (vars) return vars.os_time end
         }
     },
 
@@ -268,23 +277,23 @@ local rule_setting = {
             },
         },
         modifier = {
-            ["1_skip"] = [[
-				local pid = tonumber($provider_id) or 0
-				local t = tonumber($timer) or 0
-				local USSD_OK = ($ussd_command ~= "")
-				local SIM_OK = ($sim_ready == "true")
+            ["1_skip-func"] = function (vars)
+				local pid = tonumber(vars.provider_id) or 0
+				local t = tonumber(vars.timer) or 0
+				local USSD_OK = (vars.ussd_command ~= "")
+				local SIM_OK = (vars.sim_ready == "true")
 				local PROVIDER_IDENTIFIED = (pid ~= 0)
                 local TIME_TO_REQUEST = (t < 5)
-                local BALANCE_OK = tonumber($current_balance_state)
-                local BALANCE_FAIL = ($current_balance_state == "")
-                local BALANCE_IN_PROGRESS = ($current_balance_state == "*")
-				local NOBODY_SWITCHING = ($switching == "false" or $switching == "")
+                local BALANCE_OK = tonumber(vars.current_balance_state)
+                local BALANCE_FAIL = (vars.current_balance_state == "")
+                local BALANCE_IN_PROGRESS = (vars.current_balance_state == "*")
+				local NOBODY_SWITCHING = (vars.switching == "false" or vars.switching == "")
                 local READY_TO_SEND = SIM_OK and PROVIDER_IDENTIFIED and TIME_TO_REQUEST and (BALANCE_OK or BALANCE_FAIL) and (not BALANCE_IN_PROGRESS) and NOBODY_SWITCHING
                 if USSD_OK and READY_TO_SEND then return false else return true end
-            ]],
+            end,
             ["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_func"] = [[ return tostring($send_command) ]],
-            ["4_frozen"] = [[ return 10 ]],                         -- Задержать следующий запрос на 10 сек (это debounce)
+			["3_lua-func"] = function (vars) return tostring(vars.send_command) end,
+            ["4_frozen"] = [[ return 10 ]], -- Задержать следующий запрос на 10 сек (это debounce)
         }
     },
 
@@ -298,9 +307,9 @@ local rule_setting = {
 			params = { rule = "15_rule"},
 		},
 		modifier = {
-			["1_skip"] = [[ return tonumber($timeout) and (tonumber($timeout) > 0) ]],
+			["1_skip-func"] = function (vars) return tonumber(vars.timeout) and (tonumber(vars.timeout) > 0) end,
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_func"] = [[ return tostring($do_switch) ]],
+			["3_lua-func"] = function (vars) return tostring(vars.do_switch) end,
 			["4_frozen"] = [[ return 10 ]]
 		}
 	},
@@ -356,7 +365,14 @@ function rule:make()
 	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
 	if (r01_wait_timer and r01_wait_timer > 0) then 
-		--if rule.debug_mode.enabled then print("------ 15_rule SKIPPED as r01_wait_timer > 0 -----") end
+		if rule.debug_mode.enabled then print("------ 15_rule SKIPPED as r01_wait_timer > 0 -----") end
+		return 
+	end
+
+	-- Пропускаем выполнения правила, если СИМ не зарегистрирована в сети
+	local r02_lastreg_timer = tonumber(all_rules["02_rule"].setting.lastreg_timer.output)
+	if (r02_lastreg_timer and r02_lastreg_timer > 0) then 
+		if rule.debug_mode.enabled then print("------ 15_rule SKIPPED as r02_lastreg_timer > 0 -----") end
 		return 
 	end
 

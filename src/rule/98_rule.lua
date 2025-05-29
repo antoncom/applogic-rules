@@ -39,19 +39,23 @@ local rule_setting = {
 		note = [[ Сколько времени модем выключен (отсутствует /dev/ttyUSB2) ]],
 		input = 0,
 		modifier = {
-			["1_skip"] = [[ return (not tonumber($os_time)) ]],
-			["2_func"] = [[
-				local STEP = os.time() - tonumber($os_time)
+			["1_skip-func"] = function (vars)
+				return (not tonumber(vars.os_time))
+			end,
+			["2_lua-func"] = function (vars)
+				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local it = tonumber($idle_time) or 0
-				if ($usb == "connected") then
+				local it = tonumber(vars.idle_time) or 0
+				if (vars.usb == "connected") then
 					return 0
 				else
 					return (it + STEP)
 				end
-			]],
-			["3_save"] = [[ return $idle_time ]]
+			end,
+			["3_save-func"] = function (vars)
+				return vars.idle_time
+			end
 
 		}
 	},
@@ -59,30 +63,33 @@ local rule_setting = {
 	os_time = {
 		note = [[ Время ОС на предыдущей итерации ]],
 		modifier = {
-			["1_func"] = [[ return os.time() ]],
-			["2_save"] = [[ return $os_time ]]
+			["1_lua-func"] = function (vars)
+				return os.time()
+			end,
+			["2_save-func"] = function (vars)
+				return vars.os_time
+			end
 		}
 	},
 
 
     reinit_modem = {
 		note = [[ Перезапускает модем если USB порт /dev/ttyUSB2 отсутствует более 2 мин. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "do_reset",
+			params = { rule = "98_rule"},
+		},
 		modifier = {
-			["1_skip"] = [[
-				local it = tonumber($idle_time) or 0
-				return ($usb == "connected" or (it <= 120))
-			]],
-            ["2_exec"] = [[
-				ls /dev/ | grep ttyUSB2 || (
-					ubus call tsmodem.stm send '{"command":"~0:SIM.EN=0"}' &> /dev/null;
-					sleep 2;
-					ubus call tsmodem.stm send '{"command":"~0:SIM.EN=1"}' &> /dev/null;
-					sleep 2;
-					ubus call tsmodem.stm send '{"command":"~0:SIM.PWR=0"}' &> /dev/null;
-				)
-			]],
- 			["3_func"] = [[ return "true" ]],
-            ["4_frozen"] = [[ return 30 ]]
+			["1_skip-func"] = function (vars)
+				local it = tonumber(vars.idle_time) or 0
+				return (vars.usb == "connected" or (it <= 120))
+			end,
+ 			["2_lua-func"] = function (vars)
+ 				return "true"
+ 			end,
+            ["3_frozen"] = [[ return 30 ]]
 		}
 	},
 
@@ -107,7 +114,9 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+			["2_lua-func"] = function (vars)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			end
 		}
 	},
     event_is_new = {
@@ -124,17 +133,18 @@ local rule_setting = {
     journal = {
 		modifier = {
 			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-			["2_func"] = [[return({
-					datetime = $event_datetime,
+			["2_lua-func"] = function (vars)
+				return({
+					datetime = vars.event_datetime,
 					name = "Изенилось состояние порта /dev/ttyUSB2",
 					source = "Modem  (98-rule)",
 					command = "watchdog",
-					response = $usb
-				})]],
+					response = vars.usb
+				})
+			end,
 			["3_store-db"] = {
 				param_list = { "journal" }
 			},
-			--["4_frozen"] = [[ return 2 ]]
 		}
 	},
 }

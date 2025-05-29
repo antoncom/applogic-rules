@@ -28,7 +28,6 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "switching",
 			params = {},
-			--cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
@@ -48,15 +47,15 @@ local rule_setting = {
     LED3_mode = {
         note = [[ Режим мигания светодиода LED3. ]],
         modifier = {
-            ["1_func"] = [[
-                            local no_blinking = "v0"
-                            local mode_1 = { sim_id = "0", blinking = "f200,800" }
-                            local mode_2 = { sim_id = "1", blinking = "f200,200,200,800" }
-                            if $switching == "true" then return no_blinking
-							elseif  ($sim_id == "0" and $r01_sim_ready == "true") then return mode_1.blinking
-							elseif  ($sim_id == "1" and $r01_sim_ready == "true") then return mode_2.blinking
-                            else return no_blinking end
-                         ]],
+            ["1_lua-func"] = function (vars)
+                local no_blinking = "v0"
+                local mode_1 = { sim_id = "0", blinking = "f200,800" }
+                local mode_2 = { sim_id = "1", blinking = "f200,200,200,800" }
+                if vars.switching == "true" then return no_blinking
+				elseif  (vars.sim_id == "0" and vars.r01_sim_ready == "true") then return mode_1.blinking
+				elseif  (vars.sim_id == "1" and vars.r01_sim_ready == "true") then return mode_2.blinking
+                else return no_blinking end
+            end,
         },
     },
 
@@ -71,18 +70,18 @@ local rule_setting = {
 			},
 		},
 		modifier = {
-			["1_skip"] = [[
-				return ($LED3_mode == $previous)
-			]]
+			["1_skip-func"] = function (vars)
+				return (vars.LED3_mode == vars.previous)
+			end
 		}
 	},
 
     previous = {
         note = [[ Режим мигания светодиода LED3 (на предыдущей итерации). ]],
         modifier = {
-            ["1_func"] = [[
-                            return $LED3_mode
-                         ]],
+            ["1_lua-func"] = function (vars)
+                return vars.LED3_mode
+            end,
         },
     },
 }

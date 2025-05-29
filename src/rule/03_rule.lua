@@ -39,10 +39,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[
-				local ubm = tonumber($uci_balance_min) or 30
+			["2_lua-func"] = function (vars)
+				local ubm = tonumber(vars.uci_balance_min) or 30
 				return ubm
-			]]
+			end
 		}
 	},
 
@@ -60,10 +60,10 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
-			["2_func"] = [[
-				local utb = tonumber($uci_timeout_bal) or 120
+			["2_lua-func"] = function (vars)
+				local utb = tonumber(vars.uci_timeout_bal) or 120
 				return utb
-			]]
+			end
 		}
 	},
 
@@ -83,10 +83,10 @@ local rule_setting = {
 	event_datetime = {
 		note = [[ Дата актуального баланса в формате для Web-интерфейса. ]],
 		modifier = {
-			["1_func"] = [[
-				local bt = tonumber($balance_time) or 0
+			["1_lua-func"] = function (vars)
+				local bt = tonumber(vars.balance_time) or 0
 				if (bt ~= 0) then return(os.date("%Y-%m-%d %H:%M:%S", bt)) else return "" end
-			]]
+			end
 		}
 	},
 
@@ -152,18 +152,20 @@ local rule_setting = {
 		note = [[ Счётчик секунд при балансе ниже минимума, сек. ]],
 		input = 0,
         modifier = {
-			["1_skip"] = [[ return not tonumber($os_time) ]],
-			["2_func"] = [[
-				local STEP = os.time() - tonumber($os_time)
+			["1_skip-func"] = function (vars)
+				return not tonumber(vars.os_time)
+			end,
+			["2_lua-func"] = function (vars)
+				local STEP = os.time() - (tonumber(vars.os_time) or 0)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local lbt = tonumber($lowbalance_timer) or 0
-				local sb = tonumber($sim_balance) or 0
-				local ubmin = tonumber($uci_balance_min) or 0
-				local r01t = tonumber($r01_timer) or 0
-				local r02lt = tonumber($r02_lastreg_timer) or 0
+				local lbt = tonumber(vars.lowbalance_timer) or 0
+				local sb = tonumber(vars.sim_balance) or 0
+				local ubmin = tonumber(vars.uci_balance_min) or 0
+				local r01t = tonumber(vars.r01_timer) or 0
+				local r02lt = tonumber(vars.r02_lastreg_timer) or 0
 				local TIMER = lbt + STEP
-				local BALANCE_OK = (sb > ubmin)
+				local BALANCE_OK = (sb > ubmin) 
 				local BALANCE_EMPTY = (sb == 0)
 				local SIM_NOT_REGISTERED = (r02lt > 0)
 				local SIM_ABSENT = (r01t > 0)
@@ -172,16 +174,22 @@ local rule_setting = {
 				elseif SIM_NOT_REGISTERED then return 0
 				elseif BALANCE_OK then return 0
 				else return TIMER or 0 end
-			]],
-			["3_save"] = [[ return $lowbalance_timer ]]
+			end,
+			["3_save-func"] = function (vars)
+				return vars.lowbalance_timer
+			end
         }
 	},
 
 	os_time = {
 		note = [[ Текущее время системы (вспомогательная переменная) ]],
 		modifier= {
-			["1_func"] = [[ return os.time() ]],
-			["2_save"] = [[ return $os_time ]]
+			["1_lua-func"] = function (vars)
+				return os.time()
+			end,
+			["2_save-func"] = function (vars)
+				return vars.os_time
+			end
 		}
 	},
 
@@ -211,6 +219,15 @@ local rule_setting = {
 		}
 	},
 
+	r01_resetting = {
+		note = [[ Значение resetting из правила 01_rule ]],
+		source = {
+			type = "rule",
+			rulename = "01_rule",
+			varname = "resetting"
+		},
+	},
+
 	do_switch = {
 		note = [[ Переключает слот если баланс SIM ниже порогового. ]],
 		input = "false",
@@ -221,15 +238,17 @@ local rule_setting = {
 			params = { rule = "03_rule"},
 		},
 		modifier = {
-			["1_skip"] = [[
-				local lt = tonumber($lowbalance_timer) or 0
-				local utb = tonumber($uci_timeout_bal) or 0
-				local READY = 	( $switching == "" or $switching == "false" )
+			["1_skip-func"] = function (vars)
+				local lt = tonumber(vars.lowbalance_timer) or 0
+				local utb = tonumber(vars.uci_timeout_bal) or 0
+				local READY = 	( vars.switching == "" or vars.switching == "false" or vars.r01_resetting ~= "true" )
 				local TIMEOUT = ((lt + 10) > utb)
 				return ( not (READY and TIMEOUT) )
-			]],
+			end,
 			["2_bash"] = [[ jsonfilter -e $.value ]],
-			["3_func"] = [[ return tostring($do_switch) ]],
+			["3_lua-func"] = function (vars)
+				return tostring(vars.do_switch)
+			end,
 			["4_frozen"] = [[ return 15 ]]
 		}
 	},
@@ -263,17 +282,20 @@ local rule_setting = {
 
 	journal = {
 		modifier = {
-			["1_skip"] = [[if ($event_is_new == "true" and (string.len($balance_message) > 0) )  then return false else return true end ]],
-			["2_func"] = [[
-			return({
-					datetime = $event_datetime,
-					name = "Получено значение баланса SIM-карты",
-					source = "Modem (03-rule)",
-					command = $ussd_command,
-					["response"] = $balance_message,
-					ussd_command = $ussd_command,
-					provider_id = $provider_id
-				})]],
+			["1_skip-func"] = function (vars)
+				if (vars.event_is_new == "true" and (string.len(vars.balance_message) > 0) )  then return false else return true end
+			end,
+			["2_lua-func"] = function (vars)
+				return({
+						datetime = vars.event_datetime,
+						name = "Получено значение баланса SIM-карты",
+						source = "Modem (03-rule)",
+						command = vars.ussd_command,
+						["response"] = vars.balance_message,
+						ussd_command = vars.ussd_command,
+						provider_id = vars.provider_id
+					})
+			end,
 			["3_store-db"] = {
 				param_list = { "journal" }
 			},
@@ -333,6 +355,7 @@ function rule:make()
 	self:load("os_time"):modify():debug()
 	self:load("event_is_new"):modify():debug()
 	self:load("switching"):modify():debug()
+	self:load("r01_resetting"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
 	self:load("send_ui"):modify():debug()
 	self:load("provider_id"):modify():debug()

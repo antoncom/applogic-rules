@@ -28,7 +28,6 @@ local rule_setting = {
 			object = "tsmodem.driver",
 			method = "reg",
 			params = {},
-			--filter = "value"
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.value ]],
@@ -63,26 +62,25 @@ local rule_setting = {
 			["2_ui-update"] = {
 				param_list = { "sim_id", "netmode" }
 			},
-			--["3_frozen"] = [[ return 10 ]]
 		}
 	},
 
     LED2_mode = {
         note = [[ Режим мигания светодиода LED2. ]],
         modifier = {
-            ["1_func"] = [[
-                            local no_blinking = "v0"
-                            local mode_1 = { name = "2G", blinking = "f200,200,200,800" }
-                            local mode_2 = { name = "3G", blinking = "f200,200,200,200,200,800" }
-                            local mode_3 = { scale = "4G", blinking = "f200,200,200,200,200,200,200,800" }
-                            if $network_registration ~= "1" then return no_blinking
-								elseif $switching == "true" then return no_blinking
-								elseif $netmode == "2G" then return mode_1.blinking
-                                elseif  $netmode == "3G" then return mode_2.blinking
-                                elseif  $netmode == "4G" then return mode_3.blinking
-                                else return no_blinking
-                            end
-                         ]],
+            ["1_lua-func"] = function (vars)
+            local no_blinking = "v0"
+            local mode_1 = { name = "2G", blinking = "f200,200,200,800" }
+            local mode_2 = { name = "3G", blinking = "f200,200,200,200,200,800" }
+            local mode_3 = { scale = "4G", blinking = "f200,200,200,200,200,200,200,800" }
+            if vars.network_registration ~= "1" then return no_blinking
+				elseif vars.switching == "true" then return no_blinking
+				elseif vars.netmode == "2G" then return mode_1.blinking
+                elseif  vars.netmode == "3G" then return mode_2.blinking
+                elseif  vars.netmode == "4G" then return mode_3.blinking
+                else return no_blinking
+            end
+        end,
         },
     },
 
@@ -97,18 +95,18 @@ local rule_setting = {
             },
 		},
 		modifier = {
-            ["1_skip"] = [[
-                return ($LED2_mode == $previous)
-            ]]
+            ["1_skip-func"] = function (vars)
+                return (vars.LED2_mode == vars.previous)
+            end
         }
     },
 
     previous = {
         note = [[ Режим мигания светодиода LED2 (на предыдущей итерации). ]],
         modifier = {
-            ["1_func"] = [[
-                            return $LED2_mode
-                         ]],
+            ["1_lua-func"] = function (vars)
+                return vars.LED2_mode
+            end,
         },
     },
 	event_datetime = {
@@ -120,7 +118,9 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_bash"] = [[ jsonfilter -e $.time ]],
-			["2_func"] = 'return(os.date("%Y-%m-%d %H:%M:%S", tonumber($event_datetime)))'
+			["2_lua-func"] = function (vars)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			end
 		}
 	},
     event_is_new = {
@@ -136,14 +136,18 @@ local rule_setting = {
 	},
     journal = {
 		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "false" or $LED2_mode == $previous) then return true else return false end ]],
-			["2_func"] = [[return({
-					datetime = $event_datetime,
+			["1_skip-func"] = function (vars)
+				if (vars.event_is_new == "false" or vars.LED2_mode == vars.previous) then return true else return false end
+			end,
+			["2_lua-func"] = function (vars)
+				return({
+					datetime = vars.event_datetime,
 					name = "Изменился статус сети (2G, 3G or 4G)",
 					source = "Modem  (07-rule)",
 					command = "AT+CNSMOD?",
-					response = tostring($netmode)
-				})]],
+					response = tostring(vars.netmode)
+				})
+			end,
 			["3_store-db"] = {
 				param_list = { "journal" }
 			},
