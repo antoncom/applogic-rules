@@ -1,7 +1,3 @@
--- local util = require "luci.util"
--- local substitute = require "applogic.util.substitute"
--- local pcallchunk = require "applogic.util.pcallchunk"
-
 function skip_func(varname, rule)
 	local var_debug
 	if rule.debug_mode.enabled then var_debug = require "applogic.var.debug" end
