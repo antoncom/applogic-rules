@@ -1,6 +1,6 @@
 local func_vars_builder = require "applogic.util.func_vars_builder"
 
-function lua_func(varname, mdf_name, rule)
+function save_func(varname, mdf_name, rule)
     local var_debug
     if rule.debug_mode.enabled then var_debug = require "applogic.var.debug" end
     local varlink = rule.setting[varname]
@@ -13,19 +13,13 @@ function lua_func(varname, mdf_name, rule)
     local noerror = true
     local tmp_res
 
-    if type(func) == "function" then
-        noerror, tmp_res = pcall(func, vars)
-
-        if noerror == false then
-            print("Error: " .. tostring(tmp_res))
-            tmp_res = nil
-        end
-    else
-        tmp_res = nil
-        noerror = false
-    end
+    noerror, tmp_res = pcall(func, vars)
 
     result = tmp_res or ""
+
+    if noerror then
+        varlink["saved"] = result
+    end
 
     if rule.debug_mode.enabled then
         local func_debug_info = debug.getinfo(func)
@@ -40,4 +34,4 @@ function lua_func(varname, mdf_name, rule)
     return result
 end
 
-return lua_func
+return save_func

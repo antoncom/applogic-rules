@@ -11,6 +11,7 @@ require "applogic.modifier.bash"
 require "applogic.modifier.frozen"
 require "applogic.modifier.trigger"
 require "applogic.modifier.save"
+require "applogic.modifier.save_func"
 require "applogic.modifier.shell"
 require "applogic.modifier.ui_update"
 require "applogic.modifier.exec"
@@ -55,13 +56,11 @@ function main:modify(varname, rule) --[[
 			if not varlink.frozen  then
 	            if "skip" == mdf_name:sub(3) or "skip-func" == mdf_name:sub(3) then
 	                local is_skip
-
 					if "skip" == mdf_name:sub(3) then
 						is_skip = skip(varname, rule)
 					elseif "skip-func" == mdf_name:sub(3) then
 						is_skip = skip_func(varname, rule)
 					end
-
 					if is_skip then
 						-- Если указать у переменной input = "some value"
 						-- то перед отменой обработки присвоить переменно йзначение из input
@@ -76,12 +75,14 @@ function main:modify(varname, rule) --[[
 	                	break
 	                end
 	            end
+
 				if "trigger" == mdf_name:sub(3) then
 	                local must_trigger = trigger(varname, rule)
 					if not must_trigger then
 	                    break
 	                end
 	            end
+
 	            if "func" == mdf_name:sub(3) then
 	                varlink.subtotal = func(varname, mdf_name, rule)
 	            end
@@ -105,6 +106,10 @@ function main:modify(varname, rule) --[[
 				if "save" == mdf_name:sub(3) then
 	                varlink.subtotal = save(varname, mdf_name, rule)
 	            end
+
+				if "save-func" == mdf_name:sub(3) then
+					varlink.subtotal = save_func(varname, mdf_name, rule)
+				end
 
 				if "shell" == mdf_name:sub(3) then
 					shell(varname, mdf_name, mdf_body, rule)

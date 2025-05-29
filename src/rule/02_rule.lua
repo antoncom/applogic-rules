@@ -141,19 +141,25 @@ local rule_setting = {
 				else return ( lastreg_t + STEP ) end
 			end,
 
-            ["3_save"] = [[ return $lastreg_timer ]]
+            -- ["3_save"] = [[ return $lastreg_timer ]],
+            ["3_save-func"] = function (vars)
+				return vars.lastreg_timer
+			end,
 		}
 	},
 
     os_time = {
 		note = [[ Время ОС на предыдущей итерации ]],
-        modifier= {
+        modifier = {
             -- ["1_func"] = [[ return os.time() ]],
 			["1_lua-func"] = function (vars)
 				return os.time()
 			end,
 
-            ["2_save"] = [[ return $os_time ]]
+            -- ["2_save"] = [[ return $os_time ]],
+            ["2_save-func"] = function (vars)
+				return vars.os_time
+			end,
         }
     },
 
