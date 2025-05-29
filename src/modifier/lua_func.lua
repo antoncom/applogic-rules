@@ -1,3 +1,5 @@
+local func_vars_builder = require "applogic.util.func_vars_builder"
+
 function lua_func(varname, mdf_name, rule)
     local var_debug
     if rule.debug_mode.enabled then var_debug = require "applogic.var.debug" end
@@ -5,20 +7,7 @@ function lua_func(varname, mdf_name, rule)
     local func = rule.setting[varname].modifier[mdf_name]
     local from_input = (not varlink.source) and mdf_name:sub(1,1) == "1"
 
-    local vars = {}
-
-    -- logic from util/substitute.lua
-    for name, _ in pairs(rule.setting) do
-        if name ~= varname then
-            vars[name] = rule.setting[name].output
-        else
-            if from_input then
-                vars[name] = rule.setting[name].input
-            else
-                vars[name] = rule.setting[name].subtotal
-            end
-        end
-    end
+    local vars = func_vars_builder.make_vars(varname, rule, from_input)
 
     local result = ""
     local noerror = true

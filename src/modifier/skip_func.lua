@@ -1,21 +1,15 @@
+local func_vars_builder = require "applogic.util.func_vars_builder"
+
 function skip_func(varname, rule)
 	local var_debug
 	if rule.debug_mode.enabled then var_debug = require "applogic.var.debug" end
 	local func = rule.setting[varname].modifier and rule.setting[varname].modifier["1_skip-func"] or 'Mistype: always use ["1_skip"] as skip modifier name.'
 
-    local vars = {}
-
-    -- logic from util/substitute.lua
-    for name, _ in pairs(rule.setting) do
-        if name ~= varname then
-            vars[name] = rule.setting[name].output
-        else
-            vars[name] = rule.setting[name].input
-        end
-    end
+    local vars = func_vars_builder.make_vars(varname, rule, true)
 
     local result = false
     local noerror, tmp_res
+
     if(type(func) == "function") then
         noerror, tmp_res = pcall(func, vars)
     else
