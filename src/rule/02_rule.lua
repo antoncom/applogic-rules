@@ -131,7 +131,7 @@ local rule_setting = {
 
             ["2_save-func"] = function (vars)
 				return vars.os_time
-			end,
+			end
         }
     },
 
@@ -215,7 +215,11 @@ local rule_setting = {
 			["3_lua-func"] = function (vars)
 				return tostring(vars.do_switch)
 			end,
-			["4_frozen"] = [[ return 10 ]]
+
+			-- ["4_frozen"] = [[ return 10 ]],
+			["4_frozen-func"] = function (vars)
+				return 10
+			end
 		}
 	},
 
