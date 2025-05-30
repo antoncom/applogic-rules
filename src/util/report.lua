@@ -194,7 +194,7 @@ function report:print_rule(level, iteration)
 						elseif "ui-update" == name:sub(3) then
 							passlogic = string.format("%s[ui-update]", passlogic)
 							ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
-						elseif "frozen" == name:sub(3) then
+						elseif "frozen" == name:sub(3) or "frozen-func" == name:sub(3) then
 							if mdf["value"] and tonumber(mdf["value"]) then
 								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(mdf["value"]) or mdf["value"])
 								--passlogic = string.format("%s[frozen]", passlogic)
@@ -283,7 +283,7 @@ function report:overview(rules, iteration)
 				local passlogic = ""
 				if vars[varname]["modifier"] then
 					for name, mdf in util.kspairs(vars[varname]["modifier"]) do
-						if "skip" == name:sub(3) then
+						if "skip" == name:sub(3) or "skip-func" == name:sub(3) then
 							if mdf["value"] then
 								passlogic = "[skip]"
 								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
@@ -300,7 +300,7 @@ function report:overview(rules, iteration)
 								passlogic = ""
 								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 							end
-						elseif "frozen" == name:sub(3) then
+						elseif "frozen" == name:sub(3) or "frozen-func" == name:sub(3) then
 							if mdf["value"] and tonumber(mdf["value"]) then
 								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(mdf["value"]) or mdf["value"])
 								--passlogic = string.format("%s[frozen]", passlogic)

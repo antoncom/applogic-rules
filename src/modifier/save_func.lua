@@ -1,4 +1,5 @@
 local func_vars_builder = require "applogic.util.func_vars_builder"
+local func_debug = require "applogic.util.func_debug"
 
 function save_func(varname, mdf_name, rule)
     local var_debug
@@ -22,13 +23,8 @@ function save_func(varname, mdf_name, rule)
     end
 
     if rule.debug_mode.enabled then
-        local func_debug_info = debug.getinfo(func)
-
-        local path_to_func = tostring(func_debug_info.source):match(".*applogic/(.*)")
-        local log_info = "path: " .. tostring(path_to_func) .. ":" .. tostring(func_debug_info.linedefined) .. "\n"
-        log_info = log_info .. "lines: " .. tostring(func_debug_info.linedefined) .. "-" .. tostring(func_debug_info.lastlinedefined) .. "\n"
-
-        var_debug(varname, rule):modifier(mdf_name, log_info, result, noerror)
+        local output_info = func_debug.generate_output_info(func)
+        var_debug(varname, rule):modifier(mdf_name, output_info, result, noerror)
     end
 
     return result
