@@ -9,6 +9,7 @@ require "applogic.modifier.lua"
 require "applogic.modifier.lua_func"
 require "applogic.modifier.bash"
 require "applogic.modifier.frozen"
+require "applogic.modifier.frozen_func"
 require "applogic.modifier.trigger"
 require "applogic.modifier.save"
 require "applogic.modifier.save_func"
@@ -131,6 +132,11 @@ function main:modify(varname, rule) --[[
             if "frozen" == mdf_name:sub(3) then
                 frozen(varname, rule, mdf_name)
             end
+
+			if "frozen-func" == mdf_name:sub(3) then
+				frozen_func(varname, rule, mdf_name)
+			end
+
             --- Place more modifiers here ---
 
         end
