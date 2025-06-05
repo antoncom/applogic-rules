@@ -81,7 +81,7 @@ end
 -- Пробежать по всем переменным всех правил
 
 -- Создать подписки (функции обработчики), удовлетворяющие evname, event_matched.
--- Такая функйия подписи будет просто складывать подходящие события в очередь
+-- Такая функция подписи будет просто складывать подходящие события в очередь
 
 -- Создать пустую очередь для вновь поступающих событий
 -- Создать функцию-диспетчер, который будет загружать события в переменные
@@ -170,6 +170,7 @@ rules.subscription.dispatcher = function(ubusobj, evname, evmsg)
 						vars_to_load = util.clone(rules.subscription.queu[ubusobj][evmatch_md5].subscribed_vars, false)
 					}
 					-- добавляем в очередь
+					--print("______EVENT_ADDED______: " .. evname)
 					table.insert(rules.subscription.queu[ubusobj][evmatch_md5].events, qu_item)
 				end
 			end
@@ -235,14 +236,33 @@ function rules:make_subscription(rule)
 				end
 			end
 
+			-- This is necessary to use pcall()
+			function do_subscribe(ubname, s)
+				rules.conn:subscribe(ubname, s)
+				return 0
+			end
+
 			-- Подписываемся на UBUS
 			for ubusname,_ in util.kspairs(rules.subscription.queu) do
 				local sub = {
 			        notify = function(msg, name)
-			            rules.subscription.dispatcher(ubusname, name, msg)
+			        	--util.perror("=== NOTIFY ===: " .. name)
+			        	--util.dumptable(msg)
+		            	rules.subscription.dispatcher(ubusname, name, msg)
 			        end
 			    }
-			    rules.conn:subscribe(ubusname, sub)
+				-- TODO: если какой-то сервис, напр. Tsmgpio не стартовал, то при запуске Applogic подписка переменной на его ubus-объект не состоится
+				-- Если же сервис позднее всё-таки стартует - то Applogic придётся перезапустить чтобы он подписал переменные
+				-- на вновь появившийся ubus-объект
+				-- TODO: перезапускать Applogic из-за какого-то другого сервиса - это не хорошо.
+				-- Надо подумать чтобы периодически проверять наличие "потерянного" объекта на шине ubus и пытаться подписаь переменные правил
+				-- TODO: механизм подписки, вообще, надо вынести в отдельный подмодуль Applogic-а и хорошенько переписать с учётом вышесказанного.
+		    	local success, err = pcall(do_subscribe, ubusname, sub)
+		    	if not success then
+					-- If no UBUS object then we only may to inform
+		    		print("SKIP subscribing on [" .. ubusname .. "] as it's absent on the UBUS.")
+		    	end
+
 			end
 
 
