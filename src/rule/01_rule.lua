@@ -145,7 +145,9 @@ local rule_setting = {
 		input = 0,
 		modifier = {
 			["1_skip-func"] = function (vars)
-				return (not tonumber(vars.os_time))
+				local not_ostime = not tonumber(vars.os_time)
+				local switching = (vars.switching ~= "false")
+				return (switching or not_ostime)
 			end,
 			["2_lua-func"] = function (vars)
 				local wt = tonumber(vars.wait_timer) or 0
@@ -197,7 +199,9 @@ local rule_setting = {
 		input = "0", -- Set default value if you need "reset" variable before skipping
 		modifier = {
 			["1_skip-func"] = function (vars)
-				return (not tonumber(vars.os_time))
+				local not_ostime = not tonumber(vars.os_time)
+				local switching = (vars.switching ~= "false")
+				return (switching or not_ostime)
 			end,
 			["2_lua-func"] = function (vars)
 				local v_ost = tonumber(vars.os_time) or 0

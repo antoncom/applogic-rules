@@ -169,7 +169,10 @@ local rule_setting = {
 		input = 0,
 		modifier = {
 			["1_skip-func"] = function (vars)
-				return not tonumber(vars.os_time)
+				local no_ostime = not tonumber(vars.os_time)
+				local switching = (vars.switching and vars.switching ~= "false")
+				local switch = (vars.do_switch and vars.do_switch == "true")
+				return (no_ostime or switching or switch)
 			end,
 			["2_lua-func"] = function (vars)
 				local STEP = os.time() - tonumber(vars.os_time)

@@ -98,13 +98,30 @@ local rule_setting = {
 		}
 	},
 
+	switching = {
+		note = [[ Статус переключения Sim: true / false. ]],
+		source = {
+			type = "ubus",
+			object = "tsmodem.driver",
+			method = "switching",
+			params = {},
+			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		},
+		modifier = {
+			["1_bash"] = [[ jsonfilter -e $.value ]],
+		}
+	},
+
 
 	lastping_timer = {
 		note = [[ Отсчёт секунд при отсутствии PING в сети. ]],
 		input = "0", -- Set default value each time you use [skip] modifier
 		modifier = {
 			["1_skip-func"] = function (vars)
-				return not tonumber(vars.os_time)
+				local no_ostime = not tonumber(vars.os_time)
+				local switching = (vars.switching ~= "false")
+				local switch = (vars.do_switch and vars.do_switch == "true")
+				return (no_ostime or switching or switch)
 			end,
 			["2_lua-func"] = function (vars)
 							local STEP = os.time() - tonumber(vars.os_time)
@@ -133,20 +150,6 @@ local rule_setting = {
 			["2_save-func"] = function (vars)
 				return vars.os_time
 			end
-		}
-	},
-
-	switching = {
-		note = [[ Статус переключения Sim: true / false. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "switching",
-			params = {},
-			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
-		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
 		}
 	},
 
@@ -263,9 +266,9 @@ function rule:make()
     self:load("uci_timeout_ping"):modify():debug()
 
     self:load("ping_status"):modify():debug()
+   	self:load("switching"):modify():debug()
 	self:load("lastping_timer"):modify():debug(overview)
 	self:load("os_time"):modify():debug()
-	self:load("switching"):modify():debug()
 	self:load("do_switch"):modify():debug(overview)
 	self:load("event_datetime"):modify():debug()
 	self:load("send_ui"):modify():debug()

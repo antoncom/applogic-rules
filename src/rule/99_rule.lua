@@ -132,7 +132,7 @@ local rule_setting = {
 				param_list = {
 					"switching",
                     "sim_id",
-					"do_switch"
+--					"do_switch"
 				}
 			},
 		}
@@ -183,6 +183,7 @@ function rule:make()
 
 	local overview = {
 		["sim_id"] = { ["red"] = [[ return($sim_id ~= "0" and $sim_id ~= "1") ]] },
+		["switching"] = { ["yellow"] = [[ return($switching ~= "false") ]] },
 	}
 
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
@@ -192,7 +193,7 @@ function rule:make()
 	self:load("sim_id"):modify():debug(overview)
 	self:load("switching"):modify():debug()
 	self:load("event_datetime"):modify():debug()
-	self:load("r01_do_switch"):modify():debug()
+	-- self:load("r01_do_switch"):modify():debug()
 	-- self:load("r02_do_switch"):modify():debug()
 	-- self:load("r03_do_switch"):modify():debug()
 	-- self:load("r04_do_switch"):modify():debug()

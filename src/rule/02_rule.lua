@@ -137,15 +137,22 @@ local rule_setting = {
 
 	iface_up = {
 		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
+		source = {
+			type = "ubus",
+			object = "network.interface.modem",
+			method = "status",
+			params = {},
+		},
         modifier = {
 			["1_skip-func"] = function (vars)
 				return (not (vars.sim_ready == "true" and vars.switching ~= "true") )
 			end,
-            ["2_bash"] = [[ ifconfig 3g-modem 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
+			["2_bash"] = [[ jsonfilter -e $.up ]],
+            --["2_bash"] = [[ ifconfig 3g-modem 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
 			["3_lua-func"] = function (vars)
 				local lastreg_t = tonumber(vars.lastreg_timer) or 0
 
-				if (vars.iface_up == "UP") then
+				if (vars.iface_up == "true") then
 					return "true"
 				elseif lastreg_t < 30 then
 					return "*"
