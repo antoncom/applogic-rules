@@ -19,9 +19,13 @@ local rule_setting = {
             method = "sim",
             params = {},
         },
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]]
-		}
+		-- modifier = {
+		-- 	["1_bash"] = [[ jsonfilter -e $.value ]]
+		-- }
+		["1_lua-func"] = function (vars)
+			local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+			return lua_table.value or ""
+		end
     },
 
 
@@ -38,7 +42,11 @@ local rule_setting = {
 			},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["2_lua-func"] = function (vars)
 				local ubm = tonumber(vars.uci_balance_min) or 30
 				return ubm
@@ -59,7 +67,11 @@ local rule_setting = {
 			},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["2_lua-func"] = function (vars)
 				local utb = tonumber(vars.uci_timeout_bal) or 120
 				return utb
@@ -76,7 +88,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]]
+			-- ["1_bash"] = [[ jsonfilter -e $.time ]]
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.time or ""
+			end,
 		}
 	},
 
@@ -99,7 +115,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -112,7 +132,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.comment ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.comment ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.comment or ""
+			end,
 			["2_bash"] = [[ sed s/\"//g ]],
 		}
 	},
@@ -126,7 +150,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.command ]]
+			-- ["1_bash"] = [[ jsonfilter -e $.command ]]
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.command or ""
+			end
 		}
 	},
 
@@ -201,7 +229,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.unread or ""
+			end,
 		}
 	},
 
@@ -215,7 +247,11 @@ local rule_setting = {
 			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -245,7 +281,11 @@ local rule_setting = {
 				local TIMEOUT = ((lt + 10) > utb)
 				return ( not (READY and TIMEOUT) )
 			end,
-			["2_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["2_bash"] = [[ jsonfilter -e $.value ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["3_lua-func"] = function (vars)
 				return tostring(vars.do_switch)
 			end,
@@ -276,7 +316,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.comment ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.comment ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.comment or ""
+			end,
 		}
 	},
 

@@ -19,7 +19,11 @@ local rule_setting = {
             params = {},
         },
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]]
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]]
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
     },
 
@@ -45,7 +49,11 @@ local rule_setting = {
 			},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["2_lua-func"] = function (vars)
 				local usm = tonumber(vars.uci_signal_min) or 5
 				return usm
@@ -67,7 +75,11 @@ local rule_setting = {
 			},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["2_lua-func"] = function (vars)
 				local uts = tonumber(vars.uci_timeout_signal) or 121
 				return uts
@@ -84,7 +96,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		},
 	},
 
@@ -107,7 +123,11 @@ local rule_setting = {
 			varname = "json_signal"
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["2_kua-func"] = function (vars)
 				local s = tonumber(vars.signal) or 0
 				if (s > 0) then return s else return "" end
@@ -160,7 +180,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -227,7 +251,11 @@ local rule_setting = {
 			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -248,7 +276,11 @@ local rule_setting = {
 				local TIMEOUT = ( lst > uts )
 				return ( not (READY and TIMEOUT) )
 			end,
-			["2_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["2_bash"] = [[ jsonfilter -e $.value ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["3_frozen"] = [[ return 10 ]]
 
 		}
@@ -274,7 +306,11 @@ local rule_setting = {
 			varname = "json_signal"
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.time ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.time or ""
+			end,
 			["2_lua-func"] = function (vars)
 				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
 			end
@@ -287,7 +323,11 @@ local rule_setting = {
 			varname = "json_signal"
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.unread or ""
+			end,
 		}
 	},
     journal = {

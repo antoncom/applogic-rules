@@ -44,7 +44,11 @@ local rule_setting = {
 			["1_skip-func"] = function (vars)
 				return (vars.sim_ready == "true")
 			end,
-			["2_bash"] = [[ jsonfilter -e $.time ]],
+			-- ["2_bash"] = [[ jsonfilter -e $.time ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.time or ""
+			end,
 			["3_save-func"] = function (vars)
 				return vars.sim_not_ready_last_time
 			end,
@@ -61,7 +65,11 @@ local rule_setting = {
 			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -74,7 +82,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -91,7 +103,11 @@ local rule_setting = {
 			["1_skip-func"] = function (vars)
 				return (vars.usb == "disconnected" )
 			end,
-			["2_bash"] = [[ jsonfilter -e $.time ]],
+			-- ["2_bash"] = [[ jsonfilter -e $.time ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.time or ""
+			end,
 		}
 	},
 
@@ -104,7 +120,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.comment ]]
+			-- ["1_bash"] = [[ jsonfilter -e $.comment ]]
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.comment or ""
+			end,
 		}
 	},
 
@@ -125,7 +145,11 @@ local rule_setting = {
 			["1_skip-func"] = function (vars)
 				return not (tonumber(vars.provider_id) and (vars.provider_id ~= 0))
 			end,
-            ["2_bash"] = [[ jsonfilter -e $.value ]]
+            -- ["2_bash"] = [[ jsonfilter -e $.value ]]
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
         }
     },
 
@@ -138,7 +162,11 @@ local rule_setting = {
             params = {},
         },
         modifier = {
-            ["1_bash"] = [[ jsonfilter -e $.value ]],
+            -- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
         }
     },
 
@@ -155,7 +183,11 @@ local rule_setting = {
 			}
 		},
         modifier = {
-            ["1_bash"] = [[ jsonfilter -e $.value ]],
+            -- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
         }
 	},
 
@@ -291,7 +323,11 @@ local rule_setting = {
                 local READY_TO_SEND = SIM_OK and PROVIDER_IDENTIFIED and TIME_TO_REQUEST and (BALANCE_OK or BALANCE_FAIL) and (not BALANCE_IN_PROGRESS) and NOBODY_SWITCHING
                 if USSD_OK and READY_TO_SEND then return false else return true end
             end,
-            ["2_bash"] = [[ jsonfilter -e $.value ]],
+            -- ["2_bash"] = [[ jsonfilter -e $.value ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["3_lua-func"] = function (vars) return tostring(vars.send_command) end,
             ["4_frozen"] = [[ return 10 ]], -- Задержать следующий запрос на 10 сек (это debounce)
         }
@@ -308,7 +344,11 @@ local rule_setting = {
 		},
 		modifier = {
 			["1_skip-func"] = function (vars) return tonumber(vars.timeout) and (tonumber(vars.timeout) > 0) end,
-			["2_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["2_bash"] = [[ jsonfilter -e $.value ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["3_lua-func"] = function (vars) return tostring(vars.do_switch) end,
 			["4_frozen"] = [[ return 10 ]]
 		}

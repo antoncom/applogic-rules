@@ -17,7 +17,11 @@ local rule_setting = {
             params = {},
         },
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]]
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]]
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
     },
 
@@ -30,7 +34,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -44,7 +52,11 @@ local rule_setting = {
 			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
 		}
 	},
@@ -58,7 +70,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["2_ui-update"] = {
 				param_list = { "sim_id", "netmode" }
 			},
@@ -117,7 +133,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.time ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.time or ""
+			end,
 			["2_lua-func"] = function (vars)
 				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
 			end
@@ -131,7 +151,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.unread or ""
+			end,
 		}
 	},
     journal = {

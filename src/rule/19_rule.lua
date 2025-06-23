@@ -18,7 +18,11 @@ local rule_setting = {
 			match = { interface = "modem"}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.interface ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.interface ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.interface or ""
+			end,
 		}
 	},
 
@@ -32,7 +36,11 @@ local rule_setting = {
 			match = { interface = "modem"}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.interface ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.interface ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.interface or ""
+			end,
 		}
 	},
 

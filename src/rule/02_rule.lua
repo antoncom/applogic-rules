@@ -18,7 +18,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]]
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end
 		}
 	},
 
@@ -32,7 +36,11 @@ local rule_setting = {
 			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end
 		}
 	},
 
@@ -62,7 +70,11 @@ local rule_setting = {
 			}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end
 		}
 	},
 
@@ -84,7 +96,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["2_lua-func"] = function (vars)
 				if (vars.sim_ready == "false") then return "-1"
 				elseif (vars.iface_up == "UP") then return vars.network_registration
@@ -147,7 +163,13 @@ local rule_setting = {
 			["1_skip-func"] = function (vars)
 				return (not (vars.sim_ready == "true" and vars.switching ~= "true") )
 			end,
-			["2_bash"] = [[ jsonfilter -e $.up ]],
+			-- ["2_bash"] = [[ jsonfilter -e $.up ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.up or ""
+			end,
+
+
             --["2_bash"] = [[ ifconfig 3g-modem 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
 			["3_lua-func"] = function (vars)
 				local lastreg_t = tonumber(vars.lastreg_timer) or 0
@@ -171,7 +193,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.time ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.time or ""
+			end,
 			["2_lua-func"] = function (vars)
 				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
 			end
@@ -185,7 +211,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.unread or ""
+			end
 		}
 	},
 	event_reg = {
@@ -196,7 +226,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end
 		}
 	},
 
@@ -218,7 +252,11 @@ local rule_setting = {
 				local TIMEOUT = ( lastreg_t > out )
 				return ( not (READY and TIMEOUT) )
 			end,
-			["2_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["2_bash"] = [[ jsonfilter -e $.value ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 			["3_lua-func"] = function (vars)
 				return tostring(vars.do_switch)
 			end,

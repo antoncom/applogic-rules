@@ -19,7 +19,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -32,7 +36,11 @@ local rule_setting = {
 			params = {},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -49,7 +57,11 @@ local rule_setting = {
 			},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -66,7 +78,11 @@ local rule_setting = {
 			},
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -85,7 +101,11 @@ local rule_setting = {
 				local REG_OK = 	netreg and (netreg >= 0 and netreg <=5)
 				return ( not REG_OK )
 			end,
-			["2_bash"] = [[ jsonfilter -e $.comment ]],		-- 22099, etc
+			-- ["2_bash"] = [[ jsonfilter -e $.comment ]],		-- 22099, etc
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.comment or ""
+			end,
 		}
 	},
 
@@ -127,7 +147,11 @@ local rule_setting = {
 				local REG_OK = 	nr and ((nr >= 0) and (nr <= 8))
 				return not (REG_OK and NEW_PROVIDER_IDENTIFIED)
 			end,
-			["2_bash"] = [[ jsonfilter -e $.value ]],
+			-- ["2_bash"] = [[ jsonfilter -e $.value ]],
+			["2_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.value or ""
+			end,
 		}
 	},
 
@@ -139,7 +163,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.time ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.time ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.time or ""
+			end,
 			["2_lua-func"] = function (vars)
 				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
 			end
@@ -168,7 +196,11 @@ local rule_setting = {
 			params = {}
 		},
 		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.unread ]],
+			-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
+			["1_lua-func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				return lua_table.unread or ""
+			end,
 		}
 	},
     journal = {
