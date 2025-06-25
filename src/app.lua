@@ -357,11 +357,19 @@ function rules:make()
 	local rules_path = "/usr/lib/lua/applogic/rule"
 	local id, ruleshome = '', self.setting.rules_list.target
 
-	local files = flist({path = rules_path, grep = ".lua"})
-	for i=1, #files do
-		id = util.split(files[i], '.lua')[1]
-		ruleshome[id] = require("applogic.rule." .. id)
-	end
+	-- uncomment to require all rules in the rule directory
+	-- local files = flist({path = rules_path, grep = ".lua"})
+	-- for i=1, #files do
+	-- 	id = util.split(files[i], '.lua')[1]
+	-- 	ruleshome[id] = require("applogic.rule." .. id)
+	-- 	-- print('rules:make() - ', id)
+	-- end
+
+
+	-- new rule design, require test rule (delete when no needed anymore)
+	local test_id = '00_rule'
+	ruleshome[test_id] = require("applogic.rule." .. test_id)
+	-- print(ruleshome[test_id])
 end
 
 
