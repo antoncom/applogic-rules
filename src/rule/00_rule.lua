@@ -12,35 +12,60 @@ local rule_setting = {
         input = "Test rule",
     },
 
-    test_node = {
-        note = [[ only for test ]],
+    test_skip = {
+        note = [[ test skip ]],
         modifier = {
             {
                 ["func"] = function (vars)
-                    print('test text')
+                    print('text before skip operator')
                 end
             },
-        }
-    },
 
-    os_time = {
-        note = [[ os time ]],
-        modifier = {
             {
-                ["func"] = function (vars)
-                    print('os time:')
-                    return os.time()
+                ["skip"] = function (vars)
+                    return true
                 end
             },
 
             {
                 ["func"] = function (vars)
-                    print(vars.os_time)
-                    print("____________________")
+                    print("text after skip operator")
                 end
             }
         }
     },
+
+    test_bash = {
+        title = [[ test bash ]],
+        modifier = {
+            {
+                ["func"] = function (vars)
+                    return [[{"value": "text from json"}]]
+                end
+            },
+
+            {
+                ["bash"] = [[ jsonfilter -e $.value ]]
+            },
+
+            {
+                ["func"] = function (vars)
+                    print('parsed value: ' .. (vars.subtotal or ""))
+                end
+            },
+        }
+    },
+
+    test_save = {
+        title = [[ test save ]],
+        modifier = {
+            {
+                ["save"] = function ()
+                    return 10
+                end
+            }
+        },
+    }
 }
 
 function rule:make()
@@ -48,10 +73,24 @@ function rule:make()
     debug_mode.level = "ERROR"
     rule.debug_mode = debug_mode
 
-
     self:load("title")
-    self:load("test_node"):modify()
-    self:load("os_time"):modify()
+
+    print('\n\n\n')
+    print('---------------------------------------------')
+
+
+    print('> test skip:')
+    self:load("test_skip"):modify()
+
+    print('\n> test bash:')
+    self:load("test_bash"):modify()
+
+    print('\n> test save:')
+    self:load("test_save"):modify()
+    print('saved value: ' .. (rule_setting.test_save["saved"] or ""))
+
+
+    print('---------------------------------------------')
 end
 
 local metatable = {
