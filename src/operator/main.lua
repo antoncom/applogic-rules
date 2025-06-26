@@ -22,8 +22,10 @@ local util = require "luci.util"
 -- require "applogic.modifier.store_db"
 
 -- new imports
-require "applogic.operator.func"
-
+local skip = require "applogic.operator.skip"
+local func = require "applogic.operator.func"
+local bash = require "applogic.operator.bash"
+local save = require "applogic.operator.save"
 
 
 local main = {}
@@ -57,27 +59,23 @@ function main:modify(node_name, rule)
             end
 
             if not varlink.frozen  then
-                -- if "skip" == operator_name or "skip-func" == operator_name then
-                --     local is_skip
-                --     if "skip" == operator_name then
-                --         is_skip = skip(node_name, rule)
-                --     elseif "skip-func" == operator_name then
-                --         is_skip = skip_func(node_name, rule)
-                --     end
-                --     if is_skip then
-                --         -- Если указать у переменной input = "some value"
-                --         -- то перед отменой обработки присвоить переменно йзначение из input
-                --         -- иначе в переменной останется хранится последнее расчётное значение (из output)
-                --         --varlink.subtotal = varlink.input or varlink.output or ""
-                --         if rule["default"][node_name].input then
-                --             varlink.input = string.format("%s", rule["default"][node_name].input) -- cloning default input
-                --             varlink.subtotal = string.format("%s",varlink.input)
-                --         else
-                --             varlink.subtotal = string.format("%s",varlink.output)
-                --         end
-                --         break
-                --     end
-                -- end
+                if "skip" == operator_name then
+                    local is_skip = skip(rule, node_name, operator_name, operator_body, operator_index)
+
+                    if is_skip then
+                        -- Если указать у переменной input = "some value"
+                        -- то перед отменой обработки присвоить переменно йзначение из input
+                        -- иначе в переменной останется хранится последнее расчётное значение (из output)
+                        --varlink.subtotal = varlink.input or varlink.output or ""
+                        if rule["default"][node_name].input then
+                            varlink.input = string.format("%s", rule["default"][node_name].input) -- cloning default input
+                            varlink.subtotal = string.format("%s",varlink.input)
+                        else
+                            varlink.subtotal = string.format("%s",varlink.output)
+                        end
+                        break
+                    end
+                end
 
                 -- if "trigger" == operator_name then
                 --     local must_trigger = trigger(node_name, rule)
@@ -86,18 +84,13 @@ function main:modify(node_name, rule)
                 --     end
                 -- end
 
-                -- if "func" == operator_name then
-                --     varlink.subtotal = func(node_name, operator_name, rule)
-                -- end
-
                 if "func" == operator_name then
-                    -- varlink.subtotal = func(node_name, operator_name, operator_body, rule)
                     varlink.subtotal = func(rule, node_name, operator_name, operator_body, operator_index)
                 end
 
-                -- if "bash" == operator_name then
-                --     varlink.subtotal = bash(node_name, operator_name, operator_body, rule)
-                -- end
+                if "bash" == operator_name then
+                    varlink.subtotal = bash(rule, node_name, operator_name, operator_body, operator_index)
+                end
 
                 -- if "mail" == operator_name then
                 --     varlink.subtotal = mailsend(node_name, operator_name, operator_body, rule)
@@ -107,13 +100,9 @@ function main:modify(node_name, rule)
                 --     varlink.subtotal = smssend(node_name, operator_name, operator_body, rule)
                 -- end
 
-                -- if "save" == operator_name then
-                --     varlink.subtotal = save(node_name, operator_name, rule)
-                -- end
-
-                -- if "save-func" == operator_name then
-                --     varlink.subtotal = save_func(node_name, operator_name, rule)
-                -- end
+                if "save" == operator_name then
+                    varlink.subtotal = save(rule, node_name, operator_name, operator_body, operator_index)
+                end
 
                 -- if "shell" == operator_name then
                 --     shell(node_name, operator_name, operator_body, rule)
