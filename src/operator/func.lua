@@ -2,8 +2,8 @@ local func_vars_builder = require "applogic.util.func_vars_builder"
 local func_debug = require "applogic.util.func_debug"
 
 -- operator: func
--- ["func"] = function(vars) <code> end
-function func(rule, node_name, op_name, op_body, op_index)
+-- ["func"] = function(vars) <lua code> end
+local function func(rule, node_name, op_name, op_body, op_index)
     local var_debug
     if rule.debug_mode.enabled then var_debug = require "applogic.var.debug" end
 
