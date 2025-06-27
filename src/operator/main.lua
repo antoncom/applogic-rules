@@ -26,6 +26,9 @@ local skip = require "applogic.operator.skip"
 local func = require "applogic.operator.func"
 local bash = require "applogic.operator.bash"
 local save = require "applogic.operator.save"
+local frozen = require "applogic.operator.frozen"
+local store_db = require "applogic.operator.store_db"
+local ui_update = require "applogic.operator.ui_update"
 
 
 local main = {}
@@ -112,22 +115,18 @@ function main:modify(node_name, rule)
                 --     varlink.subtotal = exec(node_name, operator_name, operator_body, rule)
                 -- end
 
-                -- if "ui-update" == operator_name then
-                --     ui_update(node_name, operator_name, operator_body, rule)
-                -- end
+                if "ui-update" == operator_name then
+                    ui_update(rule, node_name, operator_name, operator_body, operator_index)
+                end
 
-                -- if "store-db" == operator_name then
-                --     store_db(node_name, operator_name, operator_body, rule)
-                -- end
+                if "store-db" == operator_name then
+                    store_db(rule, node_name, operator_name, operator_body, operator_index)
+                end
             end
 
-            -- if "frozen" == operator_name then
-            --     frozen(node_name, rule, operator_name)
-            -- end
-
-            -- if "frozen-func" == operator_name then
-            --     frozen_func(node_name, rule, operator_name)
-            -- end
+            if "frozen" == operator_name then
+                frozen(rule, node_name, operator_name, operator_body, operator_index)
+            end
         end
     end
     -- Afterall, put subtotal to output
