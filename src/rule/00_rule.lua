@@ -65,7 +65,46 @@ local rule_setting = {
                 end
             }
         },
-    }
+    },
+
+    test_frozen = {
+        title = [[ test frozen ]],
+        modifier = {
+            {
+                ["frozen"] = function ()
+                    -- return 5 -- frozen time (seconds)
+                    return {
+                        5, -- frozen time (seconds)
+                        os.time() % 100 -- value after frozen
+                    }
+                end
+            }
+        },
+    },
+
+    test_ui_update = {
+        title = [[ test ui update ]],
+        modifier = {
+            {
+                ["ui-update"] = {
+                    param_list = {
+                        "test_bash",
+                    }
+                },
+            }
+        },
+    },
+
+    test_store_db = {
+        title = [[ test store db ]],
+        modifier = {
+            {
+                ["store-db"] = {
+                    param_list = { "journal" }
+                },
+            },
+        }
+    },
 }
 
 function rule:make()
@@ -87,8 +126,27 @@ function rule:make()
 
     print('\n> test save:')
     self:load("test_save"):modify()
-    print('saved value: ' .. (rule_setting.test_save["saved"] or ""))
+    print('saved value: ' .. tostring(rule_setting.test_save["saved"]))
 
+    print('\n> test frozen:')
+    self:load("test_frozen"):modify()
+    local frozen_table = rule_setting.test_frozen["frozen"]
+    if type(frozen_table) == "table" then
+        print('value: ' .. tostring(frozen_table["value"]))
+        print('seconds: ' .. tostring(frozen_table["seconds"]))
+        print('cancel_time: ' .. tostring(frozen_table["cancel_time"]))
+        print('value_after: ' .. tostring(frozen_table["value_after"]))
+        print('rule_setting.test_frozen["subtotal"]: ' .. tostring(rule_setting.test_frozen["subtotal"]))
+    else
+        print("no frozen table found")
+    end
+
+    print('\n> test ui-update:')
+    self:load("test_ui_update"):modify()
+
+    print('\n> test store db:')
+    self:load("test_store_db"):modify()
+    print('\n> test_store_db node called')
 
     print('---------------------------------------------')
 end
