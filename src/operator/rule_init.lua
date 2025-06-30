@@ -6,8 +6,7 @@ local loadvar = require "applogic.operator.loadvar"
 require "applogic.util.split_string"
 
 
-function rule_init(table, rule_setting, parent)
-
+local function rule_init(table, rule_setting, parent)
     function table:load(varname)
         return loadvar(table, varname)
     end
