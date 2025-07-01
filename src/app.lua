@@ -155,9 +155,28 @@ rules.subscription.dispatcher = function(ubusobj, evname, evmsg)
 	end
 	-- пробегаем по списку переменных rules.subscription.vars
 	for _,v in ipairs(rules.subscription.vars) do
+
+		local node_table = v
+		local subscribe_operator = {}
+
+		for operator_index, operator_table in ipairs(node_table) do
+			local operator_name
+
+			-- operator_table: { ["op_name"] = <op_body> }
+			for key, value in pairs(operator_table) do
+				operator_name = key
+			end
+
+			if operator_name == "subscribe" then
+				subscribe_operator = operator_table["subscribe"]
+			end
+		end
+
 		-- если событие соответствует условию matched в какой-либо переменной
-		if(rules:matched_evmsg(evmsg, v.source.match) == true) then
-			local evmatch_md5 = evuuid(evname, v.source.match)
+		-- if(rules:matched_evmsg(evmsg, v.source.match) == true) then
+		if(rules:matched_evmsg(evmsg, subscribe_operator.match) == true) then
+			-- local evmatch_md5 = evuuid(evname, v.source.match)
+			local evmatch_md5 = evuuid(evname, subscribe_operator.match)
 			if (rules.subscription.queu[ubusobj] and rules.subscription.queu[ubusobj][evmatch_md5]) then
 				-- Отсекаем события дубли, имеющие местj при подписке, например, на объект network.interface
 				local name_message_md5 = evuuid(evname,evmsg)
@@ -212,14 +231,36 @@ end
 
 function rules:make_subscription(rule)
 	for varname, varlink in pairs(rule.setting) do
-		if (varlink["source"] and varlink["source"]["type"] == "subscribe") then
+
+		local node_table = varlink
+		local subscribe_operator = nil
+
+		for operator_index, operator_table in ipairs(node_table) do
+			local operator_name
+
+			-- operator_table: { ["op_name"] = <op_body> }
+			for key, value in pairs(operator_table) do
+				operator_name = key
+			end
+
+			if operator_name == "subscribe" then
+				subscribe_operator = operator_table["subscribe"]
+			end
+		end
+
+		-- if (varlink["source"] and varlink["source"]["type"] == "subscribe") then
+		if (subscribe_operator ~= nil) then
 			-- Записываем переменную в список всех, имеющих подписки
 			table.insert(rules.subscription.vars, rule.setting[varname])
 
 			-- Формируем каркас пустой очереди
-			local ubus_objname = varlink["source"]["ubus"]
-			local evname = varlink["source"]["evname"]
-			local event_match = varlink["source"]["match"]
+			-- local ubus_objname = varlink["source"]["ubus"]
+			-- local evname = varlink["source"]["evname"]
+			-- local event_match = varlink["source"]["match"]
+			local ubus_objname = subscribe_operator["ubus"]
+			local evname = subscribe_operator["evname"]
+			local event_match = subscribe_operator["match"]
+
 			local evmatch_md5 = evuuid(evname, event_match)
 			rules.subscription.queu[ubus_objname] = rules.subscription.queu[ubus_objname] or {}
 			rules.subscription.queu[ubus_objname][evmatch_md5] = rules.subscription.queu[ubus_objname][evmatch_md5] or {
