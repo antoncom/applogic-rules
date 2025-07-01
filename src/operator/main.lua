@@ -5,6 +5,8 @@ local bash = require "applogic.operator.bash"
 local save = require "applogic.operator.save"
 local frozen = require "applogic.operator.frozen"
 local load_ubus = require "applogic.operator.load_ubus"
+local load_rule = require "applogic.operator.load_rule"
+local load_subscribed = require "applogic.operator.load_subscribed"
 local store_db = require "applogic.operator.store_db"
 local ui_update = require "applogic.operator.ui_update"
 
@@ -71,6 +73,14 @@ function main:modify(node_name, rule)
 
             if "load-ubus" == operator_name then
                 node_table.subtotal = load_ubus(rule, node_name, operator_name, operator_body, operator_index)
+            end
+
+            if "load-rule" == operator_name then
+                node_table.subtotal = load_rule(rule, node_name, operator_name, operator_body, operator_index)
+            end
+
+            if "subscribe" == operator_name then
+                load_subscribed(rule, node_name, operator_name, operator_body, operator_index)
             end
 
             if "ui-update" == operator_name then
