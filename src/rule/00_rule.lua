@@ -26,9 +26,45 @@ local rule_setting = {
         {
             ["func"] = function (vars)
                 print(vars.subtotal)
+                return 'test string (returned via func operator in test_ubus node)'
             end
         }
-    }
+    },
+
+    test_load_rule = {
+        note = [[ test load ]],
+
+        {
+            ["load-rule"] = {
+                rulename = "00_rule",
+                varname = "test_ubus",
+            }
+        },
+
+        {
+            ["func"] = function (vars)
+                print(vars.subtotal)
+            end
+        }
+    },
+
+    test_subscribe = {
+        note = [[ test subscribe ]],
+
+        {
+            ["subscribe"] = {
+                ubus = "network.interface",
+                evname = "interface.update",
+                match = { interface = "modem"}
+            }
+        },
+
+        {
+            ["func"] = function (vars)
+                print(vars.subtotal)
+            end
+        },
+    },
 }
 
 
@@ -45,6 +81,12 @@ function rule:make()
 
     print('> test ["load-ubus"] operator:')
     self:load("test_ubus"):modify()
+
+    print('> test ["load-rule"] operator:')
+    self:load("test_load_rule"):modify()
+
+    print('> test ["subscribe"] operator:')
+    self:load("test_subscribe"):modify()
 
     print('------------------------------------------------------------------------------------------')
 end
