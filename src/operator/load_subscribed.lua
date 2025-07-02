@@ -11,7 +11,7 @@ end
 -- ["subscribe"] = {
 --      ubus = "ubus object",
 --      evname = "evname",
---      evmatch = { },
+--      match = { },
 -- }
 local function loadvar_subscribed(rule, node_name, op_name, op_body, op_index)
     local debug
@@ -22,10 +22,6 @@ local function loadvar_subscribed(rule, node_name, op_name, op_body, op_index)
 
     local noerror = true
     local err = ""
-
-    -- local ubusobj = string.format("%s", (node_table.source.ubus or ""))
-    -- local evname = string.format("%s", (node_table.source.evname or ""))
-    -- local evmatch = node_table.source.match or {}
 
     local ubusobj = string.format("%s", (op_body.ubus or ""))
     local evname = string.format("%s", (op_body.evname or ""))
