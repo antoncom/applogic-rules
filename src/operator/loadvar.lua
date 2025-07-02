@@ -1,10 +1,7 @@
-local log = require "applogic.util.log"
 local debug_cli = require "applogic.var.debug_cli"
 local util = require "luci.util"
 local substitute = require "applogic.util.substitute"
 local pcallchunk = require "applogic.util.pcallchunk"
-
-
 
 
 local loadvar = {}
@@ -40,25 +37,8 @@ local loadvar_metatable = {
         -- Also we keep there "overview" debug info if the variable was chosen for this
         -- See below in the debug place
 
-        local util = require "luci.util"
-        local log = require "applogic.util.log"
-        local md5 = require "md5" -- https://github.com/keplerproject/md5/blob/master/tests/test.lua
-
-        local modifier = require "applogic.operator.main"
-        local skipped = require "applogic.modifier.skip"
-        local skipped_func = require "applogic.modifier.skip_func"
-        local frozen = require "applogic.modifier.frozen"
-        local last_mdfr_name = require "applogic.util.last_mdfr_name"
-
-        local loadvar_ubus = require "applogic.var.loadvar_ubus"
-        local loadvar_uci = require "applogic.var.loadvar_uci"
-        local loadvar_bash = require "applogic.var.loadvar_bash"
-        local loadvar_rule = require "applogic.var.loadvar_rule"
-        local loadvar_subscribed = require "applogic.var.loadvar_subscribed"
-
-        local setting = rule.setting
+        local operator_handler = require "applogic.operator.main"
         local varlink = rule.setting[varname]
-        local report = rule.report
 
         -- Make variable order
         rule.variterator = rule.variterator + 1
@@ -69,74 +49,29 @@ local loadvar_metatable = {
         --1) varlink.subtotal = nil
         --2)
         varlink.subtotal = varlink.subtotal or nil
-
         -- end of TODO
 
         -- If user missed input/output declaration in the rule
         varlink.input = varlink.input or ""
-        --varlink.output = varlink.output or tostring(varlink.input)
         varlink.output = varlink.output or ""
         if rule.debug_mode.enabled then debug(varname, rule):order() end
         if rule.debug_mode.enabled then debug(varname, rule):note(varlink.note or "") end
         if rule.debug_mode.enabled then debug(varname, rule):input(varlink.input or "") end
 
-        -- Check if the variable skipped
-        local skipped = varlink.modifier and #util.keys(varlink.modifier) > 0 and varlink.modifier["1_skip"]
-        skipped = skipped and skip(varname, rule)
-
-        -- Check if the variable skipped (lua function method)
-        local skipped_function_method = varlink.modifier and #util.keys(varlink.modifier) > 0 and varlink.modifier["1_skip-func"]
-        skipped_function_method = skipped_function_method and skip_func(varname, rule)
-
-        skipped = skipped or skipped_function_method
-
-        -- Check if the variable is frozen
-        local frozened = varlink.frozen
-
-        -- Check if source exists
-        -- local has_source = varlink.source and varlink.source.type
-
-        -- Load from different source
-        if varlink.source then
-            --if (not skipped) and (not frozened) then
-            if not (skipped or frozened) then
-                if "uci" == varlink.source.type then
-                    varlink.subtotal = loadvar_uci:load(varname, rule)
-                end
-
-                if "ubus" == varlink.source.type then
-                    varlink.subtotal = loadvar_ubus:load(varname, rule)
-                end
-
-                if "bash" == varlink.source.type then
-                    varlink.subtotal = loadvar_bash:load(varname, rule)
-                end
-
-                if "rule" == varlink.source.type then
-                    varlink.subtotal = loadvar_rule:load(varname, rule, varlink.source.rulename, varlink.source.varname)
-                end
-
-                if "subscribe" == varlink.source.type then
-                    loadvar_subscribed:load(varname, rule)
-                end
-            end
-        end
-
         --[[ Make function chaining in order to use the laconic way in the rule files ]]
-        -- rule:load("title"):modify()
+        -- rule:load("title"):execute()
         ---------------------=========
         local mdf = {}
-        function mdf:modify()
-            modifier:modify(varname, rule)
+        function mdf:execute()
+            operator_handler:execute(varname, rule)
 
-            -- rule:load("title"):modify():debug()
+            -- rule:load("title"):execute():debug()
             ------------------------------========
             local dbg = {}
             function dbg:debug(...)
                 local level = arg[1]
                 local report_by_cli = (debug_cli.rule and debug_cli.rule == rule.ruleid)
                 local overview_by_cli = (debug_cli.rule and debug_cli.rule == "overview")
-
 
                 --[[ В режиме debug для правила будем показывать также debug для переменной 
                      в том случае, если при её обработке возникла ошибка.
