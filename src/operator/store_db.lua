@@ -1,8 +1,5 @@
--- local json = require "cjson"
--- local ubus = require "ubus"
 local util = require "luci.util"
 local uci = require "luci.model.uci".cursor()
---local leveldb = require 'lualeveldb'
 
 
 -- Define the LevelDB database path
