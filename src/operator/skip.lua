@@ -32,7 +32,7 @@ local function skip(rule, node_name, op_name, op_body, op_index)
         local output_info
 
         if type(op_body) == "function" then
-            output_info = func_debug.generate_output_info(func)
+            output_info = func_debug.generate_output_info(op_body)
         else
             output_info = "not a function"
         end
