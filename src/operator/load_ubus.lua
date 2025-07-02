@@ -1,5 +1,4 @@
 local util = require "luci.util"
-local log = require "applogic.util.log"
 local md5 = require "md5" -- https://github.com/keplerproject/md5/blob/master/tests/test.lua
 local checkubus = require "applogic.util.checkubus"
 
