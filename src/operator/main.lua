@@ -12,7 +12,7 @@ local ui_update = require "applogic.operator.ui_update"
 
 
 local main = {}
-function main:modify(node_name, rule)
+function main:execute(node_name, rule)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
     local node_table = rule.setting[node_name]
@@ -110,6 +110,5 @@ function main:modify(node_name, rule)
 
     if rule.debug_mode.enabled then debug(node_name, rule):output(node_table.output) end
 end
-
 
 return main
