@@ -1,8 +1,6 @@
-
 local util = require "luci.util"
 local sys  = require "luci.sys"
 local pretty = require "applogic.util.prettyjson"
-local log = require "applogic.util.log"
 
 local function file_exists(name)
    local f=io.open(name,"r")
@@ -52,14 +50,6 @@ local function ui_update(rule, node_name, op_name, op_body, op_index)
                 result.stdout = pretty(params):gsub("\t", "  ")
                 debug(node_name, rule):modifier(op_name, pretty(param_list):gsub("\t", "  "), result.stdout, noerror)
             end
-
-            -- for UI-update test, delete when test print no needed anymore
-            print('operator/ui_update.lua, result variable (table):')
-            for key, value in pairs(result) do
-                print(key, value)
-            end
-            -- end of UI-update test
-
         else -- if no pipein file (or Gwsocket is not started)
             noerror = false
             if rule.debug_mode.enabled then
