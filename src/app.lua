@@ -1,21 +1,16 @@
 require "os"
 require "ubus"
-local sys  = require "luci.sys"
+
 local uloop = require "uloop"
 local util = require "luci.util"
-local log = require "applogic.util.log"
-local flist = require "applogic.util.filelist"
 local uci = require "luci.model.uci".cursor()
-local bit = require "bit"
 local checkubus = require "applogic.util.checkubus"
-local debug_mode = require "applogic.debug_mode"
 local debug_cli = require "applogic.var.debug_cli"
 local report = require "applogic.util.report"
 local md5 = require "md5"
 
-local profile = require "applogic.util.profile"
-
-print(profile)
+-- local profile = require "applogic.util.profile"
+-- print(profile)
 
 
 --[[ Restore UCI config of Applogic once the debug stopped by Ctrl-C ]]
