@@ -62,6 +62,7 @@ local rule_setting = {
         {
             ["func"] = function (vars)
                 print(vars.subtotal)
+                return vars.subtotal
             end
         },
     },
@@ -80,13 +81,13 @@ function rule:make()
 
 
     print('> test ["load-ubus"] operator:')
-    self:load("test_ubus"):modify()
+    self:load("test_ubus"):execute()
 
     print('> test ["load-rule"] operator:')
-    self:load("test_load_rule"):modify()
+    self:load("test_load_rule"):execute()
 
     print('> test ["subscribe"] operator:')
-    self:load("test_subscribe"):modify()
+    self:load("test_subscribe"):execute()
 
     print('------------------------------------------------------------------------------------------')
 end
