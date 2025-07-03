@@ -29,7 +29,8 @@ function main:execute(node_name, rule)
         node_table.input = node_table["frozee"]
     end
 
-    node_table.subtotal = node_table.subtotal or tostring(node_table.input)
+    -- node_table.subtotal = node_table.subtotal or tostring(node_table.input)
+    node_table.output = node_table.output or tostring(node_table.input)
 
     for operator_index, operator_table in ipairs(node_table) do
         local operator_name, operator_body
@@ -51,32 +52,34 @@ function main:execute(node_name, rule)
                     --node_table.subtotal = node_table.input or node_table.output or ""
                     if rule["default"][node_name].input then
                         node_table.input = string.format("%s", rule["default"][node_name].input) -- cloning default input
-                        node_table.subtotal = string.format("%s",node_table.input)
+                        -- node_table.subtotal = string.format("%s",node_table.input)
+                        node_table.output = string.format("%s",node_table.input)
                     else
-                        node_table.subtotal = string.format("%s",node_table.output)
+                        -- node_table.subtotal = string.format("%s",node_table.output)
+                        node_table.output = string.format("%s",node_table.output)
                     end
                     break
                 end
             end
 
             if "func" == operator_name then
-                node_table.subtotal = func(rule, node_name, operator_name, operator_body, operator_index)
+                node_table.output = func(rule, node_name, operator_name, operator_body, operator_index)
             end
 
             if "bash" == operator_name then
-                node_table.subtotal = bash(rule, node_name, operator_name, operator_body, operator_index)
+                node_table.output = bash(rule, node_name, operator_name, operator_body, operator_index)
             end
 
             if "save" == operator_name then
-                node_table.subtotal = save(rule, node_name, operator_name, operator_body, operator_index)
+                node_table.output = save(rule, node_name, operator_name, operator_body, operator_index)
             end
 
             if "load-ubus" == operator_name then
-                node_table.subtotal = load_ubus(rule, node_name, operator_name, operator_body, operator_index)
+                node_table.output = load_ubus(rule, node_name, operator_name, operator_body, operator_index)
             end
 
             if "load-rule" == operator_name then
-                node_table.subtotal = load_rule(rule, node_name, operator_name, operator_body, operator_index)
+                node_table.output = load_rule(rule, node_name, operator_name, operator_body, operator_index)
             end
 
             if "subscribe" == operator_name then
@@ -100,10 +103,18 @@ function main:execute(node_name, rule)
 
     -- Afterall, put subtotal to output
     -- Remove trailing \n if only one string returned
-    if(type(node_table.subtotal) == "table") then
-        node_table.output = util.serialize_json(node_table.subtotal)
+    -- if(type(node_table.subtotal) == "table") then
+    --     node_table.output = util.serialize_json(node_table.subtotal)
+    -- else
+    --     node_table.output = string.format("%s", node_table.subtotal)
+    --     local _, n = node_table.output:gsub("\n", "\n")
+    --     if n == 1 then node_table.output = node_table.output:gsub("%s+$", "") end
+    -- end
+
+    if(type(node_table.output) == "table") then
+        node_table.output = util.serialize_json(node_table.output)
     else
-        node_table.output = string.format("%s", node_table.subtotal)
+        node_table.output = string.format("%s", node_table.output)
         local _, n = node_table.output:gsub("\n", "\n")
         if n == 1 then node_table.output = node_table.output:gsub("%s+$", "") end
     end

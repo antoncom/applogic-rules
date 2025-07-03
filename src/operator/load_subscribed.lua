@@ -33,11 +33,11 @@ local function loadvar_subscribed(rule, node_name, op_name, op_body, op_index)
         local evmatch_md5 = evuuid(evname, evmatch)
         if (subscription.queu[ubusobj] and subscription.queu[ubusobj][evmatch_md5]) then
             if (#subscription.queu[ubusobj][evmatch_md5].events > 0) then
-                node_table.subtotal = util.serialize_json(subscription.queu[ubusobj][evmatch_md5].events[1].msg)
+                node_table.output = util.serialize_json(subscription.queu[ubusobj][evmatch_md5].events[1].msg)
                 -- удаляем переменную из спика vars_to_load
                 subscription.removeEvent(ubusobj, evmatch_md5, node_table)
             else
-                node_table.subtotal = ""
+                node_table.output = ""
             end
         end
     end
@@ -45,7 +45,7 @@ local function loadvar_subscribed(rule, node_name, op_name, op_body, op_index)
 
     if rule.debug_mode.enabled then
         if (noerror) then
-            debug(node_name, rule):source_subscribe(ubusobj, evname, node_table.subtotal, noerror, op_body)
+            debug(node_name, rule):source_subscribe(ubusobj, evname, node_table.output, noerror, op_body)
         else
             debug(node_name, rule):source_subscribe(ubusobj, evname, err, noerror, op_body)
         end

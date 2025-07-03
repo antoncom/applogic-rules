@@ -19,10 +19,10 @@ local function bash(rule, node_name, op_name, op_body, op_index)
     -- we need to prepend "echo ... | " before new bash command
 
     local command_extra = ""
-    if (node_table.subtotal:len() > 0 and node_table.subtotal ~= "\"\"" and node_table.subtotal ~= "''") then
+    if (node_table.output:len() > 0 and node_table.output ~= "\"\"" and node_table.output ~= "''") then
         -- Remove "'" from bash command to prevent errors
-        rule.setting[node_name].subtotal = rule.setting[node_name].subtotal:gsub("'", "")
-        command_extra = string.format("echo '%s' | %s", rule.setting[node_name].subtotal, command)
+        rule.setting[node_name].output = rule.setting[node_name].output:gsub("'", "")
+        command_extra = string.format("echo '%s' | %s", rule.setting[node_name].output, command)
 
         command_extra = command_extra:gsub("%c", "")
         --if varname == "ussd_command" then print("COMMAND_EXTRA=", command_extra) end

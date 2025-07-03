@@ -42,22 +42,22 @@ local function frozen(rule, node_name, op_name, op_body, op_index)
         if (tonumber(seconds_to_froze) and (noerror == true)) then
             local delay = seconds_to_froze and tonumber(seconds_to_froze)
             if delay and delay > 0 and delay < max_seconds then
-                if (type(node_table.subtotal) == "table") then
-                    node_table.subtotal = util.serialize_json(node_table.subtotal)
-                elseif (type(node_table.subtotal) == "number" or type(node_table.subtotal) == "string") then
-                    node_table.subtotal = tostring(node_table.subtotal)
+                if (type(node_table.output) == "table") then
+                    node_table.output = util.serialize_json(node_table.output)
+                elseif (type(node_table.output) == "number" or type(node_table.output) == "string") then
+                    node_table.output = tostring(node_table.output)
                 end
                 node_table.frozen = {
                     seconds = delay,
                     cancel_time = os.time() + delay,
-                    value = tostring(node_table.subtotal),
+                    value = tostring(node_table.output),
                     value_after = value_after_unfroze
                 }
                 frozen_value = node_table.frozen.value
 
                 -- ADDON TMPL
                 if (noerror) then
-                    node_table["frozee"] = node_table.subtotal
+                    node_table["frozee"] = node_table.output
                 end
 
             elseif delay == 0 then
@@ -79,7 +79,7 @@ local function frozen(rule, node_name, op_name, op_body, op_index)
             if (now > node_table.frozen.cancel_time) then
                 -- After unfroze put predefined value to the var output
                 if (node_table.frozen.value_after) then
-                    node_table.subtotal = tostring(node_table.frozen.value_after)
+                    node_table.output = tostring(node_table.frozen.value_after)
                     node_table.input = tostring(node_table.frozen.value_after)
                 end
                 node_table.frozen = nil

@@ -48,7 +48,7 @@ local loadvar_metatable = {
         -- Убедиться что второй вариант рабтотает верно.
         --1) varlink.subtotal = nil
         --2)
-        varlink.subtotal = varlink.subtotal or nil
+        varlink.output = varlink.output or nil
         -- end of TODO
 
         -- If user missed input/output declaration in the rule

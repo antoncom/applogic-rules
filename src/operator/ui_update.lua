@@ -29,7 +29,7 @@ local function ui_update(rule, node_name, op_name, op_body, op_index)
                     if util.contains({ "journal_reg", "journal_usb", "journal_stm" }, name) then
                         name = "journal"
                     end
-                    params[name] = node_table.subtotal or ""
+                    params[name] = node_table.output or ""
                 else
                     params[name] = rule.setting[name] and rule.setting[name].output or ""
                 end
