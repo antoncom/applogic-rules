@@ -403,7 +403,22 @@ function rules:make()
 
 
 	-- new rule design, require test rule (delete when no needed anymore)
-	local test_id = '00_rule'
+	local test_id = '01_rule'
+	ruleshome[test_id] = require("applogic.rule." .. test_id)
+
+	test_id = '02_rule'
+	ruleshome[test_id] = require("applogic.rule." .. test_id)
+
+	test_id = '03_rule'
+	ruleshome[test_id] = require("applogic.rule." .. test_id)
+
+	test_id = '04_rule'
+	ruleshome[test_id] = require("applogic.rule." .. test_id)
+
+	test_id = '05_rule'
+	ruleshome[test_id] = require("applogic.rule." .. test_id)
+
+	test_id = '06_rule'
 	ruleshome[test_id] = require("applogic.rule." .. test_id)
 	-- print(ruleshome[test_id])
 end
