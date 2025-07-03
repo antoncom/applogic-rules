@@ -20,9 +20,11 @@ function substitute(varname, rule, chunk, from_input, put_in_quotes)
                 --body = body:gsub('$'..varname, tostring(rule.setting[varname].output))
             else
                 if put_in_quotes then
-                    body = body:gsub('$'..varname, tostring(rule.setting[name].subtotal):quoted())
+                    -- body = body:gsub('$'..varname, tostring(rule.setting[name].subtotal):quoted())
+                    body = body:gsub('$'..varname, tostring(rule.setting[name].output):quoted())
                 else
-                    body = body:gsub('$'..varname, tostring(rule.setting[name].subtotal))
+                    -- body = body:gsub('$'..varname, tostring(rule.setting[name].subtotal))
+                    body = body:gsub('$'..varname, tostring(rule.setting[name].output))
                 end
                 --body = body:gsub('$'..varname, tostring(rule.setting[varname].subtotal))
             end

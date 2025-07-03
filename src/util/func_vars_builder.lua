@@ -3,7 +3,8 @@ local func_vars_builder = {}
 -- logic from util/substitute.lua
 function func_vars_builder.make_vars(varname, rule, from_input)
     local vars = {
-        subtotal = rule.setting[varname].subtotal
+        subtotal = rule.setting[varname].output,
+        output = rule.setting[varname].output,
     }
 
     for name, _ in pairs(rule.setting) do
@@ -13,7 +14,7 @@ function func_vars_builder.make_vars(varname, rule, from_input)
             if from_input then
                 vars[name] = rule.setting[name].input
             else
-                vars[name] = rule.setting[name].subtotal
+                vars[name] = rule.setting[name].output
             end
         end
     end
