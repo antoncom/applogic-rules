@@ -3,8 +3,8 @@ local loadvar = require "applogic.operator.loadvar"
 
 
 local function rule_init(table, rule_setting, parent)
-    function table:load(varname)
-        return loadvar(table, varname)
+    function table:follow(varname)
+        return loadvar(table, varname):run_node()
     end
 
     -- if the rule is not inited yet
