@@ -12,7 +12,7 @@ local ui_update = require "applogic.operator.ui_update"
 
 
 local main = {}
-function main:execute(node_name, rule)
+function main:run_node(node_name, rule)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
     local node_table = rule.setting[node_name]
@@ -29,7 +29,6 @@ function main:execute(node_name, rule)
         node_table.input = node_table["frozee"]
     end
 
-    -- node_table.subtotal = node_table.subtotal or tostring(node_table.input)
     node_table.output = node_table.output or tostring(node_table.input)
 
     for operator_index, operator_table in ipairs(node_table) do
@@ -52,10 +51,8 @@ function main:execute(node_name, rule)
                     --node_table.subtotal = node_table.input or node_table.output or ""
                     if rule["default"][node_name].input then
                         node_table.input = string.format("%s", rule["default"][node_name].input) -- cloning default input
-                        -- node_table.subtotal = string.format("%s",node_table.input)
                         node_table.output = string.format("%s",node_table.input)
                     else
-                        -- node_table.subtotal = string.format("%s",node_table.output)
                         node_table.output = string.format("%s",node_table.output)
                     end
                     break
@@ -99,17 +96,6 @@ function main:execute(node_name, rule)
             frozen(rule, node_name, operator_name, operator_body, operator_index)
         end
     end
-
-
-    -- Afterall, put subtotal to output
-    -- Remove trailing \n if only one string returned
-    -- if(type(node_table.subtotal) == "table") then
-    --     node_table.output = util.serialize_json(node_table.subtotal)
-    -- else
-    --     node_table.output = string.format("%s", node_table.subtotal)
-    --     local _, n = node_table.output:gsub("\n", "\n")
-    --     if n == 1 then node_table.output = node_table.output:gsub("%s+$", "") end
-    -- end
 
     if(type(node_table.output) == "table") then
         node_table.output = util.serialize_json(node_table.output)

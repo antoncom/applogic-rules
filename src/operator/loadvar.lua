@@ -62,8 +62,8 @@ local loadvar_metatable = {
         -- rule:load("title"):execute()
         ---------------------=========
         local mdf = {}
-        function mdf:execute()
-            operator_handler:execute(varname, rule)
+        function mdf:run_node()
+            operator_handler:run_node(varname, rule)
 
             -- rule:load("title"):execute():debug()
             ------------------------------========
