@@ -1,7 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.operator.rule_init"
-local log = require "applogic.util.log"
-local I18N = require "luci.i18n"
+
 
 local rule = {}
 local rule_setting = {
@@ -36,7 +35,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.resetting) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -68,7 +67,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.switching) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -101,7 +100,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.switch_time) or {}
 				return lua_table.time or ""
 			end
 		}
@@ -133,7 +132,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
@@ -168,7 +167,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
 				return lua_table.unread or ""
 			end
 		}
@@ -199,7 +198,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -230,7 +229,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.usb) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -266,7 +265,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.sim_ready) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -313,7 +312,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.timeout) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -425,7 +424,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.do_switch) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -694,27 +693,27 @@ function rule:make()
 	if rule.parent.state.mode == "stop" then return end
 
 
-	self:load("title"):execute():debug() 	-- Use debug(ONLY) to check the var only
-	self:load("resetting"):execute():debug(overview)
-	self:load("switching"):execute():debug(overview)
-	self:load("switch_time"):execute():debug(overview)
+	self:follow("title"):debug() 	-- Use debug(ONLY) to check the var only
+	self:follow("resetting"):debug(overview)
+	self:follow("switching"):debug(overview)
+	self:follow("switch_time"):debug(overview)
 
-	self:load("event_datetime"):execute():debug()
-	self:load("event_is_new"):execute():debug()
+	self:follow("event_datetime"):debug()
+	self:follow("event_is_new"):debug()
 
-	self:load("sim_id"):execute():debug()	-- Use "overview" to include the variable to the all rules overview report in debug mode
-	self:load("usb"):execute():debug()
-	self:load("sim_ready"):execute():debug(overview)
+	self:follow("sim_id"):debug()	-- Use "overview" to include the variable to the all rules overview report in debug mode
+	self:follow("usb"):debug()
+	self:follow("sim_ready"):debug(overview)
 
-	self:load("timeout"):execute():debug()
-	self:load("wait_timer"):execute():debug(overview)
+	self:follow("timeout"):debug()
+	self:follow("wait_timer"):debug(overview)
 
-	self:load("do_switch"):execute():debug(overview)
-	self:load("reset_timer"):execute():debug(overview)
-	self:load("reset_modem"):execute():debug(overview)
-	self:load("os_time"):execute():debug()
-	self:load("send_ui"):execute():debug()
-    self:load("journal"):execute():debug()
+	self:follow("do_switch"):debug(overview)
+	self:follow("reset_timer"):debug(overview)
+	self:follow("reset_modem"):debug(overview)
+	self:follow("os_time"):debug()
+	self:follow("send_ui"):debug()
+    self:follow("journal"):debug()
 end
 
 local metatable = {

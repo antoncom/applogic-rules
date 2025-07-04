@@ -1,7 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.operator.rule_init"
-local log = require "applogic.util.log"
-local I18N = require "luci.i18n"
+
 
 local rule = {}
 local rule_setting = {
@@ -34,7 +33,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -89,7 +88,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.host) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -130,7 +129,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.uci_timeout_ping) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -170,7 +169,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.ping_status) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -202,7 +201,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
@@ -238,7 +237,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.switching) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -367,7 +366,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.do_switch) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -478,39 +477,38 @@ function rule:make()
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
 	if (r01_wait_timer and r01_wait_timer > 0) then 
 		if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r01_wait_timer > 0 -----") end
-		return 
+		return
 	end
 
 	-- Пропускаем выполнения правила, если СИМ не зарегистрирована в сети
 	local r02_lastreg_timer = tonumber(all_rules["02_rule"].setting.lastreg_timer.output)
 	if (r02_lastreg_timer and r02_lastreg_timer > 0) then 
 		if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r02_lastreg_timer > 0 -----") end
-		return 
+		return
 	end
 
 	-- Пропускаем выполнения правила, если отрицательный баланс на счету Sim-карты
 	local r03_sim_balance = tonumber(all_rules["03_rule"].setting.sim_balance.output)
-	if (r03_sim_balance and r03_sim_balance <= 0) then 
+	if (r03_sim_balance and r03_sim_balance <= 0) then
 		--if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r03_sim_balance < 0 -----") end
-		return 
+		return
 	end
 
 
-	self:load("title"):execute():debug() -- Use debug(ONLY) to check the var only
-	self:load("sim_id"):execute():debug()
-	self:load("uci_section"):execute():debug()
-	self:load("host"):execute():debug()
-    self:load("uci_timeout_ping"):execute():debug()
+	self:follow("title"):debug() -- Use debug(ONLY) to check the var only
+	self:follow("sim_id"):debug()
+	self:follow("uci_section"):debug()
+	self:follow("host"):debug()
+    self:follow("uci_timeout_ping"):debug()
 
-    self:load("ping_status"):execute():debug()
-   	self:load("switching"):execute():debug()
-	self:load("lastping_timer"):execute():debug(overview)
-	self:load("os_time"):execute():debug()
-	self:load("do_switch"):execute():debug(overview)
-	self:load("event_datetime"):execute():debug()
-	self:load("send_ui"):execute():debug()
-	self:load("journal"):execute():debug(overview)
-
+    self:follow("ping_status"):debug()
+   	self:follow("switching"):debug()
+	self:follow("lastping_timer"):debug(overview)
+	self:follow("os_time"):debug()
+	self:follow("do_switch"):debug(overview)
+	self:follow("event_datetime"):debug()
+	self:follow("send_ui"):debug()
+	self:follow("journal"):debug(overview)
 end
 
 local metatable = {

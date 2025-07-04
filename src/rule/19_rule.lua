@@ -1,7 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.util.rule_init"
-local log = require "applogic.util.log"
-local I18N = require "luci.i18n"
+local rule_init = require "applogic.operator.rule_init"
+
 
 local rule = {}
 local rule_setting = {
@@ -11,16 +10,30 @@ local rule_setting = {
 	up_ifname = {
 		note = [[ Имя сетевого интерфейса, который up ]],
 		input = "",
-		source = {
-			type = "subscribe",
-			ubus = "network.interface",
-			evname = "interface.update",
-			match = { interface = "modem"}
+		-- source = {
+		-- 	type = "subscribe",
+		-- 	ubus = "network.interface",
+		-- 	evname = "interface.update",
+		-- 	match = { interface = "modem"}
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.interface ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.interface or ""
+		-- 	end,
+		-- }
+
+		{
+			["subscribe"] = {
+				ubus = "network.interface",
+				evname = "interface.update",
+				match = { interface = "modem"}
+			},
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.interface ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.up_ifname) or {}
 				return lua_table.interface or ""
 			end,
 		}
@@ -29,16 +42,30 @@ local rule_setting = {
 	down_ifname = {
 		note = [[ Имя сетевого интерфейса, который down ]],
 		input = "",
-		source = {
-			type = "subscribe",
-			ubus = "network.interface",
-			evname = "interface.down",
-			match = { interface = "modem"}
+		-- source = {
+		-- 	type = "subscribe",
+		-- 	ubus = "network.interface",
+		-- 	evname = "interface.down",
+		-- 	match = { interface = "modem"}
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.interface ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.interface or ""
+		-- 	end,
+		-- }
+
+		{
+			["subscribe"] = {
+				ubus = "network.interface",
+				evname = "interface.down",
+				match = { interface = "modem"}
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.interface ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.down_ifname) or {}
 				return lua_table.interface or ""
 			end,
 		}
@@ -47,22 +74,47 @@ local rule_setting = {
 
 	journal = {
 		input = "",
-		modifier = {
-			["1_skip"] = [[ if ($up_ifname == "modem" or $down_ifname == "modem") then return false else return true end ]],
-			["2_func"] = [[ 
-				local up = ($up_ifname == "modem") and "Modem UP"
-				local down = ($down_ifname == "modem") and "Modem DOWN"
+		-- modifier = {
+		-- 	["1_skip"] = [[ if ($up_ifname == "modem" or $down_ifname == "modem") then return false else return true end ]],
+		-- 	["2_func"] = [[ 
+		-- 		local up = ($up_ifname == "modem") and "Modem UP"
+		-- 		local down = ($down_ifname == "modem") and "Modem DOWN"
+		-- 		local out = up or down
+		-- 		return({ 
+		-- 			datetime = os.date("%Y-%m-%d %H:%M:%S"),
+		-- 			name = "Изменился статус интерфейса сетевого интерфейса",
+		-- 			source = "Network  (19-rule)",
+		-- 			command = "subscribe network.interface",
+		-- 			response = out
+		-- 		}) 
+		-- 	]],
+		-- 	["3_store-db"] = {
+		-- 		param_list = { "journal" }	
+		-- 	},
+		-- }
+
+		{
+			["skip"] = function (vars)
+				if (vars.up_ifname == "modem" or vars.down_ifname == "modem") then return false else return true end
+			end
+		},
+		{
+			["func"] = function (vars)
+				local up = (vars.up_ifname == "modem") and "Modem UP"
+				local down = (vars.down_ifname == "modem") and "Modem DOWN"
 				local out = up or down
-				return({ 
+				return({
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
 					name = "Изменился статус интерфейса сетевого интерфейса",
 					source = "Network  (19-rule)",
 					command = "subscribe network.interface",
 					response = out
-				}) 
-			]],
-			["3_store-db"] = {
-				param_list = { "journal" }	
+				})
+			end
+		},
+		{
+			["store-db"] = {
+				param_list = { "journal" }
 			},
 		}
 	}
@@ -87,28 +139,23 @@ function rule:make()
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
 	if (r01_wait_timer and r01_wait_timer > 0) then 
 		if rule.debug_mode.enabled then print("------ 19_rule SKIPPED as r01_wait_timer > 0 -----") end
-		return 
+		return
 	end
 
 
-	self:load("title"):modify():debug()
-	self:load("up_ifname"):modify():debug()
-	self:load("down_ifname"):modify():debug()
-    self:load("journal"):modify():debug()
+	self:follow("title"):debug()
+	self:follow("up_ifname"):debug()
+	self:follow("down_ifname"):debug()
+    self:follow("journal"):debug()
 end
 
 
----[[ Initializing. Don't edit the code below ]]---
 local metatable = {
-	__call = function(table, parent)
-		local t = rule_init(table, rule_setting, parent)
-		if not t.is_busy then
-			t.is_busy = true
-			t:make()
-			t.is_busy = false
-		end
-		return t
-	end
+    __call = function(table, parent)
+        local rule_init_table = rule_init(table, rule_setting, parent)
+        rule_init_table:make()
+        return rule_init_table
+    end
 }
 setmetatable(rule, metatable)
 return rule

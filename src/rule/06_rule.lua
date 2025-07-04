@@ -1,7 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.operator.rule_init"
-local log = require "applogic.util.log"
-local I18N = require "luci.i18n"
+
 
 local rule = {}
 local rule_setting = {
@@ -33,7 +32,7 @@ local rule_setting = {
 		},
 	 	{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -64,7 +63,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.network_registration) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -98,7 +97,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.switching) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -137,7 +136,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.output) or {}
+				local lua_table = luci.jsonc.parse(vars.signal) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -255,19 +254,19 @@ function rule:make()
 
 	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
-	if (r01_wait_timer and r01_wait_timer > 0) then 
+	if (r01_wait_timer and r01_wait_timer > 0) then
 		--if rule.debug_mode.enabled then print("------ 06_rule SKIPPED as r01_wait_timer > 0 -----") end
-		return 
+		return
 	end
 
-	self:load("title"):execute():debug()
-	self:load("sim_id"):execute():debug()
-    self:load("network_registration"):execute():debug()
-	self:load("switching"):execute():debug()
-    self:load("signal"):execute():debug()
-	self:load("LED1_mode"):execute():debug()
-	self:load("send_stm_at"):execute():debug()
-	self:load("previous"):execute():debug()
+	self:follow("title"):debug()
+	self:follow("sim_id"):debug()
+    self:follow("network_registration"):debug()
+	self:follow("switching"):debug()
+    self:follow("signal"):debug()
+	self:follow("LED1_mode"):debug()
+	self:follow("send_stm_at"):debug()
+	self:follow("previous"):debug()
 end
 
 

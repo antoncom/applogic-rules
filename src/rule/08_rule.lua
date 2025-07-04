@@ -1,7 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.util.rule_init"
-local log = require "applogic.util.log"
-local I18N = require "luci.i18n"
+local rule_init = require "applogic.operator.rule_init"
+
 
 local rule = {}
 local rule_setting = {
@@ -10,16 +9,30 @@ local rule_setting = {
 	},
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-        source = {
-			type = "ubus",
-            object = "tsmodem.driver",
-            method = "sim",
-            params = {},
-        },
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]]
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+        -- source = {
+		-- 	type = "ubus",
+        --     object = "tsmodem.driver",
+        --     method = "sim",
+        --     params = {},
+        -- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]]
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+	            method = "sim",
+            	params = {},
+        	}
+		},
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -27,35 +40,73 @@ local rule_setting = {
 
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "switching",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "switching",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- 	["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "switching",
+				params = {},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.switching) or {}
 				return lua_table.value or ""
-			end,
-			["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
+			end
+		},
+		{
+			["frozen"] = function (vars)
+				if (vars.switching == "true") then return 10 else return 0 end
+			end
 		}
 	},
 
 	r01_sim_ready = {
 		note = [[ Значение sim_ready из правила 01_rule ]],
-		source = {
-			type = "rule",
-			rulename = "01_rule",
-			varname = "sim_ready"
+		-- source = {
+		-- 	type = "rule",
+		-- 	rulename = "01_rule",
+		-- 	varname = "sim_ready"
+		-- },
+
+		{
+			["load-rule"] = {
+				rulename = "01_rule",
+				varname = "sim_ready"
+			}
 		},
 	},
 
     LED3_mode = {
         note = [[ Режим мигания светодиода LED3. ]],
-        modifier = {
-            ["1_lua-func"] = function (vars)
+        -- modifier = {
+        --     ["1_lua-func"] = function (vars)
+        --         local no_blinking = "v0"
+        --         local mode_1 = { sim_id = "0", blinking = "f200,800" }
+        --         local mode_2 = { sim_id = "1", blinking = "f200,200,200,800" }
+        --         if vars.switching == "true" then return no_blinking
+		-- 		elseif  (vars.sim_id == "0" and vars.r01_sim_ready == "true") then return mode_1.blinking
+		-- 		elseif  (vars.sim_id == "1" and vars.r01_sim_ready == "true") then return mode_2.blinking
+        --         else return no_blinking end
+        --     end,
+        -- },
+
+		{
+            ["func"] = function (vars)
                 local no_blinking = "v0"
                 local mode_1 = { sim_id = "0", blinking = "f200,800" }
                 local mode_2 = { sim_id = "1", blinking = "f200,200,200,800" }
@@ -63,22 +114,37 @@ local rule_setting = {
 				elseif  (vars.sim_id == "0" and vars.r01_sim_ready == "true") then return mode_1.blinking
 				elseif  (vars.sim_id == "1" and vars.r01_sim_ready == "true") then return mode_2.blinking
                 else return no_blinking end
-            end,
+            end
         },
     },
 
 	send_stm_at = {
 		note = [[ Отправка настроек светодиода LED3 ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.stm",
-			method = "send",
-			params = {
-				command = "~0:LED.3=$LED3_mode",
-			},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.stm",
+		-- 	method = "send",
+		-- 	params = {
+		-- 		command = "~0:LED.3=$LED3_mode",
+		-- 	},
+		-- },
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		return (vars.LED3_mode == vars.previous)
+		-- 	end
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.stm",
+				method = "send",
+				params = {
+					command = "~0:LED.3=$LED3_mode",
+				},
+			}
 		},
-		modifier = {
-			["1_skip-func"] = function (vars)
+		{
+			["skip"] = function (vars)
 				return (vars.LED3_mode == vars.previous)
 			end
 		}
@@ -86,10 +152,16 @@ local rule_setting = {
 
     previous = {
         note = [[ Режим мигания светодиода LED3 (на предыдущей итерации). ]],
-        modifier = {
-            ["1_lua-func"] = function (vars)
+        -- modifier = {
+        --     ["1_lua-func"] = function (vars)
+        --         return vars.LED3_mode
+        --     end,
+        -- },
+
+		{
+            ["func"] = function (vars)
                 return vars.LED3_mode
-            end,
+            end
         },
     },
 }
@@ -110,32 +182,28 @@ function rule:make()
 
 	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
-	if (r01_wait_timer and r01_wait_timer > 0) then 
+	if (r01_wait_timer and r01_wait_timer > 0) then
 		--if rule.debug_mode.enabled then print("------ 08_rule SKIPPED as r01_wait_timer > 0 -----") end
-		return 
+		return
 	end
 
-	self:load("title"):modify():debug()
-	self:load("sim_id"):modify():debug()
-	self:load("switching"):modify():debug()
-	self:load("r01_sim_ready"):modify():debug()
-	self:load("LED3_mode"):modify():debug()
-	self:load("send_stm_at"):modify():debug()
-    self:load("previous"):modify():debug()
+
+	self:follow("title"):debug()
+	self:follow("sim_id"):debug()
+	self:follow("switching"):debug()
+	self:follow("r01_sim_ready"):debug()
+	self:follow("LED3_mode"):debug()
+	self:follow("send_stm_at"):debug()
+    self:follow("previous"):debug()
 end
 
 
----[[ Initializing. Don't edit the code below ]]---
 local metatable = {
-	__call = function(table, parent)
-		local t = rule_init(table, rule_setting, parent)
-		if not t.is_busy then
-			t.is_busy = true
-			t:make()
-			t.is_busy = false
-		end
-		return t
-	end
+    __call = function(table, parent)
+        local rule_init_table = rule_init(table, rule_setting, parent)
+        rule_init_table:make()
+        return rule_init_table
+    end
 }
 setmetatable(rule, metatable)
 return rule

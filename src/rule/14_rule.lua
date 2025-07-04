@@ -1,7 +1,5 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.util.rule_init"
-local log = require "applogic.util.log"
-local I18N = require "luci.i18n"
+local rule_init = require "applogic.operator.rule_init"
 
 
 local rule = {}
@@ -12,16 +10,30 @@ local rule_setting = {
 
 	sim_id = {
 		note = [[ Идентификатор Сим-карты, 0/1 ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "sim",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "sim",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "sim",
+				params = {},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -29,58 +41,108 @@ local rule_setting = {
 
 	network_registration = {
 		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "reg",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "reg",
+				params = {},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.network_registration) or {}
 				return lua_table.value or ""
-			end,
+			end
 		}
 	},
 
 	is_autodetect_provider = {
 		note = [[ Получить режим определения провайдера 1 или 0 (auto или manual) ]],
-		source = {
-			type = "ubus",
-			object = "uci",
-			method = "get",
-			params = {
-				config = "tsmodem",
-				section = "sim_$sim_id",
-				option = "autodetect_provider"
-			},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "uci",
+		-- 	method = "get",
+		-- 	params = {
+		-- 		config = "tsmodem",
+		-- 		section = "sim_$sim_id",
+		-- 		option = "autodetect_provider"
+		-- 	},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "uci",
+				method = "get",
+				params = {
+					config = "tsmodem",
+					section = "sim_$sim_id",
+					option = "autodetect_provider"
+				},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		{
 			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+				local lua_table = luci.jsonc.parse(vars.is_autodetect_provider) or {}
 				return lua_table.value or ""
-			end,
+			end
 		}
 	},
 
 	old_provider_id = {
 		note = [[ Определить текущую настройку - идентификатор провайдера ]],
-		source = {
-			type = "ubus",
-			object = "uci",
-			method = "get",
-			params = {
-				config = "tsmodem",
-				section = "sim_$sim_id",
-				option = "provider",
-			},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "uci",
+		-- 	method = "get",
+		-- 	params = {
+		-- 		config = "tsmodem",
+		-- 		section = "sim_$sim_id",
+		-- 		option = "provider",
+		-- 	},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "uci",
+				method = "get",
+				params = {
+					config = "tsmodem",
+					section = "sim_$sim_id",
+					option = "provider",
+				},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.old_provider_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -89,21 +151,42 @@ local rule_setting = {
 	new_provider_id = {
 		note = [[ Идентификатор провайдера после автоопределения ]],
 		input = "",
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
-			method = "provider_name",				-- This is UBUS METHOD name. Run in the shell "ubus -v list tsmodem driver" to see all methods.
-			params = {},
-		},
-		modifier = {
-			["1_skip-func"] = function (vars)
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
+		-- 	method = "provider_name",				-- This is UBUS METHOD name. Run in the shell "ubus -v list tsmodem driver" to see all methods.
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		local netreg = tonumber(vars.network_registration)
+		-- 		local REG_OK = 	netreg and (netreg >= 0 and netreg <=5)
+		-- 		return ( not REG_OK )
+		-- 	end,
+		-- 	-- ["2_bash"] = [[ jsonfilter -e $.comment ]],		-- 22099, etc
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.comment or ""
+		-- 	end,
+		-- }
+
+		{
+			["skip"] = function (vars)
 				local netreg = tonumber(vars.network_registration)
 				local REG_OK = 	netreg and (netreg >= 0 and netreg <=5)
 				return ( not REG_OK )
-			end,
-			-- ["2_bash"] = [[ jsonfilter -e $.comment ]],		-- 22099, etc
-			["2_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+			end
+		},
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
+				method = "provider_name",				-- This is UBUS METHOD name. Run in the shell "ubus -v list tsmodem driver" to see all methods.
+				params = {},
+			}
+		},
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.new_provider_id) or {}
 				return lua_table.comment or ""
 			end,
 		}
@@ -112,71 +195,148 @@ local rule_setting = {
 	set_provider = {
 		note = [[ Автоматически установить настройки Сим для определённого провайдера ]],
 		input = "false",
-		modifier = {
-			["1_skip-func"] = function (vars)
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		local ALREADY_SET = (vars.old_provider_id == vars.new_provider_id)
+		-- 		local EMPTY_OLD = (vars.old_provider_id == "")
+		-- 		local EMPTY_NEW = (vars.new_provider_id == "")
+		-- 		local MANUAL_SET = (vars.is_autodetect_provider == "0")
+		-- 		return (ALREADY_SET or EMPTY_OLD or EMPTY_NEW or MANUAL_SET)
+		-- 	end,
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local sid = vars.sim_id
+		-- 		local uci = require "luci.model.uci".cursor()
+		-- 		uci:set("tsmodem","sim_"..sid,"provider",vars.new_provider_id)
+		-- 		uci:commit("tsmodem")
+		-- 		return "true"
+		-- 	end,
+		-- 	["3_frozen"] = [[ return 6 ]]
+		-- }
+
+		{
+			["skip"] = function (vars)
 				local ALREADY_SET = (vars.old_provider_id == vars.new_provider_id)
 				local EMPTY_OLD = (vars.old_provider_id == "")
 				local EMPTY_NEW = (vars.new_provider_id == "")
 				local MANUAL_SET = (vars.is_autodetect_provider == "0")
 				return (ALREADY_SET or EMPTY_OLD or EMPTY_NEW or MANUAL_SET)
-			end,
-			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+			["func"] = function (vars)
 				local sid = vars.sim_id
 				local uci = require "luci.model.uci".cursor()
 				uci:set("tsmodem","sim_"..sid,"provider",vars.new_provider_id)
 				uci:commit("tsmodem")
 				return "true"
-			end,
-			["3_frozen"] = [[ return 6 ]]
+			end
+		},
+		{
+			["frozen"] = function (vars)
+				return 6
+			end
 		}
 	},
 
 	provider_name = {
 		note = [[ Наименование провайдера. ]],
 		input = "",
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
-			method = "provider_name",				-- This is UBUS METHOD name. Run in the shell "ubus -v list tsmodem driver" to see all methods.
-			params = {},
-		},
-		modifier = {
-			["1_skip-func"] = function (vars)
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
+		-- 	method = "provider_name",				-- This is UBUS METHOD name. Run in the shell "ubus -v list tsmodem driver" to see all methods.
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		local NEW_PROVIDER_IDENTIFIED = tonumber(vars.new_provider_id)
+		-- 		local nr = tonumber(vars.network_registration)
+		-- 		local REG_OK = 	nr and ((nr >= 0) and (nr <= 8))
+		-- 		return not (REG_OK and NEW_PROVIDER_IDENTIFIED)
+		-- 	end,
+		-- 	-- ["2_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["skip"] = function (vars)
 				local NEW_PROVIDER_IDENTIFIED = tonumber(vars.new_provider_id)
 				local nr = tonumber(vars.network_registration)
 				local REG_OK = 	nr and ((nr >= 0) and (nr <= 8))
 				return not (REG_OK and NEW_PROVIDER_IDENTIFIED)
-			end,
-			-- ["2_bash"] = [[ jsonfilter -e $.value ]],
-			["2_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+			end
+		},
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
+				method = "provider_name",				-- This is UBUS METHOD name. Run in the shell "ubus -v list tsmodem driver" to see all methods.
+				params = {},
+			}
+		},
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.provider_name) or {}
 				return lua_table.value or ""
 			end,
 		}
 	},
 
 	event_datetime = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "provider_name",
-			params = {}
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "provider_name",
+		-- 	params = {}
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.time ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.time or ""
+		-- 	end,
+		-- 	["2_lua-func"] = function (vars)
+		-- 		return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+		-- 	end
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "provider_name",
+				params = {}
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.time ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
 				return lua_table.time or ""
-			end,
-			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+			["func"] = function (vars)
 				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
 			end
 		}
 	},
 	send_ui = {
 		note = [[ Индикация в веб-интерфейсе ]],
-		modifier = {
-			["1_ui-update"] = {
+		-- modifier = {
+		-- 	["1_ui-update"] = {
+		-- 		param_list = {
+		-- 			"sim_id",
+		-- 			"provider_name",
+		-- 			"old_provider_id",
+		-- 			"new_provider_id",
+		-- 			"is_autodetect_provider",
+		-- 		}
+		-- 	},
+		-- }
+
+		{
+			["ui-update"] = {
 				param_list = {
 					"sim_id",
 					"provider_name",
@@ -189,35 +349,71 @@ local rule_setting = {
 	},
 
     event_is_new = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "provider_name",
-			params = {}
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "provider_name",
+		-- 	params = {}
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.unread or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "provider_name",
+				params = {}
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
 				return lua_table.unread or ""
 			end,
 		}
 	},
     journal = {
-		modifier = {
-			["1_skip-func"] = function (vars)
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		if (vars.event_is_new == "true" and vars.new_provider_id ~= vars.old_provider_id and vars.provider_name ~= "" and tostring(vars.sim_id)) then return false else return true end
+		-- 	end,
+		-- 	["2_lua-func"] = function (vars)
+		-- 		return({
+		-- 			name = "Автоопределение провайдера в слоте SIM-" .. (tonumber(vars.sim_id)+1),
+		-- 			datetime = vars.event_datetime,
+		-- 			source = "Modem  (14-rule)",
+		-- 			command = "AT+COPS?",
+		-- 			response = vars.provider_name 
+		-- 		})
+		-- 	end,
+		-- 	["3_store-db"] = {
+		-- 		param_list = { "journal" }
+		-- 	},
+		-- }
+
+		{
+			["skip"] = function (vars)
 				if (vars.event_is_new == "true" and vars.new_provider_id ~= vars.old_provider_id and vars.provider_name ~= "" and tostring(vars.sim_id)) then return false else return true end
-			end,
-			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+			["func"] = function (vars)
 				return({
 					name = "Автоопределение провайдера в слоте SIM-" .. (tonumber(vars.sim_id)+1),
 					datetime = vars.event_datetime,
 					source = "Modem  (14-rule)",
 					command = "AT+COPS?",
-					response = vars.provider_name 
+					response = vars.provider_name
 				})
-			end,
-			["3_store-db"] = {
+			end
+		},
+		{
+			["store-db"] = {
 				param_list = { "journal" }
 			},
 		}
@@ -251,39 +447,33 @@ function rule:make()
 
 	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
-	if (r01_wait_timer and r01_wait_timer > 0) then 
+	if (r01_wait_timer and r01_wait_timer > 0) then
 		--if rule.debug_mode.enabled then print("------ 14_rule SKIPPED as r01_wait_timer > 0 -----") end
-		return 
+		return
 	end
 
-	self:load("title"):modify():debug()
-	self:load("sim_id"):modify():debug()					-- текущий слот 0 / 1
-	self:load("network_registration"):modify():debug()		-- статус регистрации Сим 0..7
-	self:load("is_autodetect_provider"):modify():debug(overview)	-- включен режим автоопределения провайдера для данного слота?
-	self:load("old_provider_id"):modify():debug()				-- автоопределённый id провайдера 25099, 25001, etc.
-	self:load("new_provider_id"):modify():debug()			-- конфиг настроек провайдера для текущего слота cfg022fa6, etc.
-	self:load("set_provider"):modify():debug(overview)				-- установить конфиг для текущего слота по результату автоопределения
-	self:load("provider_name"):modify():debug()				-- выдать в веб-интерфейс имя провайдера Belline, MTS, etc.
-	self:load("send_ui"):modify():debug()
-    self:load("event_datetime"):modify():debug()
-	self:load("event_is_new"):modify():debug()
-    self:load("journal"):modify():debug()
 
+	self:follow("title"):debug()
+	self:follow("sim_id"):debug()					-- текущий слот 0 / 1
+	self:follow("network_registration"):debug()		-- статус регистрации Сим 0..7
+	self:follow("is_autodetect_provider"):debug(overview)	-- включен режим автоопределения провайдера для данного слота?
+	self:follow("old_provider_id"):debug()				-- автоопределённый id провайдера 25099, 25001, etc.
+	self:follow("new_provider_id"):debug()			-- конфиг настроек провайдера для текущего слота cfg022fa6, etc.
+	self:follow("set_provider"):debug(overview)				-- установить конфиг для текущего слота по результату автоопределения
+	self:follow("provider_name"):debug()				-- выдать в веб-интерфейс имя провайдера Belline, MTS, etc.
+	self:follow("send_ui"):debug()
+    self:follow("event_datetime"):debug()
+	self:follow("event_is_new"):debug()
+    self:follow("journal"):debug()
 end
 
 
-
----[[ Initializing. Don't edit the code below ]]---
 local metatable = {
-	__call = function(table, parent)
-		local t = rule_init(table, rule_setting, parent)
-		if not t.is_busy then
-			t.is_busy = true
-			t:make()
-			t.is_busy = false
-		end
-		return t
-	end
+    __call = function(table, parent)
+        local rule_init_table = rule_init(table, rule_setting, parent)
+        rule_init_table:make()
+        return rule_init_table
+    end
 }
 setmetatable(rule, metatable)
 return rule

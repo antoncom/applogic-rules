@@ -1,7 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.util.rule_init"
-local log = require "applogic.util.log"
-local I18N = require "luci.i18n"
+local rule_init = require "applogic.operator.rule_init"
+
 
 local rule = {}
 local rule_setting = {
@@ -11,16 +10,30 @@ local rule_setting = {
 
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "sim",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "sim",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]]
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "sim",
+				params = {},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]]
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -28,16 +41,30 @@ local rule_setting = {
 
 	usb = {
 		note = [[ Состояние USB-порта: connected / disconnected  ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "usb",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "usb",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "usb",
+				params = {},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.usb) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -46,11 +73,33 @@ local rule_setting = {
     idle_time = {
 		note = [[ Сколько времени модем выключен (отсутствует /dev/ttyUSB2) ]],
 		input = 0,
-		modifier = {
-			["1_skip-func"] = function (vars)
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		return (not tonumber(vars.os_time))
+		-- 	end,
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local STEP = os.time() - tonumber(vars.os_time)
+		-- 		if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+
+		-- 		local it = tonumber(vars.idle_time) or 0
+		-- 		if (vars.usb == "connected") then
+		-- 			return 0
+		-- 		else
+		-- 			return (it + STEP)
+		-- 		end
+		-- 	end,
+		-- 	["3_save-func"] = function (vars)
+		-- 		return vars.idle_time
+		-- 	end
+		-- }
+
+		{
+			["skip"] = function (vars)
 				return (not tonumber(vars.os_time))
-			end,
-			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+			["func"] = function (vars)
 				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
@@ -60,21 +109,33 @@ local rule_setting = {
 				else
 					return (it + STEP)
 				end
-			end,
-			["3_save-func"] = function (vars)
+			end
+		},
+		{
+			["save"] = function (vars)
 				return vars.idle_time
 			end
-
 		}
 	},
 
 	os_time = {
 		note = [[ Время ОС на предыдущей итерации ]],
-		modifier = {
-			["1_lua-func"] = function (vars)
+		-- modifier = {
+		-- 	["1_lua-func"] = function (vars)
+		-- 		return os.time()
+		-- 	end,
+		-- 	["2_save-func"] = function (vars)
+		-- 		return vars.os_time
+		-- 	end
+		-- }
+
+		{
+			["func"] = function (vars)
 				return os.time()
-			end,
-			["2_save-func"] = function (vars)
+			end
+		},
+		{
+			["save"] = function (vars)
 				return vars.os_time
 			end
 		}
@@ -83,29 +144,62 @@ local rule_setting = {
 
     reinit_modem = {
 		note = [[ Перезапускает модем если USB порт /dev/ttyUSB2 отсутствует более 2 мин. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "do_reset",
-			params = { rule = "98_rule"},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "do_reset",
+		-- 	params = { rule = "98_rule"},
+		-- },
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		local it = tonumber(vars.idle_time) or 0
+		-- 		return (vars.usb == "connected" or (it <= 120))
+		-- 	end,
+ 		-- 	["2_lua-func"] = function (vars)
+ 		-- 		return "true"
+ 		-- 	end,
+        --     ["3_frozen"] = [[ return 30 ]]
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "do_reset",
+				params = { rule = "98_rule"},
+			}
 		},
-		modifier = {
-			["1_skip-func"] = function (vars)
+		{
+			["skip"] = function (vars)
 				local it = tonumber(vars.idle_time) or 0
 				return (vars.usb == "connected" or (it <= 120))
-			end,
- 			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+ 			["func"] = function (vars)
  				return "true"
- 			end,
-            ["3_frozen"] = [[ return 30 ]]
+ 			end
+		},
+		{
+            ["frozen"] = function (vars)
+				return 30
+			end
 		}
 	},
 
 
 	send_ui = {
 		note = [[ Индикация в веб-интерфейсе ]],
-		modifier = {
-			["1_ui-update"] = {
+		-- modifier = {
+		-- 	["1_ui-update"] = {
+		-- 		param_list = {
+        --             "idle_time",
+		-- 			"sim_id"
+		-- 		}
+		-- 	},
+		-- }
+
+		{
+			["ui-update"] = {
 				param_list = {
                     "idle_time",
 					"sim_id"
@@ -114,42 +208,95 @@ local rule_setting = {
 		}
 	},
 	event_datetime = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "reg",
-			params = {}
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "reg",
+		-- 	params = {}
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.time ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.time or ""
+		-- 	end,
+		-- 	["2_lua-func"] = function (vars)
+		-- 		return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+		-- 	end
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "reg",
+				params = {}
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.time ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
 				return lua_table.time or ""
-			end,
-			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+			["func"] = function (vars)
 				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
 			end
 		}
 	},
     event_is_new = {
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "usb",
-			params = {}
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "usb",
+		-- 	params = {}
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.unread or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "usb",
+				params = {}
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
 				return lua_table.unread or ""
 			end,
 		}
 	},
     journal = {
-		modifier = {
-			["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-			["2_lua-func"] = function (vars)
+		-- modifier = {
+		-- 	["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
+		-- 	["2_lua-func"] = function (vars)
+		-- 		return({
+		-- 			datetime = vars.event_datetime,
+		-- 			name = "Изенилось состояние порта /dev/ttyUSB2",
+		-- 			source = "Modem  (98-rule)",
+		-- 			command = "watchdog",
+		-- 			response = vars.usb
+		-- 		})
+		-- 	end,
+		-- 	["3_store-db"] = {
+		-- 		param_list = { "journal" }
+		-- 	},
+		-- }
+
+		{
+			["skip"] = function (vars)
+				if (vars.event_is_new == "true") then return false else return true end
+			end
+		},
+		{
+			["func"] = function (vars)
 				return({
 					datetime = vars.event_datetime,
 					name = "Изенилось состояние порта /dev/ttyUSB2",
@@ -157,8 +304,10 @@ local rule_setting = {
 					command = "watchdog",
 					response = vars.usb
 				})
-			end,
-			["3_store-db"] = {
+			end
+		},
+		{
+			["store-db"] = {
 				param_list = { "journal" }
 			},
 		}
@@ -188,30 +337,24 @@ function rule:make()
 	if rule.parent.state.mode == "stop" then return end
 
 
-	self:load("title"):modify():debug() -- Use debug(ONLY) to check the var only
-	self:load("sim_id"):modify():debug()
-	self:load("usb"):modify():debug()
-	self:load("idle_time"):modify():debug(overview)
-	self:load("os_time"):modify():debug()
-	self:load("reinit_modem"):modify():debug(overview)
-	self:load("send_ui"):modify():debug()
-	self:load("event_datetime"):modify():debug()
-    self:load("event_is_new"):modify():debug()
-    self:load("journal"):modify():debug()
-
+	self:follow("title"):debug() -- Use debug(ONLY) to check the var only
+	self:follow("sim_id"):debug()
+	self:follow("usb"):debug()
+	self:follow("idle_time"):debug(overview)
+	self:follow("os_time"):debug()
+	self:follow("reinit_modem"):debug(overview)
+	self:follow("send_ui"):debug()
+	self:follow("event_datetime"):debug()
+    self:follow("event_is_new"):debug()
+    self:follow("journal"):debug()
 end
 
----[[ Initializing. Don't edit the code below ]]---
 local metatable = {
-	__call = function(table, parent)
-		local t = rule_init(table, rule_setting, parent)
-		if not t.is_busy then
-			t.is_busy = true
-			t:make()
-			t.is_busy = false
-		end
-		return t
-	end
+    __call = function(table, parent)
+        local rule_init_table = rule_init(table, rule_setting, parent)
+        rule_init_table:make()
+        return rule_init_table
+    end
 }
 setmetatable(rule, metatable)
 return rule

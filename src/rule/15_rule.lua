@@ -1,7 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.util.rule_init"
-local log = require "applogic.util.log"
-local I18N = require "luci.i18n"
+local rule_init = require "applogic.operator.rule_init"
+
 
 local rule = {}
 local rule_setting = {
@@ -11,45 +10,87 @@ local rule_setting = {
 
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "sim",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "sim",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	["1_bash"] = [[ jsonfilter -e $.value ]]
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "sim",
+				params = {},
+			}
 		},
-		modifier = {
-			["1_bash"] = [[ jsonfilter -e $.value ]]
+		{
+			["bash"] = [[ jsonfilter -e $.value ]]
 		}
 	},
 
 	sim_ready = {
 		note = [[ Сим-карта в слоте? "true" / "false" ]],
-		source = {
-			type = "rule",
-			rulename = "01_rule",
-			varname = "sim_ready",
+		-- source = {
+		-- 	type = "rule",
+		-- 	rulename = "01_rule",
+		-- 	varname = "sim_ready",
+		-- },
+
+		{
+			["load-rule"] = {
+				rulename = "01_rule",
+				varname = "sim_ready",
+			}
 		},
 	},
 
 	sim_not_ready_last_time = {
 		note = [[ Время когда SIM была необнаружена ]],
 		input = os.time(),
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "cpin",
-			params = {},
-		},
-		modifier = {
-			["1_skip-func"] = function (vars)
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "cpin",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		return (vars.sim_ready == "true")
+		-- 	end,
+		-- 	-- ["2_bash"] = [[ jsonfilter -e $.time ]],
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.time or ""
+		-- 	end,
+		-- 	["3_save-func"] = function (vars)
+		-- 		return vars.sim_not_ready_last_time
+		-- 	end,
+		-- }
+
+		{
+			["skip"] = function (vars)
 				return (vars.sim_ready == "true")
-			end,
-			-- ["2_bash"] = [[ jsonfilter -e $.time ]],
-			["2_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+			end
+		},
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "cpin",
+				params = {},
+			}
+		},
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.sim_not_ready_last_time) or {}
 				return lua_table.time or ""
-			end,
-			["3_save-func"] = function (vars)
+			end
+		},
+		{
+			["save"] = function (vars)
 				return vars.sim_not_ready_last_time
 			end,
 		}
@@ -57,17 +98,32 @@ local rule_setting = {
 
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "switching",
-			params = {},
-			cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "switching",
+		-- 	params = {},
+		-- 	cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "switching",
+				params = {},
+				cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.switching) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -75,16 +131,30 @@ local rule_setting = {
 
 	usb = {
 		note = [[ Состояние USB-порта: connected / disconnected  ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "usb",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "usb",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "usb",
+				params = {},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.usb) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -93,19 +163,38 @@ local rule_setting = {
 	connected_usb_time = {
 		note = [[ Время когда USB порт установился в состояние "connected"  ]],
 		input = 0,
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "usb",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "usb",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		return (vars.usb == "disconnected" )
+		-- 	end,
+		-- 	-- ["2_bash"] = [[ jsonfilter -e $.time ]],
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.time or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "usb",
+				params = {},
+			}
 		},
-		modifier = {
-			["1_skip-func"] = function (vars)
+		{
+			["skip"] = function (vars)
 				return (vars.usb == "disconnected" )
-			end,
-			-- ["2_bash"] = [[ jsonfilter -e $.time ]],
-			["2_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+			end
+		},
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.connected_usb_time) or {}
 				return lua_table.time or ""
 			end,
 		}
@@ -113,16 +202,30 @@ local rule_setting = {
 
 	provider_id = {
 		note = [[ Идентификатор провайдера ]],
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "provider_name",
-			params = {},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "provider_name",
+		-- 	params = {},
+		-- },
+		-- modifier = {
+		-- 	-- ["1_bash"] = [[ jsonfilter -e $.comment ]]
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.comment or ""
+		-- 	end,
+		-- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "provider_name",
+				params = {},
+			}
 		},
-		modifier = {
-			-- ["1_bash"] = [[ jsonfilter -e $.comment ]]
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.provider_id) or {}
 				return lua_table.comment or ""
 			end,
 		}
@@ -131,23 +234,46 @@ local rule_setting = {
     ussd_command = {
         note = [[ USSD команда для данного провайдера ]],
 		input = "",
-        source = {
-            type = "ubus",
-            object = "uci",
-            method = "get",
-            params = {
-                config = "tsmodem_adapter_provider",
-                section = "$provider_id",
-                option = "balance_ussd"
-            },
-        },
-        modifier = {
-			["1_skip-func"] = function (vars)
+        -- source = {
+        --     type = "ubus",
+        --     object = "uci",
+        --     method = "get",
+        --     params = {
+        --         config = "tsmodem_adapter_provider",
+        --         section = "$provider_id",
+        --         option = "balance_ussd"
+        --     },
+        -- },
+        -- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		return not (tonumber(vars.provider_id) and (vars.provider_id ~= 0))
+		-- 	end,
+        --     -- ["2_bash"] = [[ jsonfilter -e $.value ]]
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+        -- }
+
+        {
+			["skip"] = function (vars)
 				return not (tonumber(vars.provider_id) and (vars.provider_id ~= 0))
-			end,
-            -- ["2_bash"] = [[ jsonfilter -e $.value ]]
-			["2_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+			end
+		},
+		{
+			["load-ubus"] = {
+				object = "uci",
+				method = "get",
+				params = {
+					config = "tsmodem_adapter_provider",
+					section = "$provider_id",
+					option = "balance_ussd"
+				},
+			}
+		},
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.ussd_command) or {}
 				return lua_table.value or ""
 			end,
         }
@@ -155,16 +281,30 @@ local rule_setting = {
 
     current_balance_state = {
         note = [[ Текущий статус баланса (число, * (значит в процессе), либо "" - если последний запрос был неудачен) ]],
-        source = {
-            type = "ubus",
-            object = "tsmodem.driver",
-            method = "balance",
-            params = {},
-        },
-        modifier = {
-            -- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+        -- source = {
+        --     type = "ubus",
+        --     object = "tsmodem.driver",
+        --     method = "balance",
+        --     params = {},
+        -- },
+        -- modifier = {
+        --     -- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+        -- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+            	method = "balance",
+            	params = {},
+        	}
+		},
+        {
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.current_balance_state) or {}
 				return lua_table.value or ""
 			end,
         }
@@ -172,38 +312,91 @@ local rule_setting = {
 
 	uci_balance_timeout = {
 		note = [[ Таймаут, по истечении которого слот переключается ]],
-		source = {
-			type = "ubus",
-			object = "uci",
-			method = "get",
-			params = {
-				config = "tsmodem",
-				section = "sim_$sim_id",
-				option = "timeout_bal",
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "uci",
+		-- 	method = "get",
+		-- 	params = {
+		-- 		config = "tsmodem",
+		-- 		section = "sim_$sim_id",
+		-- 		option = "timeout_bal",
+		-- 	}
+		-- },
+        -- modifier = {
+        --     -- ["1_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["1_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+        -- }
+
+		{
+			["load-ubus"] = {
+				object = "uci",
+				method = "get",
+				params = {
+					config = "tsmodem",
+					section = "sim_$sim_id",
+					option = "timeout_bal",
+				}
 			}
 		},
-        modifier = {
-            -- ["1_bash"] = [[ jsonfilter -e $.value ]],
-			["1_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+        {
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.uci_balance_timeout) or {}
 				return lua_table.value or ""
-			end,
+			end
         }
 	},
 
     a_balance_interval = {
         note = [[ Частота запроса баланса: 1-2 мин. - в первые 10 мин активной SIM; Затем 15..45 мин. при постоянной работе на данной SIM. ]],
 		input = 60,
-        modifier= {
-			["1_skip-func"] = function (vars)
+        -- modifier= {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		local SIM_READY = (vars.sim_ready == "true")
+		-- 		local OS_TIME_READY = tonumber(vars.os_time)
+		-- 		local USBTIME_OK = tonumber(vars.connected_usb_time)
+		-- 		local BALANCE_OK = tonumber(vars.current_balance_state)
+		-- 		local SKIP_IF = not (SIM_READY and OS_TIME_READY and BALANCE_OK and USBTIME_OK)
+		-- 		return SKIP_IF
+		-- 	end,
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local STEP = os.time() - tonumber(vars.os_time)
+		-- 		if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+
+		-- 		local beginning = 180
+		-- 		local snrlt = tonumber(vars.sim_not_ready_last_time) or 0
+		-- 		local JUST_STARTED = (snrlt == 0)
+		-- 		local SIM_JUST_INSERTED = ((snrlt > 0) and (os.time() - snrlt) < beginning )
+		-- 		local IS_USB_RECENTLY_CONNECTED = ((tonumber(vars.os_time) - tonumber(vars.connected_usb_time)) < 900)
+		-- 		if (JUST_STARTED or SIM_JUST_INSERTED or IS_USB_RECENTLY_CONNECTED) then
+		-- 			local ubt = tonumber(vars.uci_balance_timeout) or 120
+		-- 			-- it uses to coordinate chek balance interval (15_rule) and switch SIM on low balance (03_rule)
+		-- 			return math.random (ubt+10, ubt*2)
+		-- 		else
+		-- 			return math.random (900, 2700) -- 15..45 mins
+		-- 		end
+		-- 	end,
+		-- 	--["3_save-func"] = [[ return $a_balance_interval ]],
+		-- 	["4_frozen"] = [[
+		-- 		local NOT_CALCULATED_AGAIN_TIME = tonumber($a_balance_interval) and (tonumber($a_balance_interval) + 10)
+		-- 		return NOT_CALCULATED_AGAIN_TIME or 0
+		-- 	]]
+        -- }
+
+		{
+			["skip"] = function (vars)
 				local SIM_READY = (vars.sim_ready == "true")
 				local OS_TIME_READY = tonumber(vars.os_time)
 				local USBTIME_OK = tonumber(vars.connected_usb_time)
 				local BALANCE_OK = tonumber(vars.current_balance_state)
 				local SKIP_IF = not (SIM_READY and OS_TIME_READY and BALANCE_OK and USBTIME_OK)
 				return SKIP_IF
-			end,
-			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+			["func"] = function (vars)
 				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
@@ -220,23 +413,46 @@ local rule_setting = {
 					return math.random (900, 2700) -- 15..45 mins
 				end
 			end,
-			--["3_save-func"] = [[ return $a_balance_interval ]],
-			["4_frozen"] = [[
-				local NOT_CALCULATED_AGAIN_TIME = tonumber($a_balance_interval) and (tonumber($a_balance_interval) + 10)
+		},
+		{
+			["frozen"] = function (vars)
+				local NOT_CALCULATED_AGAIN_TIME = tonumber(vars.a_balance_interval) and (tonumber(vars.a_balance_interval) + 10)
 				return NOT_CALCULATED_AGAIN_TIME or 0
-			]]
+			end
         }
     },
 
     timer = {
 		note = [[ Отсчёт интервалов получения баланса ]],
 		input = 0, -- Set default value if you need "reset" variable before skipping
-		modifier = {
-			["1_skip-func"] = function (vars)
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		local JUST_STARTED = (not tonumber(vars.os_time))
+		-- 		return JUST_STARTED
+		-- 	end,
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local STEP = os.time() - tonumber(vars.os_time)
+		-- 		if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+		-- 		local SIM_OK = (vars.sim_ready == "true")
+		-- 		local t = tonumber(vars.timer) or 0
+		-- 		local bi = tonumber(vars.a_balance_interval) or 0
+        --         if (SIM_OK and (t < bi)) then
+        --             return ( t + STEP )
+        --         else return 0 end
+		-- 	end,
+        --     ["3_save-func"] = function (vars)
+        --     	return vars.timer
+        --     end
+		-- }
+
+		{
+			["skip"] = function (vars)
 				local JUST_STARTED = (not tonumber(vars.os_time))
 				return JUST_STARTED
-			end,
-			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+			["func"] = function (vars)
 				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 				local SIM_OK = (vars.sim_ready == "true")
@@ -245,8 +461,10 @@ local rule_setting = {
                 if (SIM_OK and (t < bi)) then
                     return ( t + STEP )
                 else return 0 end
-			end,
-            ["3_save-func"] = function (vars)
+			end
+		},
+		{
+            ["save"] = function (vars)
             	return vars.timer
             end
 		}
@@ -254,8 +472,14 @@ local rule_setting = {
 
 	wait_balance = {
 		note = [[ Максимальное значение timeout, после которого прекращаются неудачные попытки получить баланс ]],
-		modifier= {
-			["1_lua-func"] = function (vars)
+		-- modifier= {
+		-- 	["1_lua-func"] = function (vars)
+		-- 		return 600
+		-- 	end,
+		-- }
+
+		{
+			["func"] = function (vars)
 				return 600
 			end,
 		}
@@ -264,11 +488,35 @@ local rule_setting = {
 	timeout = {
 		note = [[ Таймаут - сколько ждать получения валидного значения баланса ]],
 		input = 600, -- Set default value if you need "reset" variable before skipping
-		modifier = {
-			["1_skip-func"] = function (vars)
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars)
+		-- 		return not tonumber(vars.os_time)
+		-- 	end,
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local STEP = os.time() - tonumber(vars.os_time)
+		-- 		if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
+
+		-- 		local tut = tonumber(vars.timeout) or 0
+		-- 		local BALANCE_VALID = (tonumber(vars.current_balance_state))
+		-- 		local BALANCE_FAIL = (vars.current_balance_state == "")
+
+		-- 		if (BALANCE_VALID or BALANCE_FAIL) then return vars.wait_balance
+		-- 		elseif (tut > 0) then
+		-- 			return ( tut - STEP )
+		-- 		else
+		-- 			return vars.wait_balance
+		-- 		end
+		-- 	end,
+		-- 	["3_save-func"] = function (vars) return vars.timeout end
+		-- }
+
+		{
+			["skip"] = function (vars)
 				return not tonumber(vars.os_time)
-			end,
-			["2_lua-func"] = function (vars)
+			end
+		},
+		{
+			["func"] = function (vars)
 				local STEP = os.time() - tonumber(vars.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
@@ -282,34 +530,77 @@ local rule_setting = {
 				else
 					return vars.wait_balance
 				end
-			end,
-			["3_save-func"] = function (vars) return vars.timeout end
+			end
+		},
+		{
+			["save"] = function (vars) return vars.timeout end
 		}
 	},
 
 
     os_time = {
 		note = [[ Текущее время системы (вспомогательная переменная) ]],
-        modifier= {
-            ["1_lua-func"] = function (vars) return os.time() end,
-            ["2_save-func"] = function (vars) return vars.os_time end
+        -- modifier= {
+        --     ["1_lua-func"] = function (vars) return os.time() end,
+        --     ["2_save-func"] = function (vars) return vars.os_time end
+        -- }
+
+		{
+            ["func"] = function (vars) return os.time() end
+		},
+		{
+            ["save"] = function (vars) return vars.os_time end
         }
     },
 
     send_command = {
         note = [[ AT-команда запроса баланса - выполняется через каждые $a_balance_interval  ]],
 		input = "false",
-        source = {
-            type = "ubus",
-            object = "tsmodem.driver",
-            method = "send_at",
-            params = {
-                ["command"] = "AT+CUSD=1,$ussd_command,15",
-				["what-to-update"] = "balance"
-            },
-        },
-        modifier = {
-            ["1_skip-func"] = function (vars)
+        -- source = {
+        --     type = "ubus",
+        --     object = "tsmodem.driver",
+        --     method = "send_at",
+        --     params = {
+        --         ["command"] = "AT+CUSD=1,$ussd_command,15",
+		-- 		["what-to-update"] = "balance"
+        --     },
+        -- },
+        -- modifier = {
+        --     ["1_skip-func"] = function (vars)
+		-- 		local pid = tonumber(vars.provider_id) or 0
+		-- 		local t = tonumber(vars.timer) or 0
+		-- 		local USSD_OK = (vars.ussd_command ~= "")
+		-- 		local SIM_OK = (vars.sim_ready == "true")
+		-- 		local PROVIDER_IDENTIFIED = (pid ~= 0)
+        --         local TIME_TO_REQUEST = (t < 5)
+        --         local BALANCE_OK = tonumber(vars.current_balance_state)
+        --         local BALANCE_FAIL = (vars.current_balance_state == "")
+        --         local BALANCE_IN_PROGRESS = (vars.current_balance_state == "*")
+		-- 		local NOBODY_SWITCHING = (vars.switching == "false" or vars.switching == "")
+        --         local READY_TO_SEND = SIM_OK and PROVIDER_IDENTIFIED and TIME_TO_REQUEST and (BALANCE_OK or BALANCE_FAIL) and (not BALANCE_IN_PROGRESS) and NOBODY_SWITCHING
+        --         if USSD_OK and READY_TO_SEND then return false else return true end
+        --     end,
+        --     -- ["2_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- 	["3_lua-func"] = function (vars) return tostring(vars.send_command) end,
+        --     ["4_frozen"] = [[ return 10 ]], -- Задержать следующий запрос на 10 сек (это debounce)
+        -- }
+
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "send_at",
+				params = {
+					["command"] = "AT+CUSD=1,$ussd_command,15",
+					["what-to-update"] = "balance"
+				},
+			}
+		},
+        {
+            ["skip"] = function (vars)
 				local pid = tonumber(vars.provider_id) or 0
 				local t = tonumber(vars.timer) or 0
 				local USSD_OK = (vars.ussd_command ~= "")
@@ -322,42 +613,88 @@ local rule_setting = {
 				local NOBODY_SWITCHING = (vars.switching == "false" or vars.switching == "")
                 local READY_TO_SEND = SIM_OK and PROVIDER_IDENTIFIED and TIME_TO_REQUEST and (BALANCE_OK or BALANCE_FAIL) and (not BALANCE_IN_PROGRESS) and NOBODY_SWITCHING
                 if USSD_OK and READY_TO_SEND then return false else return true end
-            end,
-            -- ["2_bash"] = [[ jsonfilter -e $.value ]],
-			["2_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+            end
+		},
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.send_command) or {}
 				return lua_table.value or ""
-			end,
-			["3_lua-func"] = function (vars) return tostring(vars.send_command) end,
-            ["4_frozen"] = [[ return 10 ]], -- Задержать следующий запрос на 10 сек (это debounce)
+			end
+		},
+		{
+			["func"] = function (vars) return tostring(vars.send_command) end
+		},
+		{
+            ["frozen"] = function (vars)
+				return 10
+			end, -- Задержать следующий запрос на 10 сек (это debounce)
         }
     },
 
 	do_switch = {
 		note = [[ Переключает Слот, если за время $wait_balance все попытки получения баланса были неудачны ]],
 		input = "false",
-		source = {
-			type = "ubus",
-			object = "tsmodem.driver",
-			method = "do_switch",
-			params = { rule = "15_rule"},
+		-- source = {
+		-- 	type = "ubus",
+		-- 	object = "tsmodem.driver",
+		-- 	method = "do_switch",
+		-- 	params = { rule = "15_rule"},
+		-- },
+		-- modifier = {
+		-- 	["1_skip-func"] = function (vars) return tonumber(vars.timeout) and (tonumber(vars.timeout) > 0) end,
+		-- 	-- ["2_bash"] = [[ jsonfilter -e $.value ]],
+		-- 	["2_lua-func"] = function (vars)
+		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		-- 		return lua_table.value or ""
+		-- 	end,
+		-- 	["3_lua-func"] = function (vars) return tostring(vars.do_switch) end,
+		-- 	["4_frozen"] = [[ return 10 ]]
+		-- }
+
+		{
+			["skip"] = function (vars) return tonumber(vars.timeout) and (tonumber(vars.timeout) > 0) end
 		},
-		modifier = {
-			["1_skip-func"] = function (vars) return tonumber(vars.timeout) and (tonumber(vars.timeout) > 0) end,
-			-- ["2_bash"] = [[ jsonfilter -e $.value ]],
-			["2_lua-func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.subtotal) or {}
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "do_switch",
+				params = { rule = "15_rule"},
+			}
+		},
+		{
+			["func"] = function (vars)
+				local lua_table = luci.jsonc.parse(vars.do_switch) or {}
 				return lua_table.value or ""
-			end,
-			["3_lua-func"] = function (vars) return tostring(vars.do_switch) end,
-			["4_frozen"] = [[ return 10 ]]
+			end
+		},
+		{
+			["func"] = function (vars) return tostring(vars.do_switch) end
+		},
+		{
+			["frozen"] = function (vars)
+				return 10
+			end
 		}
 	},
 
 	send_ui = {
 		note = [[ Индикация в веб-интерфейсе ]],
-		modifier = {
-			["1_ui-update"] = {
+		-- modifier = {
+		-- 	["1_ui-update"] = {
+		-- 		param_list = {
+		-- 			"sim_id",
+		-- 			"timeout",
+		-- 			"do_switch",
+		-- 			"switching",
+		-- 			"wait_balance",
+		-- 			"a_balance_interval",
+		-- 			"timer"
+		-- 		}
+		-- 	},
+		-- }
+
+		{
+			["ui-update"] = {
 				param_list = {
 					"sim_id",
 					"timeout",
@@ -404,55 +741,50 @@ function rule:make()
 
 	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
 	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
-	if (r01_wait_timer and r01_wait_timer > 0) then 
+	if (r01_wait_timer and r01_wait_timer > 0) then
 		if rule.debug_mode.enabled then print("------ 15_rule SKIPPED as r01_wait_timer > 0 -----") end
-		return 
+		return
 	end
 
 	-- Пропускаем выполнения правила, если СИМ не зарегистрирована в сети
 	local r02_lastreg_timer = tonumber(all_rules["02_rule"].setting.lastreg_timer.output)
-	if (r02_lastreg_timer and r02_lastreg_timer > 0) then 
+	if (r02_lastreg_timer and r02_lastreg_timer > 0) then
 		if rule.debug_mode.enabled then print("------ 15_rule SKIPPED as r02_lastreg_timer > 0 -----") end
-		return 
+		return
 	end
 
 
-	self:load("title"):modify():debug()
-	self:load("sim_id"):modify():debug()
-	self:load("sim_ready"):modify():debug(overview)
-	self:load("sim_not_ready_last_time"):modify():debug(overview)
-	self:load("switching"):modify():debug()
-	self:load("usb"):modify():debug()
-	self:load("connected_usb_time"):modify():debug()
+	self:follow("title"):debug()
+	self:follow("sim_id"):debug()
+	self:follow("sim_ready"):debug(overview)
+	self:follow("sim_not_ready_last_time"):debug(overview)
+	self:follow("switching"):debug()
+	self:follow("usb"):debug()
+	self:follow("connected_usb_time"):debug()
 
-	self:load("provider_id"):modify():debug()      					-- идентификатор провайдера на актиной Симке, наприм. 250099
-	self:load("ussd_command"):modify():debug()     					-- USSD-код клманды, напр. #100#
-    self:load("current_balance_state"):modify():debug()				-- Значение текущего баланса
-	self:load("uci_balance_timeout"):modify():debug()
-	self:load("a_balance_interval"):modify():debug(overview) 			-- С какой частотой запрашивать баланс у провайдера
+	self:follow("provider_id"):debug()      					-- идентификатор провайдера на актиной Симке, наприм. 250099
+	self:follow("ussd_command"):debug()     					-- USSD-код клманды, напр. #100#
+    self:follow("current_balance_state"):debug()				-- Значение текущего баланса
+	self:follow("uci_balance_timeout"):debug()
+	self:follow("a_balance_interval"):debug(overview) 			-- С какой частотой запрашивать баланс у провайдера
 
-    self:load("timer"):modify():debug(overview)            					-- Отсчёт интервалов
-	self:load("wait_balance"):modify():debug()     					-- Количество времени, данное для попыток получения баланса
-	self:load("timeout"):modify():debug(overview)          			-- Отсчёт таймаута - сколько ждать получения валидного баланса
-	self:load("os_time"):modify():debug()
+    self:follow("timer"):debug(overview)            					-- Отсчёт интервалов
+	self:follow("wait_balance"):debug()     					-- Количество времени, данное для попыток получения баланса
+	self:follow("timeout"):debug(overview)          			-- Отсчёт таймаута - сколько ждать получения валидного баланса
+	self:follow("os_time"):debug()
 
-	self:load("send_command"):modify():debug(overview)     			-- Отправка АТ-команды модему, напр. AT+CUSD=1,#102#,15
-	self:load("do_switch"):modify():debug(overview)
-	self:load("send_ui"):modify():debug()
-
+	self:follow("send_command"):debug(overview)     			-- Отправка АТ-команды модему, напр. AT+CUSD=1,#102#,15
+	self:follow("do_switch"):debug(overview)
+	self:follow("send_ui"):debug()
 end
 
----[[ Initializing. Don't edit the code below ]]---
+
 local metatable = {
-	__call = function(table, parent)
-		local t = rule_init(table, rule_setting, parent)
-		if not t.is_busy then
-			t.is_busy = true
-			t:make()
-			t.is_busy = false
-		end
-		return t
-	end
+    __call = function(table, parent)
+        local rule_init_table = rule_init(table, rule_setting, parent)
+        rule_init_table:make()
+        return rule_init_table
+    end
 }
 setmetatable(rule, metatable)
 return rule
