@@ -6,6 +6,7 @@ local util = require "luci.util"
 local uci = require "luci.model.uci".cursor()
 local checkubus = require "applogic.util.checkubus"
 local debug_cli = require "applogic.var.debug_cli"
+local flist = require "applogic.util.filelist"
 local report = require "applogic.util.report"
 local md5 = require "md5"
 
@@ -393,34 +394,11 @@ function rules:make()
 	local rules_path = "/usr/lib/lua/applogic/rule"
 	local id, ruleshome = '', self.setting.rules_list.target
 
-	-- uncomment to require all rules in the rule directory
-	-- local files = flist({path = rules_path, grep = ".lua"})
-	-- for i=1, #files do
-	-- 	id = util.split(files[i], '.lua')[1]
-	-- 	ruleshome[id] = require("applogic.rule." .. id)
-	-- 	-- print('rules:make() - ', id)
-	-- end
-
-
-	-- new rule design, require test rule (delete when no needed anymore)
-	local test_id = '01_rule'
-	ruleshome[test_id] = require("applogic.rule." .. test_id)
-
-	test_id = '02_rule'
-	ruleshome[test_id] = require("applogic.rule." .. test_id)
-
-	test_id = '03_rule'
-	ruleshome[test_id] = require("applogic.rule." .. test_id)
-
-	test_id = '04_rule'
-	ruleshome[test_id] = require("applogic.rule." .. test_id)
-
-	test_id = '05_rule'
-	ruleshome[test_id] = require("applogic.rule." .. test_id)
-
-	test_id = '06_rule'
-	ruleshome[test_id] = require("applogic.rule." .. test_id)
-	-- print(ruleshome[test_id])
+	local files = flist({path = rules_path, grep = ".lua"})
+	for i=1, #files do
+		id = util.split(files[i], '.lua')[1]
+		ruleshome[id] = require("applogic.rule." .. id)
+	end
 end
 
 
