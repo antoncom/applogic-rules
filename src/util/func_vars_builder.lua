@@ -2,10 +2,7 @@ local func_vars_builder = {}
 
 -- logic from util/substitute.lua
 function func_vars_builder.make_vars(varname, rule, from_input)
-    local vars = {
-        subtotal = rule.setting[varname].output,
-        output = rule.setting[varname].output,
-    }
+    local vars = {}
 
     for name, _ in pairs(rule.setting) do
         if name ~= varname then
