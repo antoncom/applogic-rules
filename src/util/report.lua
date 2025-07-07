@@ -1,7 +1,4 @@
-
 local util = require "luci.util"
-local log = require "applogic.util.log"
-
 local ft = require "applogic.util.fort"
 ft.ANY_ROW = 4294967295
 ft.ANY_COLUMN = 4294967295
@@ -79,20 +76,19 @@ function report:print_var(varname, level, iter)
 		if vars[varname]["source"] then
 			current_row = 3
 			check = (not vars[varname].source["noerror"]) and "✖" or "✔"
-			ftable:write_ln("source", vars[varname].source["type"], vars[varname].source["code"], vars[varname].source["value"], check)
+			ftable:write_ln("operator", vars[varname].source["type"], vars[varname].source["code"], vars[varname].source["value"], check)
 			if vars[varname].source["noerror"] then
 				ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 			else
 				ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_RED)
 			end
-
 		end
 		if vars[varname]["modifier"] then
 			for name, mdf in util.kspairs(vars[varname]["modifier"]) do
 				current_row = current_row + 1
 				table.insert(modifier_rows, current_row)
 				check = (not mdf["noerror"]) and "✖" or "✔"
-				ftable:write_ln("modifier", "[".. name .. "]", string.format("%s", mdf["body"]), mdf["value"], check)
+				ftable:write_ln("operator", "[".. name .. "]", string.format("%s", mdf["body"]), mdf["value"], check)
 				if mdf["noerror"] then
 					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 				else
@@ -150,7 +146,9 @@ function report:print_rule(level, iteration)
 		ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_ROW_TYPE, ft.ROW_HEADER)
 
 		current_row = 1
-		local rule_title = (vars.title and vars.title.output) and vars.title.output.value or ""
+		-- local rule_title = (vars.title and vars.title.output) and vars.title.output.value or ""
+		local rule_title = (vars.title and vars.title.input) and vars.title.input.value or ""
+
 		rule_title = string.format("[%s] %s", report.rule.ruleid, rule_title)
 		ftable:write_ln(rule_title, "", "", "", "")
 		ftable:add_separator()
@@ -174,7 +172,7 @@ function report:print_rule(level, iteration)
 				local passlogic = ""
 				if vars[varname]["modifier"] then
 					for name, mdf in util.kspairs(vars[varname]["modifier"]) do
-						if "skip" == name:sub(3) or "skip-func" == name:sub(3) then
+						if "skip" == name then
 							if mdf["value"] then
 								passlogic = "[skip]"
 								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
@@ -183,18 +181,10 @@ function report:print_rule(level, iteration)
 								passlogic = ""
 								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
 							end
-						elseif "trigger" == name:sub(3) then
-							if mdf["value"] then
-								passlogic = "[trigger]"
-								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
-							else
-								passlogic = ""
-								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
-							end
-						elseif "ui-update" == name:sub(3) then
+						elseif "ui-update" == name then
 							passlogic = string.format("%s[ui-update]", passlogic)
 							ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
-						elseif "frozen" == name:sub(3) or "frozen-func" == name:sub(3) then
+						elseif "frozen" == name then
 							if mdf["value"] and tonumber(mdf["value"]) then
 								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(mdf["value"]) or mdf["value"])
 								--passlogic = string.format("%s[frozen]", passlogic)

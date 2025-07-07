@@ -1,4 +1,3 @@
-local log = require "applogic.util.log"
 local util = require "luci.util"
 local pretty = require "applogic.util.prettyjson"
 local cjson = require "cjson"
@@ -27,19 +26,16 @@ require "applogic.util.wrap_text"
 local debug = {}
 debug.varname = ""
 function debug:init(rule)
-
      if not debug[rule.ruleid] then
-         debug[rule.ruleid] = {}
-         debug[rule.ruleid].rule = rule
-         debug[rule.ruleid].variables = {}
-         debug[rule.ruleid].noerror = true
-         debug[rule.ruleid].report = report
-
-         rule.debug = debug[rule.ruleid]
+        debug[rule.ruleid] = {}
+        debug[rule.ruleid].rule = rule
+        debug[rule.ruleid].variables = {}
+        debug[rule.ruleid].noerror = true
+        debug[rule.ruleid].report = report
+        rule.debug = debug[rule.ruleid]
     end
     --rule.debug = debug      -- Add populated debug table to the rule table for sharing the data
     --debug.report = report   -- Link to "report" table to access print_var(), print_rule() methods
-
 end
 
 function debug:set_noerrors(varl, noerror)
@@ -59,9 +55,7 @@ function debug:set_noerrors(varl, noerror)
     else
         asruleattr.noerror = false
     end
-
 end
-
 
 function debug:note(val)
     local value = val or ""
@@ -70,9 +64,7 @@ function debug:note(val)
     local noerror = (type(value) == "string")
     value = value:gsub("%s+\n", " \n"):gsub("\n%s+", "\n")
     value = value:trim()
-
     value = wrap_text(value)
-
 
     -- if value:len() > 20  then
     --     local pos = value:find(" ", 39)
@@ -88,108 +80,61 @@ function debug:order()
     dvlink.order = debug[debug.ruleid].rule.setting[self.varname].order
 end
 
-function debug:source_bash(command, result, noerror)
-    local dvlink = debug[debug.ruleid].variables[debug.varname]
-    if debug[debug.ruleid].rule.setting[self.varname].source then
-        dvlink.source = {
-            ["type"] = "bash",
-            ["code"] = string.format("%s", command),
-            ["value"] = string.format("%s", result),
-            ["noerror"] = noerror
-        }
-        debug:set_noerrors(dvlink, noerror)
-    end
-end
-
 function debug:source_ubus(object, method, params, result, noerror, src)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
-    local rvlink = debug[debug.ruleid].rule.setting[self.varname]
 
-    if rvlink.source then
-        local src = string.format([[
-            source = {
-                type = "ubus",
-                object = "%s",
-                method = "%s",
-                params = "%s",
-            }
-        ]], object, method, util.serialize_json(params))
-        dvlink.source = {
-            ["type"] = "ubus",
-            ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
-            ["value"] = pretty(result):gsub("\t", "  "),
-            ["noerror"] = noerror
+    local src = string.format([[
+        ["load-ubus"] = {
+            object = "%s",
+            method = "%s",
+            params = "%s",
         }
+    ]], object, method, util.serialize_json(params))
+    dvlink.source = {
+        ["type"] = "[load-ubus]",
+        ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
+        ["value"] = pretty(result):gsub("\t", "  "),
+        ["noerror"] = noerror
+    }
 
-        debug:set_noerrors(dvlink, noerror)
-    end
+    debug:set_noerrors(dvlink, noerror)
 end
 
 function debug:source_subscribe(object, event_name, event_data, noerror, src)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
-    local rvlink = debug[debug.ruleid].rule.setting[self.varname]
 
-    if rvlink.source then
-        local src = string.format([[
-            source = {
-                type = "subscribe",
-                ubus = "%s",
-                event_name = "%s",
-            }
-        ]], tostring(object), tostring(event_name))
-        dvlink.source = {
-            ["type"] = "subscribe",
-            ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
-            ["value"] = pretty(event_data):gsub("\t", "  "),
-            ["noerror"] = noerror
+    local src = string.format([[
+        ["subscribe"] = {
+            ubus = "%s",
+            event_name = "%s",
         }
+    ]], tostring(object), tostring(event_name))
+    dvlink.source = {
+        ["type"] = "[subscribe]",
+        ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
+        ["value"] = pretty(event_data):gsub("\t", "  "),
+        ["noerror"] = noerror
+    }
 
-        debug:set_noerrors(dvlink, noerror)
-    end
-end
-
-function debug:source_uci(confdvlinkig, section, option, result, noerror)
-    local dvlink = debug[debug.ruleid].variables[debug.varname]
-    if debug[debug.ruleid].rule.setting[self.varname].source then
-        local sec = ((type(section) == "table") and util.serialize_json(section)) or section
-        local src = string.format([[
-            source = {
-                type = "uci",
-                config = "%s",
-                section = "%s",
-                option = "%s"
-            }
-        ]], config, section, (option or ""))
-        dvlink.source = {
-            ["type"] = "uci",
-            ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
-            ["value"] = result,
-            ["noerror"] = noerror
-        }
-        debug:set_noerrors(dvlink, noerror)
-    end
+    debug:set_noerrors(dvlink, noerror)
 end
 
 function debug:source_rule(rulename, varname, result, noerror)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
-    local rvlink = debug[debug.ruleid].rule.setting[self.varname]
 
-    if rvlink.source then
-        local src = string.format([[
-            source = {
-                type = "rule",
-                rulename = "%s",
-                varname = "%s",
-            }
-        ]], rulename, varname)
-        dvlink.source = {
-            ["type"] = "rule",
-            ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
-            ["value"] = result,
-            ["noerror"] = noerror
+    local src = string.format([[
+        ["load-rule"] = {
+            rulename = "%s",
+            varname = "%s",
         }
-        debug:set_noerrors(dvlink, noerror)
-    end
+    ]], rulename, varname)
+    dvlink.source = {
+        ["type"] = "[load-rule]",
+        ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
+        ["value"] = result,
+        ["noerror"] = noerror
+    }
+    debug:set_noerrors(dvlink, noerror)
 end
 
 function debug:input(val)
@@ -218,7 +163,6 @@ function debug:output(val)
         value = ok and pretty(res) or wrap_text(value)
     end
 
-
     dvlink.output = {
         ["value"] = value:gsub("\t", "  "),
         ["noerror"] = noerror
@@ -228,24 +172,22 @@ end
 
 function debug:modifier(mdf_name, mdf_body, result, noerror)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
-    if debug[debug.ruleid].rule.setting[self.varname].modifier then
-        if not dvlink.modifier then
-            dvlink.modifier = {}
-        end
-
-        mdf_body = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n")
-        mdf_body = wrap_text(mdf_body)
-
-        if (type(result) == "string" and result:len() == 0) then result = "empty" end
-        if (type(result) == "table") then result = pretty(result):gsub("\t", "  ") end
-
-        dvlink.modifier[mdf_name] = {
-            ["body"] = mdf_body,
-            ["value"] = result,
-            ["noerror"] = noerror
-        }
-        debug:set_noerrors(dvlink, noerror)
+    if not dvlink.modifier then
+        dvlink.modifier = {}
     end
+
+    mdf_body = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n")
+    mdf_body = wrap_text(mdf_body)
+
+    if (type(result) == "string" and result:len() == 0) then result = "empty" end
+    if (type(result) == "table") then result = pretty(result):gsub("\t", "  ") end
+
+    dvlink.modifier[mdf_name] = {
+        ["body"] = mdf_body,
+        ["value"] = result,
+        ["noerror"] = noerror
+    }
+    debug:set_noerrors(dvlink, noerror)
 end
 
 function debug:modifier_bash(mdf_name, mdf_body, result, noerror)
@@ -253,14 +195,12 @@ function debug:modifier_bash(mdf_name, mdf_body, result, noerror)
     if not dvlink.modifier then
         dvlink.modifier = {}
     end
+
     dvlink.modifier[mdf_name] = {
-        --["body"] = wrap_text(mdf_body:gsub("\t+", "\t"):gsub("%c+", " ")),
         ["body"] = wrap_text(mdf_body),
         ["value"] = result.stdout or "",
         ["noerror"] = noerror
     }
-
-    --log("DDD", dvlink)
 
     -- Print shell command error together with result
     if result.stderr then
@@ -280,10 +220,8 @@ local metatable = {
             debug[ruleid].variables[varname] = {}
             debug[ruleid].variables[varname].noerror = true
         end
-
 		return table
 	end
 }
 setmetatable(debug, metatable)
-
 return debug
