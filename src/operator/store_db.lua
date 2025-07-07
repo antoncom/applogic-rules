@@ -10,7 +10,7 @@ local ondisk_db_path = uci:get("tsmjournal", "database", "ondisk")
 -- operator: store-db
 -- ["store-db"] = { param_list = { "param1", "param2", etc... } }
 -- Function to store data in the database using db_utils
-local function store_db(rule, node_name, op_name, op_body, op_index)
+local function store_db(rule, node_name, op_name, op_body)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
 

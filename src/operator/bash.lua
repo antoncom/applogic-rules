@@ -2,7 +2,7 @@ local sys = require "luci.sys"
 
 -- operator: bash
 -- ["bash"] = [[ <bash code> ]]
-local function bash(rule, node_name, op_name, op_body, op_index)
+local function bash(rule, node_name, op_name, op_body)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
 
@@ -12,8 +12,7 @@ local function bash(rule, node_name, op_name, op_body, op_index)
     local result = {}
     local noerror = true
 
-    local from_input = (not node_table.source) and (op_index == 1)
-    command = substitute(node_name, rule, command, from_input, true)
+    command = substitute(rule, command, true)
 
     -- Because we already probably have initial value (or from previous modifier)
     -- we need to prepend "echo ... | " before new bash command

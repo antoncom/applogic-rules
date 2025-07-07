@@ -9,7 +9,7 @@ local checkubus = require "applogic.util.checkubus"
 --      params = { empty table or table with params },
 --      cached = "yes" (optional),
 -- }
-local function load_ubus(rule, node_name, op_name, op_body, op_index)
+local function load_ubus(rule, node_name, op_name, op_body)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
 
@@ -29,10 +29,10 @@ local function load_ubus(rule, node_name, op_name, op_body, op_index)
     for par_name, par_value in util.kspairs(params) do
         if(par_name == "match") then
             for match_name, match_value in util.kspairs(params["match"]) do
-                params["match"][match_name] = substitute(node_name, rule, match_value, false)
+                params["match"][match_name] = substitute(rule, match_value, false)
             end
         else
-            params[par_name] = substitute(node_name, rule, par_value, false)
+            params[par_name] = substitute(rule, par_value, false)
         end
     end
 

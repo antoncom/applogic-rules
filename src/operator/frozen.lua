@@ -3,7 +3,7 @@ local util = require "luci.util"
 
 -- operator: frozen
 -- ["frozen"] = function(vars) return <table { seconds_to_froze, value_after_unfroze } or number (seconds_to_froze)> end
-local function frozen(rule, node_name, op_name, op_body, op_index)
+local function frozen(rule, node_name, op_name, op_body)
     --[[
     To froze variable value once it calculated first time.
     Should return number of seconds to froze.
@@ -22,7 +22,7 @@ local function frozen(rule, node_name, op_name, op_body, op_index)
 
     -- Keep value of variable while first time modifier applied
     if not node_table.frozen then
-        local vars = func_vars_builder.make_vars(node_name, rule, false)
+        local vars = func_vars_builder.make_vars(rule)
 
         if(type(op_body) == "function") then
             local tmp_res

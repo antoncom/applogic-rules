@@ -9,7 +9,7 @@ end
 
 -- operator: ui-update
 -- ["ui-update"] = { param_list = { "param1", "param2", etc... } }
-local function ui_update(rule, node_name, op_name, op_body, op_index)
+local function ui_update(rule, node_name, op_name, op_body)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
 

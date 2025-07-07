@@ -3,7 +3,7 @@
 --      rulename = "rule name",
 --      varname = "var name",
 -- }
-local function load_rule(rule, node_name, op_name, op_body, op_index)
+local function load_rule(rule, node_name, op_name, op_body)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
 

@@ -94,7 +94,7 @@ local loadvar_metatable = {
                                 -- realize colorizing policy of overview report according to subsituted value
                                 rule.debug.variables[varname].overview = {}
                                 if(level[varname].yellow) then
-                                    local luacode = substitute(varname, rule, level[varname].yellow, false, true)
+                                    local luacode = substitute(rule, level[varname].yellow, true)
                                     local noerror
                                     noerror, level[varname].yellow = pcallchunk(luacode)
                                     rule.debug.variables[varname].overview["yellow"] = level[varname].yellow
@@ -108,13 +108,13 @@ local loadvar_metatable = {
                                     -- end
                                 end
                                 if(level[varname].green) then
-                                    local luacode = substitute(varname, rule, level[varname].green, false, true)
+                                    local luacode = substitute(rule, level[varname].green, true)
                                     local noerror
                                     noerror, level[varname].green = pcallchunk(luacode)
                                     rule.debug.variables[varname].overview["green"] = level[varname].green
                                 end
                                 if(level[varname].red) then
-                                    local luacode = substitute(varname, rule, level[varname].red, false, true)
+                                    local luacode = substitute(rule, level[varname].red, true)
                                     local noerror
                                     noerror, level[varname].red = pcallchunk(luacode)
                                     rule.debug.variables[varname].overview["red"] = level[varname].red

@@ -3,13 +3,12 @@ local func_debug = require "applogic.util.func_debug"
 
 -- operator: save
 -- ["save"] = function(vars) return <value to save> end
-local function save(rule, node_name, op_name, op_body, op_index)
+local function save(rule, node_name, op_name, op_body)
     local var_debug
     if rule.debug_mode.enabled then var_debug = require "applogic.var.debug" end
 
     local node_table = rule.setting[node_name]
-    local from_input = (not node_table.source) and (op_index == 1)
-    local vars = func_vars_builder.make_vars(node_name, rule, from_input)
+    local vars = func_vars_builder.make_vars(rule)
 
     local noerror, tmp_res = pcall(op_body, vars)
     local result = tmp_res or ""
