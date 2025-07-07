@@ -340,7 +340,7 @@ local rule_setting = {
 
 	low_signal_timer = {
 		note = [[ Отсчитывает секунды, если уровень сигнала ниже нормы, сек. ]],
-		input = 0,
+		default = 0,
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		local no_ostime = not tonumber(vars.os_time)
@@ -478,7 +478,7 @@ local rule_setting = {
 
 	do_switch = {
 		note = [[ Переключает слот если уровень сигнала на данной SIM ниже порогового/ ]],
-		input = "false",
+		default = "false",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",

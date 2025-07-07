@@ -72,7 +72,7 @@ local rule_setting = {
 
     idle_time = {
 		note = [[ Сколько времени модем выключен (отсутствует /dev/ttyUSB2) ]],
-		input = 0,
+		default = 0,
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		return (not tonumber(vars.os_time))

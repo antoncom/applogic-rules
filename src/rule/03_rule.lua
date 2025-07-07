@@ -311,7 +311,7 @@ local rule_setting = {
 
     lowbalance_timer = {
 		note = [[ Счётчик секунд при балансе ниже минимума, сек. ]],
-		input = 0,
+		default = 0,
         -- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		return not tonumber(vars.os_time)
@@ -479,7 +479,7 @@ local rule_setting = {
 
 	do_switch = {
 		note = [[ Переключает слот если баланс SIM ниже порогового. ]],
-		input = "false",
+		default = "false",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",

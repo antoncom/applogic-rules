@@ -198,7 +198,7 @@ local rule_setting = {
 
 	lastreg_timer = {
 		note = [[ Отсчёт секунд при отсутствии REG ]],
-		input = 0, -- Set default value if you need "reset" variable before skipping
+		default = 0, -- Set default value if you need "reset" variable before skipping
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		return (not tonumber(vars.os_time))
@@ -439,7 +439,7 @@ local rule_setting = {
 
 	do_switch = {
 		note = [[ Переключает слот, если SIM не зарегистрирована в GSM сети или нет соединения с интернет. ]],
-		input = "false",
+		default = "false",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",
@@ -466,13 +466,6 @@ local rule_setting = {
 		-- }
 
 		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "do_switch",
-				params = { rule = "02_rule"},
-			}
-		},
-		{
 			["skip"] = function (vars)
 				local lastreg_t = tonumber(vars.lastreg_timer) or 0
 				local out = tonumber(vars.timeout) or 0
@@ -480,6 +473,13 @@ local rule_setting = {
 				local TIMEOUT = ( lastreg_t > out )
 				return ( not (READY and TIMEOUT) )
 			end
+		},
+		{
+			["load-ubus"] = {
+				object = "tsmodem.driver",
+				method = "do_switch",
+				params = { rule = "02_rule"},
+			}
 		},
 		{
 			["func"] = function (vars)

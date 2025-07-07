@@ -50,7 +50,7 @@ local rule_setting = {
 
 	sim_not_ready_last_time = {
 		note = [[ Время когда SIM была необнаружена ]],
-		input = os.time(),
+		default = os.time(),
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",
@@ -162,7 +162,7 @@ local rule_setting = {
 
 	connected_usb_time = {
 		note = [[ Время когда USB порт установился в состояние "connected"  ]],
-		input = 0,
+		default = 0,
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",
@@ -233,7 +233,7 @@ local rule_setting = {
 
     ussd_command = {
         note = [[ USSD команда для данного провайдера ]],
-		input = "",
+		default = "",
         -- source = {
         --     type = "ubus",
         --     object = "uci",
@@ -351,7 +351,7 @@ local rule_setting = {
 
     a_balance_interval = {
         note = [[ Частота запроса баланса: 1-2 мин. - в первые 10 мин активной SIM; Затем 15..45 мин. при постоянной работе на данной SIM. ]],
-		input = 60,
+		default = 60,
         -- modifier= {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		local SIM_READY = (vars.sim_ready == "true")
@@ -424,7 +424,7 @@ local rule_setting = {
 
     timer = {
 		note = [[ Отсчёт интервалов получения баланса ]],
-		input = 0, -- Set default value if you need "reset" variable before skipping
+		default = 0, -- Set default value if you need "reset" variable before skipping
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		local JUST_STARTED = (not tonumber(vars.os_time))
@@ -487,7 +487,7 @@ local rule_setting = {
 
 	timeout = {
 		note = [[ Таймаут - сколько ждать получения валидного значения баланса ]],
-		input = 600, -- Set default value if you need "reset" variable before skipping
+		default = 600, -- Set default value if you need "reset" variable before skipping
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		return not tonumber(vars.os_time)
@@ -555,7 +555,7 @@ local rule_setting = {
 
     send_command = {
         note = [[ AT-команда запроса баланса - выполняется через каждые $a_balance_interval  ]],
-		input = "false",
+		default = "false",
         -- source = {
         --     type = "ubus",
         --     object = "tsmodem.driver",
@@ -633,7 +633,7 @@ local rule_setting = {
 
 	do_switch = {
 		note = [[ Переключает Слот, если за время $wait_balance все попытки получения баланса были неудачны ]],
-		input = "false",
+		default = "false",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",

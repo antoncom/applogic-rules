@@ -150,7 +150,7 @@ local rule_setting = {
 
 	new_provider_id = {
 		note = [[ Идентификатор провайдера после автоопределения ]],
-		input = "",
+		default = "",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.
@@ -194,7 +194,7 @@ local rule_setting = {
 
 	set_provider = {
 		note = [[ Автоматически установить настройки Сим для определённого провайдера ]],
-		input = "false",
+		default = "false",
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		local ALREADY_SET = (vars.old_provider_id == vars.new_provider_id)
@@ -240,7 +240,7 @@ local rule_setting = {
 
 	provider_name = {
 		note = [[ Наименование провайдера. ]],
-		input = "",
+		default = "",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",				-- This is UBUS OBJECT name. Run in the shell "ubus list | grep tsmodem" to see all objects.

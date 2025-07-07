@@ -320,7 +320,7 @@ local rule_setting = {
 
 	wait_timer = {
 		note = [[ Таймер ожидания на попытки найти Сим-карту в слоте ]],
-		input = 0,
+		default = 0,
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		local not_ostime = not tonumber(vars.os_time)
@@ -375,7 +375,7 @@ local rule_setting = {
 
 	do_switch = {
 		note = [[ Переключает слот, если SIM-карта не найдена в текущем слоте  ]],
-		input = "false",
+		default = "false",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",
@@ -437,7 +437,7 @@ local rule_setting = {
 
 	reset_timer = {
 		note = [[ Отсчёт секунд при отсутствии Сим-карты в слоте. ]],
-		input = "0", -- Set default value if you need "reset" variable before skipping
+		default = "0", -- Set default value if you need "reset" variable before skipping
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		local not_ostime = not tonumber(vars.os_time)
@@ -504,7 +504,7 @@ local rule_setting = {
 
 	reset_modem = {
 		note = [[ Подать сигнал сброса на модем через каждые 20 сек. ]],
-		input = "false",
+		default = "false",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",

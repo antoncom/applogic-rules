@@ -9,7 +9,7 @@ local rule_setting = {
 	},
 	up_ifname = {
 		note = [[ Имя сетевого интерфейса, который up ]],
-		input = "",
+		default = "",
 		-- source = {
 		-- 	type = "subscribe",
 		-- 	ubus = "network.interface",
@@ -41,7 +41,7 @@ local rule_setting = {
 
 	down_ifname = {
 		note = [[ Имя сетевого интерфейса, который down ]],
-		input = "",
+		default = "",
 		-- source = {
 		-- 	type = "subscribe",
 		-- 	ubus = "network.interface",
@@ -73,7 +73,7 @@ local rule_setting = {
 
 
 	journal = {
-		input = "",
+		default = "",
 		-- modifier = {
 		-- 	["1_skip"] = [[ if ($up_ifname == "modem" or $down_ifname == "modem") then return false else return true end ]],
 		-- 	["2_func"] = [[ 

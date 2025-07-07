@@ -246,7 +246,7 @@ local rule_setting = {
 
 	lastping_timer = {
 		note = [[ Отсчёт секунд при отсутствии PING в сети. ]],
-		input = "0", -- Set default value each time you use [skip] modifier
+		default = "0", -- Set default value each time you use [skip] modifier
 		-- modifier = {
 		-- 	["1_skip-func"] = function (vars)
 		-- 		local no_ostime = not tonumber(vars.os_time)
@@ -324,7 +324,7 @@ local rule_setting = {
 
 	do_switch = {
 		note = [[ Переключает слот, если нет PING на текущей SIM-ке. ]],
-		input = "false",
+		default = "false",
 		-- source = {
 		-- 	type = "ubus",
 		-- 	object = "tsmodem.driver",
