@@ -45,9 +45,9 @@ local function loadvar_subscribed(rule, node_name, op_name, op_body)
 
     if rule.debug_mode.enabled then
         if (noerror) then
-            debug(node_name, rule):source_subscribe(ubusobj, evname, node_table.output, noerror, op_body)
+            debug(node_name, rule):operator_subscribe(ubusobj, evname, node_table.output, noerror, op_body)
         else
-            debug(node_name, rule):source_subscribe(ubusobj, evname, err, noerror, op_body)
+            debug(node_name, rule):operator_subscribe(ubusobj, evname, err, noerror, op_body)
         end
     end
 end

@@ -26,9 +26,9 @@ local function load_rule(rule, node_name, op_name, op_body)
 
     if rule.debug_mode.enabled then
         if (noerror) then
-            debug(node_name, rule):source_rule(op_body.rulename, op_body.varname, result, noerror)
+            debug(node_name, rule):operator_rule(op_body.rulename, op_body.varname, result, noerror)
         else
-            debug(node_name, rule):source_rule(op_body.rulename, op_body.varname, err, noerror)
+            debug(node_name, rule):operator_rule(op_body.rulename, op_body.varname, err, noerror)
         end
     end
 

@@ -52,9 +52,9 @@ local function load_ubus(rule, node_name, op_name, op_body)
     result = rule.cache_ubus[cache_key] or ""
     if rule.debug_mode.enabled then
         if (noerror) then
-            debug(node_name, rule):source_ubus(obj, method, params, result, noerror, op_body)
+            debug(node_name, rule):operator_ubus(obj, method, params, result, noerror, op_body)
         else
-            debug(node_name, rule):source_ubus(obj, method, params, err, noerror, op_body)
+            debug(node_name, rule):operator_ubus(obj, method, params, err, noerror, op_body)
         end
     end
 

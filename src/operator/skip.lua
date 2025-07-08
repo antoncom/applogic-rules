@@ -35,7 +35,7 @@ local function skip(rule, node_name, op_name, op_body)
             output_info = "not a function"
         end
 
-        var_debug(node_name, rule):modifier(op_name, output_info, result, noerror)
+        var_debug(node_name, rule):operator(op_name, output_info, result, noerror)
     end
 
     return result

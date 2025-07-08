@@ -48,13 +48,13 @@ local function ui_update(rule, node_name, op_name, op_body)
             noerror = (not result.stderr)
             if rule.debug_mode.enabled then
                 result.stdout = pretty(params):gsub("\t", "  ")
-                debug(node_name, rule):modifier(op_name, pretty(param_list):gsub("\t", "  "), result.stdout, noerror)
+                debug(node_name, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result.stdout, noerror)
             end
         else -- if no pipein file (or Gwsocket is not started)
             noerror = false
             if rule.debug_mode.enabled then
                 local result_str = "No pipe file existed: " .. pipein_file .. "\nCheck Gwsocket started properly."
-                debug(node_name, rule):modifier(op_name, pretty(param_list):gsub("\t", "  "), result_str, noerror)
+                debug(node_name, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result_str, noerror)
             end
         end
     end

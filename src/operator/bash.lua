@@ -34,7 +34,7 @@ local function bash(rule, node_name, op_name, op_body)
 
     noerror = (not result.stderr)
     if rule.debug_mode.enabled then
-        debug(node_name, rule):modifier_bash(op_name, command_extra, result, noerror)
+        debug(node_name, rule):operator_bash(op_name, command_extra, result, noerror)
     end
 
     return result.stdout or ""

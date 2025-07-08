@@ -19,7 +19,7 @@ local function save(rule, node_name, op_name, op_body)
 
     if rule.debug_mode.enabled then
         local output_info = func_debug.generate_output_info(op_body)
-        var_debug(node_name, rule):modifier(op_name, output_info, result, noerror)
+        var_debug(node_name, rule):operator(op_name, output_info, result, noerror)
     end
 
     return result

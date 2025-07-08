@@ -87,18 +87,18 @@ local function frozen(rule, node_name, op_name, op_body)
                 -- ADDON TMPL
                 node_table["frozee"] = nil
 
-                if rule.debug_mode.enabled then debug(node_name, rule):modifier(op_name, "Frozen until:", "", noerror) end
+                if rule.debug_mode.enabled then debug(node_name, rule):operator(op_name, "Frozen until:", "", noerror) end
             else
                 if rule.debug_mode.enabled then
                     local remains = node_table.frozen.cancel_time - now
                     local seconds = node_table.frozen.seconds
                     local seconds_to_froze_str = string.format("%s", seconds)
-                    debug(node_name, rule):modifier(op_name, "Frozen duration:", seconds_to_froze_str, noerror)
+                    debug(node_name, rule):operator(op_name, "Frozen duration:", seconds_to_froze_str, noerror)
                 end
             end
         end
     else
-        if rule.debug_mode.enabled then debug(node_name, rule):modifier(op_name, "Frozen duration:", "Wrong frozen value. Check rule!", noerror) end
+        if rule.debug_mode.enabled then debug(node_name, rule):operator(op_name, "Frozen duration:", "Wrong frozen value. Check rule!", noerror) end
     end
 
     return frozen_value
