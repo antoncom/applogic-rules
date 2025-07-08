@@ -13,8 +13,9 @@ require "applogic.util.wrap_text"
 	        source = { code, value, noerror },
 	        input = { value, noerror },
 	        output = { value, noerror },
-	        modifiers = {
-	            ["1_func"] = { body, value, noerror }
+	        operator = {
+	            { op_name, code, value, noerror }, -- for operators: load-ubus, load-rule, subscribe
+                { op_name, body, value, noerror }, -- for other operators
 	        },
 			noerror = true,
             order = 1,
@@ -80,7 +81,7 @@ function debug:order()
     dvlink.order = debug[debug.ruleid].rule.setting[self.varname].order
 end
 
-function debug:source_ubus(object, method, params, result, noerror, src)
+function debug:operator_ubus(object, method, params, result, noerror, src)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
 
     local src = string.format([[
@@ -90,8 +91,9 @@ function debug:source_ubus(object, method, params, result, noerror, src)
             params = "%s",
         }
     ]], object, method, util.serialize_json(params))
-    dvlink.source = {
-        ["type"] = "[load-ubus]",
+
+    dvlink.operator[#dvlink.operator+1] = {
+        ["op_name"] = "load-ubus",
         ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
         ["value"] = pretty(result):gsub("\t", "  "),
         ["noerror"] = noerror
@@ -100,7 +102,7 @@ function debug:source_ubus(object, method, params, result, noerror, src)
     debug:set_noerrors(dvlink, noerror)
 end
 
-function debug:source_subscribe(object, event_name, event_data, noerror, src)
+function debug:operator_subscribe(object, event_name, event_data, noerror, src)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
 
     local src = string.format([[
@@ -109,8 +111,9 @@ function debug:source_subscribe(object, event_name, event_data, noerror, src)
             event_name = "%s",
         }
     ]], tostring(object), tostring(event_name))
-    dvlink.source = {
-        ["type"] = "[subscribe]",
+
+    dvlink.operator[#dvlink.operator+1] = {
+        ["op_name"] = "subscribe",
         ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
         ["value"] = pretty(event_data):gsub("\t", "  "),
         ["noerror"] = noerror
@@ -119,7 +122,7 @@ function debug:source_subscribe(object, event_name, event_data, noerror, src)
     debug:set_noerrors(dvlink, noerror)
 end
 
-function debug:source_rule(rulename, varname, result, noerror)
+function debug:operator_rule(rulename, varname, result, noerror)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
 
     local src = string.format([[
@@ -128,12 +131,14 @@ function debug:source_rule(rulename, varname, result, noerror)
             varname = "%s",
         }
     ]], rulename, varname)
-    dvlink.source = {
-        ["type"] = "[load-rule]",
+
+    dvlink.operator[#dvlink.operator+1] = {
+        ["op_name"] = "load-rule",
         ["code"] = src:gsub("    ", " "):gsub("\t+", "\t"):gsub("%c+", "\n"):sub(2,-2),
         ["value"] = result,
         ["noerror"] = noerror
     }
+
     debug:set_noerrors(dvlink, noerror)
 end
 
@@ -170,33 +175,30 @@ function debug:output(val)
     debug:set_noerrors(dvlink, noerror)
 end
 
-function debug:modifier(mdf_name, mdf_body, result, noerror)
+function debug:operator(op_name, body, result, noerror)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
-    if not dvlink.modifier then
-        dvlink.modifier = {}
-    end
 
-    mdf_body = mdf_body:gsub("\t+", "\t"):gsub("%c+", "\n")
-    mdf_body = wrap_text(mdf_body)
+    body = body:gsub("\t+", "\t"):gsub("%c+", "\n")
+    body = wrap_text(body)
 
     if (type(result) == "string" and result:len() == 0) then result = "empty" end
     if (type(result) == "table") then result = pretty(result):gsub("\t", "  ") end
 
-    dvlink.modifier[mdf_name] = {
-        ["body"] = mdf_body,
+    dvlink.operator[#dvlink.operator+1] = {
+        ["op_name"] = op_name,
+        ["body"] = body,
         ["value"] = result,
         ["noerror"] = noerror
     }
+
     debug:set_noerrors(dvlink, noerror)
 end
 
-function debug:modifier_bash(mdf_name, mdf_body, result, noerror)
+function debug:operator_bash(mdf_name, mdf_body, result, noerror)
     local dvlink = debug[debug.ruleid].variables[debug.varname]
-    if not dvlink.modifier then
-        dvlink.modifier = {}
-    end
 
-    dvlink.modifier[mdf_name] = {
+    dvlink.operator[#dvlink.operator+1] = {
+        ["op_name"] = mdf_name,
         ["body"] = wrap_text(mdf_body),
         ["value"] = result.stdout or "",
         ["noerror"] = noerror
@@ -204,11 +206,15 @@ function debug:modifier_bash(mdf_name, mdf_body, result, noerror)
 
     -- Print shell command error together with result
     if result.stderr then
-        dvlink.modifier[mdf_name].value = result.stderr .. "\n" .. dvlink.modifier[mdf_name].value
+        dvlink.operator[mdf_name].value = result.stderr .. "\n" .. dvlink.operator[mdf_name].value
     end
     debug:set_noerrors(dvlink, noerror)
 end
 
+function debug:clear_operators()
+    local dvlink = debug[debug.ruleid].variables[debug.varname]
+    dvlink.operator = {}
+end
 
 local metatable = {
 	__call = function(table, varname, rule)
