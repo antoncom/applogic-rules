@@ -44,25 +44,15 @@ local loadvar_metatable = {
         rule.variterator = rule.variterator + 1
         varlink.order = rule.variterator
 
-        -- TODO
-        -- Убедиться что второй вариант рабтотает верно.
-        --1) varlink.subtotal = nil
-        --2)
-        varlink.output = varlink.output or nil
-        -- end of TODO
-
-        -- If user missed input/output declaration in the rule
-        varlink.input = varlink.input or ""
-        varlink.output = varlink.output or ""
         if rule.debug_mode.enabled then debug(varname, rule):order() end
         if rule.debug_mode.enabled then debug(varname, rule):note(varlink.note or "") end
-        if rule.debug_mode.enabled then debug(varname, rule):input(varlink.input or "") end
+        if rule.debug_mode.enabled then debug(varname, rule):input(varlink.input or varlink.default or "") end
 
         --[[ Make function chaining in order to use the laconic way in the rule files ]]
         -- rule:load("title"):execute()
         ---------------------=========
-        local mdf = {}
-        function mdf:run_node()
+        local op = {}
+        function op:run_node()
             operator_handler:run_node(varname, rule)
 
             -- rule:load("title"):execute():debug()
@@ -132,8 +122,8 @@ local loadvar_metatable = {
             setmetatable(dbg, { __call = function(table) return table end })
             return dbg
         end
-        setmetatable(mdf, { __call = function(table) return table end })
-        return mdf
+        setmetatable(op, { __call = function(table) return table end })
+        return op
     end
 }
 
