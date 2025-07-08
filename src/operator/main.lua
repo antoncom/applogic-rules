@@ -14,7 +14,6 @@ local ui_update = require "applogic.operator.ui_update"
 local main = {}
 function main:run_node(node_name, rule)
     local debug
-    if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
     local node_table = rule.setting[node_name]
 
     if node_table["saved"] then
@@ -27,7 +26,12 @@ function main:run_node(node_name, rule)
         node_table.output = ""
     end
 
-    for operator_index, operator_table in ipairs(node_table) do
+    if rule.debug_mode.enabled then
+        debug = require "applogic.var.debug"
+        debug:clear_operators()
+    end
+
+    for _, operator_table in ipairs(node_table) do
         local operator_name, operator_body
 
         -- operator_table: { ["op_name"] = <op_body> }
@@ -52,37 +56,28 @@ function main:run_node(node_name, rule)
                     end
                     break
                 end
-            end
-
-            if "func" == operator_name then
+            elseif "func" == operator_name then
                 node_table.output = func(rule, node_name, operator_name, operator_body)
-            end
 
-            if "bash" == operator_name then
+            elseif "bash" == operator_name then
                 node_table.output = bash(rule, node_name, operator_name, operator_body)
-            end
 
-            if "save" == operator_name then
+            elseif "save" == operator_name then
                 node_table.output = save(rule, node_name, operator_name, operator_body)
-            end
 
-            if "load-ubus" == operator_name then
+            elseif "load-ubus" == operator_name then
                 node_table.output = load_ubus(rule, node_name, operator_name, operator_body)
-            end
 
-            if "load-rule" == operator_name then
+            elseif "load-rule" == operator_name then
                 node_table.output = load_rule(rule, node_name, operator_name, operator_body)
-            end
 
-            if "subscribe" == operator_name then
+            elseif "subscribe" == operator_name then
                 load_subscribed(rule, node_name, operator_name, operator_body)
-            end
 
-            if "ui-update" == operator_name then
+            elseif "ui-update" == operator_name then
                 ui_update(rule, node_name, operator_name, operator_body)
-            end
 
-            if "store-db" == operator_name then
+            elseif "store-db" == operator_name then
                 store_db(rule, node_name, operator_name, operator_body)
             end
         end
