@@ -9,19 +9,6 @@ local rule_setting = {
 	},
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-        -- source = {
-		-- 	type = "ubus",
-        --     object = "tsmodem.driver",
-        --     method = "sim",
-        --     params = {},
-        -- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]]
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -40,20 +27,6 @@ local rule_setting = {
 
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "switching",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- 	["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -77,11 +50,6 @@ local rule_setting = {
 
 	r01_sim_ready = {
 		note = [[ Значение sim_ready из правила 01_rule ]],
-		-- source = {
-		-- 	type = "rule",
-		-- 	rulename = "01_rule",
-		-- 	varname = "sim_ready"
-		-- },
 
 		{
 			["load-rule"] = {
@@ -93,17 +61,6 @@ local rule_setting = {
 
     LED3_mode = {
         note = [[ Режим мигания светодиода LED3. ]],
-        -- modifier = {
-        --     ["1_lua-func"] = function (vars)
-        --         local no_blinking = "v0"
-        --         local mode_1 = { sim_id = "0", blinking = "f200,800" }
-        --         local mode_2 = { sim_id = "1", blinking = "f200,200,200,800" }
-        --         if vars.switching == "true" then return no_blinking
-		-- 		elseif  (vars.sim_id == "0" and vars.r01_sim_ready == "true") then return mode_1.blinking
-		-- 		elseif  (vars.sim_id == "1" and vars.r01_sim_ready == "true") then return mode_2.blinking
-        --         else return no_blinking end
-        --     end,
-        -- },
 
 		{
             ["func"] = function (vars)
@@ -120,19 +77,6 @@ local rule_setting = {
 
 	send_stm_at = {
 		note = [[ Отправка настроек светодиода LED3 ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.stm",
-		-- 	method = "send",
-		-- 	params = {
-		-- 		command = "~0:LED.3=$LED3_mode",
-		-- 	},
-		-- },
-		-- modifier = {
-		-- 	["1_skip-func"] = function (vars)
-		-- 		return (vars.LED3_mode == vars.previous)
-		-- 	end
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -152,11 +96,6 @@ local rule_setting = {
 
     previous = {
         note = [[ Режим мигания светодиода LED3 (на предыдущей итерации). ]],
-        -- modifier = {
-        --     ["1_lua-func"] = function (vars)
-        --         return vars.LED3_mode
-        --     end,
-        -- },
 
 		{
             ["func"] = function (vars)

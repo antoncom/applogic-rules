@@ -10,19 +10,6 @@ local rule_setting = {
 	up_ifname = {
 		note = [[ Имя сетевого интерфейса, который up ]],
 		default = "",
-		-- source = {
-		-- 	type = "subscribe",
-		-- 	ubus = "network.interface",
-		-- 	evname = "interface.update",
-		-- 	match = { interface = "modem"}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.interface ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.interface or ""
-		-- 	end,
-		-- }
 
 		{
 			["subscribe"] = {
@@ -42,19 +29,6 @@ local rule_setting = {
 	down_ifname = {
 		note = [[ Имя сетевого интерфейса, который down ]],
 		default = "",
-		-- source = {
-		-- 	type = "subscribe",
-		-- 	ubus = "network.interface",
-		-- 	evname = "interface.down",
-		-- 	match = { interface = "modem"}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.interface ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.interface or ""
-		-- 	end,
-		-- }
 
 		{
 			["subscribe"] = {
@@ -74,24 +48,6 @@ local rule_setting = {
 
 	journal = {
 		default = "",
-		-- modifier = {
-		-- 	["1_skip"] = [[ if ($up_ifname == "modem" or $down_ifname == "modem") then return false else return true end ]],
-		-- 	["2_func"] = [[ 
-		-- 		local up = ($up_ifname == "modem") and "Modem UP"
-		-- 		local down = ($down_ifname == "modem") and "Modem DOWN"
-		-- 		local out = up or down
-		-- 		return({ 
-		-- 			datetime = os.date("%Y-%m-%d %H:%M:%S"),
-		-- 			name = "Изменился статус интерфейса сетевого интерфейса",
-		-- 			source = "Network  (19-rule)",
-		-- 			command = "subscribe network.interface",
-		-- 			response = out
-		-- 		}) 
-		-- 	]],
-		-- 	["3_store-db"] = {
-		-- 		param_list = { "journal" }	
-		-- 	},
-		-- }
 
 		{
 			["skip"] = function (vars)

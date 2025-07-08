@@ -10,19 +10,6 @@ local rule_setting = {
 
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "sim",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -41,20 +28,6 @@ local rule_setting = {
 
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "switching",
-		-- 	params = {},
-		-- 	cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -74,15 +47,6 @@ local rule_setting = {
 
 	uci_section = {
 		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
-		-- modifier = {
-		-- 	["1_lua-func"] = function (vars)
-		-- 		if (vars.sim_id == "0" or vars.sim_id == "1") then
-		-- 			return ("sim_" .. vars.sim_id)
-		-- 		else
-		-- 			return "ERROR, no SIM_ID!"
-		-- 		end
-		-- 	end,
-		-- }
 
 		{
 			["func"] = function (vars)
@@ -97,23 +61,6 @@ local rule_setting = {
 
 	timeout = {
 		note = [[ Таймаут отсутствия регистрации в сети. Источник: /etc/config/tsmodem  ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "uci",
-		-- 	method = "get",
-		-- 	params = {
-		-- 		config = "tsmodem",
-		-- 		section = "$uci_section",
-		-- 		option = "timeout_reg",
-		-- 	}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -136,11 +83,6 @@ local rule_setting = {
 
 	sim_ready = {
 		note = [[ Сим-карта в слоте? "true" / "false" ]],
-		-- source = {
-		-- 	type = "rule",
-		-- 	rulename = "01_rule",
-		-- 	varname = "sim_ready",
-		-- },
 
 		{
 			["load-rule"] = {
@@ -152,26 +94,7 @@ local rule_setting = {
 
 	network_registration = {
 		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "reg",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		if (vars.sim_ready == "false") then return "-1"
-		-- 		elseif (vars.iface_up == "UP") then return vars.network_registration
-		-- 		elseif (vars.iface_up == "*") then return "9"
-		-- 		elseif (vars.iface_up == "false") then return "8"
-		-- 		else return vars.network_registration end
-		-- 	end
-		-- }
+
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
@@ -199,28 +122,6 @@ local rule_setting = {
 	lastreg_timer = {
 		note = [[ Отсчёт секунд при отсутствии REG ]],
 		default = 0, -- Set default value if you need "reset" variable before skipping
-		-- modifier = {
-		-- 	["1_skip-func"] = function (vars)
-		-- 		return (not tonumber(vars.os_time))
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		local STEP = os.time() - tonumber(vars.os_time)
-		-- 		if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
-
-		-- 		local netreg = tonumber(vars.network_registration) or 0
-		-- 		local lastreg_t = tonumber(vars.lastreg_timer) or 0
-		-- 		local SIM_NOT_OK = (vars.sim_ready ~= "true")
-		-- 		local SWITCHING = (vars.switching ~= "false")
-		-- 		local REG_OK = netreg and (netreg == 1 or netreg == 7 or netreg == -1)
-		-- 		if (REG_OK or SIM_NOT_OK or SWITCHING) then
-		-- 			return 0
-		-- 		else return ( lastreg_t + STEP ) end
-		-- 	end,
-
-        --     ["3_save-func"] = function (vars)
-		-- 		return vars.lastreg_timer
-		-- 	end,
-		-- }
 
 		{
 			["skip"] = function (vars)
@@ -251,15 +152,6 @@ local rule_setting = {
 
     os_time = {
 		note = [[ Время ОС на предыдущей итерации ]],
-        -- modifier = {
-		-- 	["1_lua-func"] = function (vars)
-		-- 		return os.time()
-		-- 	end,
-
-        --     ["2_save-func"] = function (vars)
-		-- 		return vars.os_time
-		-- 	end,
-        -- }
 
 		{
 			["func"] = function (vars)
@@ -276,36 +168,6 @@ local rule_setting = {
 
 	iface_up = {
 		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "network.interface.modem",
-		-- 	method = "status",
-		-- 	params = {},
-		-- },
-        -- modifier = {
-		-- 	["1_skip-func"] = function (vars)
-		-- 		return (not (vars.sim_ready == "true" and vars.switching ~= "true") )
-		-- 	end,
-		-- 	-- ["2_bash"] = [[ jsonfilter -e $.up ]],
-		-- 	["2_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.up or ""
-		-- 	end,
-
-
-        --     --["2_bash"] = [[ ifconfig 3g-modem 2>/dev/nul | grep 'UP POINTOPOINT RUNNING' | awk '{print $1}' ]], -- see http://srr.cherkessk.ru/owrt/help-owrt.html
-		-- 	["3_lua-func"] = function (vars)
-		-- 		local lastreg_t = tonumber(vars.lastreg_timer) or 0
-
-		-- 		if (vars.iface_up == "true") then
-		-- 			return "true"
-		-- 		elseif lastreg_t < 30 then
-		-- 			return "*"
-		-- 		else
-		-- 			return "false"
-		-- 		end
-		-- 	end
-        -- }
 
         {
 			["skip"] = function (vars)
@@ -341,23 +203,6 @@ local rule_setting = {
     },
 
     event_datetime = {
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "reg",
-		-- 	params = {}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.time ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.time or ""
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
-		-- 	end
-		-- }
-
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
@@ -378,20 +223,6 @@ local rule_setting = {
 		}
 	},
 	event_is_new = {
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "reg",
-		-- 	params = {}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.unread or ""
-		-- 	end
-		-- }
-
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
@@ -407,20 +238,6 @@ local rule_setting = {
 		}
 	},
 	event_reg = {
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "reg",
-		-- 	params = {}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end
-		-- }
-
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
@@ -440,30 +257,6 @@ local rule_setting = {
 	do_switch = {
 		note = [[ Переключает слот, если SIM не зарегистрирована в GSM сети или нет соединения с интернет. ]],
 		default = "false",
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "do_switch",
-		-- 	params = { rule = "02_rule"},
-		-- },
-		-- modifier = {
-		-- 	["1_skip-func"] = function (vars)
-		-- 		local lastreg_t = tonumber(vars.lastreg_timer) or 0
-		-- 		local out = tonumber(vars.timeout) or 0
-		-- 		local READY = 	(vars.switching == "" or vars.switching == "false" )
-		-- 		local TIMEOUT = ( lastreg_t > out )
-		-- 		return ( not (READY and TIMEOUT) )
-		-- 	end,
-		-- 	-- ["2_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["2_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- 	["3_lua-func"] = function (vars)
-		-- 		return tostring(vars.do_switch)
-		-- 	end,
-		-- 	["4_frozen"] = [[ return 10 ]]
-		-- }
 
 		{
 			["skip"] = function (vars)
@@ -501,18 +294,6 @@ local rule_setting = {
 
 	send_ui = {
 		note = [[ Индикация в веб-интерфейсе ]],
-		-- modifier = {
-		-- 	["1_ui-update"] = {
-		-- 		param_list = {
-		-- 			"sim_id",
-		-- 			"lastreg_timer",
-		-- 			"network_registration",
-		-- 			"lastreg_timer",
-		-- 			"do_switch",
-		-- 			"switching"
-		-- 		}
-		-- 	},
-		-- }
 
 		{
 			["ui-update"] = {
@@ -528,24 +309,6 @@ local rule_setting = {
 		}
 	},
 	journal = {
-		-- modifier = {
-		-- 	["1_skip-func"] = function (vars)
-		-- 		if (vars.event_is_new == "true") then return false else return true end
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		return({
-		-- 			datetime = vars.event_datetime,
-		-- 			name = "Изменился статус регистрации в GSM-сети",
-		-- 			source = "Modem  (02-rule)",
-		-- 			command = "AT+CREG?",
-		-- 			response = vars.event_reg
-		-- 		})
-		-- 	end,
-
-		-- 	["3_store-db"] = {
-		-- 		param_list = { "journal" }
-		-- 	}
-		-- }
 		{
 			["skip"] = function (vars)
 				if (vars.event_is_new == "true") then return false else return true end

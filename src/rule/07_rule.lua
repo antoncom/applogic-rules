@@ -9,19 +9,6 @@ local rule_setting = {
 	},
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-        -- source = {
-		-- 	type = "ubus",
-        --     object = "tsmodem.driver",
-        --     method = "sim",
-        --     params = {},
-        -- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]]
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -40,19 +27,6 @@ local rule_setting = {
 
     network_registration = {
 		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "reg",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -71,21 +45,6 @@ local rule_setting = {
 
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "switching",
-		-- 	params = {},
-		-- 	cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- 	["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -110,22 +69,6 @@ local rule_setting = {
 
     netmode = {
 		note = [[ Режим сети 2G/3G/4G ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "netmode",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- 	["2_ui-update"] = {
-		-- 		param_list = { "sim_id", "netmode" }
-		-- 	},
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -149,21 +92,6 @@ local rule_setting = {
 
     LED2_mode = {
         note = [[ Режим мигания светодиода LED2. ]],
-        -- modifier = {
-        --     ["1_lua-func"] = function (vars)
-        --     local no_blinking = "v0"
-        --     local mode_1 = { name = "2G", blinking = "f200,200,200,800" }
-        --     local mode_2 = { name = "3G", blinking = "f200,200,200,200,200,800" }
-        --     local mode_3 = { scale = "4G", blinking = "f200,200,200,200,200,200,200,800" }
-        --     if vars.network_registration ~= "1" then return no_blinking
-		-- 		elseif vars.switching == "true" then return no_blinking
-		-- 		elseif vars.netmode == "2G" then return mode_1.blinking
-        --         elseif  vars.netmode == "3G" then return mode_2.blinking
-        --         elseif  vars.netmode == "4G" then return mode_3.blinking
-        --         else return no_blinking
-        --     end
-        -- end,
-        -- },
 
 		{
             ["func"] = function (vars)
@@ -184,19 +112,7 @@ local rule_setting = {
 
 	send_stm_at = {
 		note = [[ Отправка настроек светодиода LED2 ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.stm",
-		-- 	method = "send",
-		-- 	params = {
-        --         command = "~0:LED.2=$LED2_mode",
-        --     },
-		-- },
-		-- modifier = {
-        --     ["1_skip-func"] = function (vars)
-        --         return (vars.LED2_mode == vars.previous)
-        --     end
-        -- }
+
 		{
             ["skip"] = function (vars)
                 return (vars.LED2_mode == vars.previous)
@@ -215,11 +131,7 @@ local rule_setting = {
 
     previous = {
         note = [[ Режим мигания светодиода LED2 (на предыдущей итерации). ]],
-        -- modifier = {
-        --     ["1_lua-func"] = function (vars)
-        --         return vars.LED2_mode
-        --     end,
-        -- },
+
 		{
             ["func"] = function (vars)
                 return vars.LED2_mode
@@ -227,23 +139,6 @@ local rule_setting = {
         },
     },
 	event_datetime = {
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "netmode",
-		-- 	params = {}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.time ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.time or ""
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
-		-- 	end
-		-- }
-
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
@@ -264,20 +159,6 @@ local rule_setting = {
 		}
 	},
     event_is_new = {
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "netmode",
-		-- 	params = {}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.unread or ""
-		-- 	end,
-		-- }
-
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
@@ -293,23 +174,6 @@ local rule_setting = {
 		}
 	},
     journal = {
-		-- modifier = {
-		-- 	["1_skip-func"] = function (vars)
-		-- 		if (vars.event_is_new == "false" or vars.LED2_mode == vars.previous) then return true else return false end
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		return({
-		-- 			datetime = vars.event_datetime,
-		-- 			name = "Изменился статус сети (2G, 3G or 4G)",
-		-- 			source = "Modem  (07-rule)",
-		-- 			command = "AT+CNSMOD?",
-		-- 			response = tostring(vars.netmode)
-		-- 		})
-		-- 	end,
-		-- 	["3_store-db"] = {
-		-- 		param_list = { "journal" }
-		-- 	},
-		-- }
 		{
 			["skip"] = function (vars)
 				if (vars.event_is_new == "false" or vars.LED2_mode == vars.previous) then return true else return false end

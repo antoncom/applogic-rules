@@ -9,19 +9,6 @@ local rule_setting = {
 	},
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-        -- source = {
-		-- 	type = "ubus",
-        --     object = "tsmodem.driver",
-        --     method = "sim",
-        --     params = {},
-        -- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]]
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -40,19 +27,6 @@ local rule_setting = {
 
     network_registration = {
 		note = [[ Статус регистрации Сим-карты в сети 0..7. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "reg",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -71,21 +45,6 @@ local rule_setting = {
 
 	switching = {
 		note = [[ Статус переключения Sim: true / false. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "switching",
-		-- 	params = {},
-		-- 	cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- 	["2_frozen"] = [[ if ($switching == "true") then return 10 else return 0 end ]],
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -110,22 +69,6 @@ local rule_setting = {
 
 	signal = {
 		note = [[ Уровень сигнала сотового оператора, %. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "signal",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		if (tonumber(vars.signal)) then return vars.signal else return "-" end 
-		-- 	end,
-		-- },
 
 		{
 			["load-ubus"] = {
@@ -149,25 +92,6 @@ local rule_setting = {
 
     LED1_mode = {
         note = [[ Режим мигания светодиода LED1 ]],
-        -- modifier = {
-        --     ["1_lua-func"] = function (vars)
-        --         local no_blinking = "v0"
-        --         local mode_1 = { scale = 25, blinking = "f200,800" }
-        --         local mode_2 = { scale = 50, blinking = "f200,200,200,800" }
-        --         local mode_3 = { scale = 75, blinking = "f200,200,200,200,200,800" }
-        --         local mode_4 = { scale = 100, blinking = "f200,200,200,200,200,200,200,800" }
-		-- 		local signal = tonumber(vars.signal) or 0
-        --         if vars.network_registration ~= "1" then return no_blinking
-		-- 			elseif (signal == 0) then return no_blinking
-		-- 			elseif (vars.switching == "true") then return no_blinking
-		-- 			elseif (signal <= mode_1.scale) then return mode_1.blinking
-	    --             elseif (signal > mode_1.scale and signal <= mode_2.scale) then return mode_2.blinking
-	    --             elseif (signal > mode_2.scale and signal <= mode_3.scale) then return mode_3.blinking
-	    --             elseif (signal > mode_3.scale and signal <= mode_4.scale) then return mode_4.blinking
-		-- 			else return no_blinking
-        --         end
-        --      end,
-        -- },
 
 		{
             ["func"] = function (vars)
@@ -193,19 +117,6 @@ local rule_setting = {
 
 	send_stm_at = {
 		note = [[ Отправка настроек светодиода LED1 ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.stm",
-		-- 	method = "send",
-		-- 	params = {
-        --         command = "~0:LED.1=$LED1_mode",
-        --     },
-		-- },
-		-- modifier = {
-        --     ["1_skip-func"] = function (vars)
-        --         return (vars.LED1_mode == vars.previous)
-        --     end
-        -- }
 
 		{
 			["load-ubus"] = {
@@ -225,11 +136,7 @@ local rule_setting = {
 
 	previous = {
 		note = [[ Режим мигания светодиода LED1 (на предыдущей итерации). ]],
-		-- modifier = {
-		-- 	["1_lua-func"] = function (vars)
-		-- 		return vars.LED1_mode
-		-- 	end,
-		-- },
+
 		{
 			["func"] = function (vars)
 				return vars.LED1_mode

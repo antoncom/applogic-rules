@@ -10,19 +10,6 @@ local rule_setting = {
 
 	sim_id = {
 		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "sim",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]]
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -41,19 +28,6 @@ local rule_setting = {
 
 	usb = {
 		note = [[ Состояние USB-порта: connected / disconnected  ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "usb",
-		-- 	params = {},
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.value ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.value or ""
-		-- 	end,
-		-- }
 
 		{
 			["load-ubus"] = {
@@ -73,25 +47,6 @@ local rule_setting = {
     idle_time = {
 		note = [[ Сколько времени модем выключен (отсутствует /dev/ttyUSB2) ]],
 		default = 0,
-		-- modifier = {
-		-- 	["1_skip-func"] = function (vars)
-		-- 		return (not tonumber(vars.os_time))
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		local STEP = os.time() - tonumber(vars.os_time)
-		-- 		if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
-
-		-- 		local it = tonumber(vars.idle_time) or 0
-		-- 		if (vars.usb == "connected") then
-		-- 			return 0
-		-- 		else
-		-- 			return (it + STEP)
-		-- 		end
-		-- 	end,
-		-- 	["3_save-func"] = function (vars)
-		-- 		return vars.idle_time
-		-- 	end
-		-- }
 
 		{
 			["skip"] = function (vars)
@@ -120,14 +75,6 @@ local rule_setting = {
 
 	os_time = {
 		note = [[ Время ОС на предыдущей итерации ]],
-		-- modifier = {
-		-- 	["1_lua-func"] = function (vars)
-		-- 		return os.time()
-		-- 	end,
-		-- 	["2_save-func"] = function (vars)
-		-- 		return vars.os_time
-		-- 	end
-		-- }
 
 		{
 			["func"] = function (vars)
@@ -144,35 +91,19 @@ local rule_setting = {
 
     reinit_modem = {
 		note = [[ Перезапускает модем если USB порт /dev/ttyUSB2 отсутствует более 2 мин. ]],
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "do_reset",
-		-- 	params = { rule = "98_rule"},
-		-- },
-		-- modifier = {
-		-- 	["1_skip-func"] = function (vars)
-		-- 		local it = tonumber(vars.idle_time) or 0
-		-- 		return (vars.usb == "connected" or (it <= 120))
-		-- 	end,
- 		-- 	["2_lua-func"] = function (vars)
- 		-- 		return "true"
- 		-- 	end,
-        --     ["3_frozen"] = [[ return 30 ]]
-		-- }
 
+		{
+			["skip"] = function (vars)
+				local it = tonumber(vars.idle_time) or 0
+				return (vars.usb == "connected" or (it <= 120))
+			end
+		},
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
 				method = "do_reset",
 				params = { rule = "98_rule"},
 			}
-		},
-		{
-			["skip"] = function (vars)
-				local it = tonumber(vars.idle_time) or 0
-				return (vars.usb == "connected" or (it <= 120))
-			end
 		},
 		{
  			["func"] = function (vars)
@@ -189,14 +120,6 @@ local rule_setting = {
 
 	send_ui = {
 		note = [[ Индикация в веб-интерфейсе ]],
-		-- modifier = {
-		-- 	["1_ui-update"] = {
-		-- 		param_list = {
-        --             "idle_time",
-		-- 			"sim_id"
-		-- 		}
-		-- 	},
-		-- }
 
 		{
 			["ui-update"] = {
@@ -208,23 +131,6 @@ local rule_setting = {
 		}
 	},
 	event_datetime = {
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "reg",
-		-- 	params = {}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.time ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.time or ""
-		-- 	end,
-		-- 	["2_lua-func"] = function (vars)
-		-- 		return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
-		-- 	end
-		-- }
-
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
@@ -245,20 +151,6 @@ local rule_setting = {
 		}
 	},
     event_is_new = {
-		-- source = {
-		-- 	type = "ubus",
-		-- 	object = "tsmodem.driver",
-		-- 	method = "usb",
-		-- 	params = {}
-		-- },
-		-- modifier = {
-		-- 	-- ["1_bash"] = [[ jsonfilter -e $.unread ]],
-		-- 	["1_lua-func"] = function (vars)
-		-- 		local lua_table = luci.jsonc.parse(vars.subtotal) or {}
-		-- 		return lua_table.unread or ""
-		-- 	end,
-		-- }
-
 		{
 			["load-ubus"] = {
 				object = "tsmodem.driver",
@@ -274,22 +166,6 @@ local rule_setting = {
 		}
 	},
     journal = {
-		-- modifier = {
-		-- 	["1_skip"] = [[ if ($event_is_new == "true") then return false else return true end ]],
-		-- 	["2_lua-func"] = function (vars)
-		-- 		return({
-		-- 			datetime = vars.event_datetime,
-		-- 			name = "Изенилось состояние порта /dev/ttyUSB2",
-		-- 			source = "Modem  (98-rule)",
-		-- 			command = "watchdog",
-		-- 			response = vars.usb
-		-- 		})
-		-- 	end,
-		-- 	["3_store-db"] = {
-		-- 		param_list = { "journal" }
-		-- 	},
-		-- }
-
 		{
 			["skip"] = function (vars)
 				if (vars.event_is_new == "true") then return false else return true end
