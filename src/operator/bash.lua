@@ -2,11 +2,11 @@ local sys = require "luci.sys"
 
 -- operator: bash
 -- ["bash"] = [[ <bash code> ]]
-local function bash(rule, node_name, op_name, op_body)
+local function bash(rule, nodename, op_name, op_body)
     local debug
-    if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
+    if rule.debug_mode.enabled then debug = require "applogic.node.debug" end
 
-    local node_table = rule.setting[node_name] or {}
+    local nodelink = rule.setting[nodename] or {}
     local command = op_body and op_body:gsub("^%s+", ""):gsub("%s$", "") or ""
 
     local result = {}
@@ -14,17 +14,16 @@ local function bash(rule, node_name, op_name, op_body)
 
     command = substitute(rule, command, true)
 
-    -- Because we already probably have initial value (or from previous modifier)
+    -- Because we already probably have initial value (or from previous operator)
     -- we need to prepend "echo ... | " before new bash command
 
     local command_extra = ""
-    if (node_table.output:len() > 0 and node_table.output ~= "\"\"" and node_table.output ~= "''") then
+    if (nodelink.output:len() > 0 and nodelink.output ~= "\"\"" and nodelink.output ~= "''") then
         -- Remove "'" from bash command to prevent errors
-        rule.setting[node_name].output = rule.setting[node_name].output:gsub("'", "")
-        command_extra = string.format("echo '%s' | %s", rule.setting[node_name].output, command)
-
+        rule.setting[nodename].output = rule.setting[nodename].output:gsub("'", "")
+        command_extra = string.format("echo '%s' | %s", rule.setting[nodename].output, command)
         command_extra = command_extra:gsub("%c", "")
-        --if varname == "ussd_command" then print("COMMAND_EXTRA=", command_extra) end
+
         result = sys.process.exec({"/bin/sh", "-c", command_extra }, true, true, true)
 
         if result.stdout then
@@ -34,7 +33,7 @@ local function bash(rule, node_name, op_name, op_body)
 
     noerror = (not result.stderr)
     if rule.debug_mode.enabled then
-        debug(node_name, rule):operator_bash(op_name, command_extra, result, noerror)
+        debug(nodename, rule):operator_bash(op_name, command_extra, result, noerror)
     end
 
     return result.stdout or ""

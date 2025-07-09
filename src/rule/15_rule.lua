@@ -29,7 +29,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "01_rule",
-				varname = "sim_ready",
+				nodename = "sim_ready",
 			}
 		},
 	},
@@ -39,8 +39,8 @@ local rule_setting = {
 		default = os.time(),
 
 		{
-			["skip"] = function (vars)
-				return (vars.sim_ready == "true")
+			["skip"] = function (nodes)
+				return (nodes.sim_ready == "true")
 			end
 		},
 		{
@@ -51,14 +51,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_not_ready_last_time) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_not_ready_last_time) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.sim_not_ready_last_time
+			["save"] = function (nodes)
+				return nodes.sim_not_ready_last_time
 			end,
 		}
 	},
@@ -75,8 +75,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -93,8 +93,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.usb) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.usb) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -112,13 +112,13 @@ local rule_setting = {
 			}
 		},
 		{
-			["skip"] = function (vars)
-				return (vars.usb == "disconnected" )
+			["skip"] = function (nodes)
+				return (nodes.usb == "disconnected" )
 			end
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.connected_usb_time) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.connected_usb_time) or {}
 				return lua_table.time or ""
 			end,
 		}
@@ -135,8 +135,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.provider_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.provider_id) or {}
 				return lua_table.comment or ""
 			end,
 		}
@@ -147,8 +147,8 @@ local rule_setting = {
 		default = "",
 
         {
-			["skip"] = function (vars)
-				return not (tonumber(vars.provider_id) and (vars.provider_id ~= 0))
+			["skip"] = function (nodes)
+				return not (tonumber(nodes.provider_id) and (nodes.provider_id ~= 0))
 			end
 		},
 		{
@@ -163,8 +163,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.ussd_command) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.ussd_command) or {}
 				return lua_table.value or ""
 			end,
         }
@@ -181,8 +181,8 @@ local rule_setting = {
         	}
 		},
         {
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.current_balance_state) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.current_balance_state) or {}
 				return lua_table.value or ""
 			end,
         }
@@ -203,8 +203,8 @@ local rule_setting = {
 			}
 		},
         {
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.uci_balance_timeout) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.uci_balance_timeout) or {}
 				return lua_table.value or ""
 			end
         }
@@ -215,27 +215,27 @@ local rule_setting = {
 		default = 60,
 
 		{
-			["skip"] = function (vars)
-				local SIM_READY = (vars.sim_ready == "true")
-				local OS_TIME_READY = tonumber(vars.os_time)
-				local USBTIME_OK = tonumber(vars.connected_usb_time)
-				local BALANCE_OK = tonumber(vars.current_balance_state)
+			["skip"] = function (nodes)
+				local SIM_READY = (nodes.sim_ready == "true")
+				local OS_TIME_READY = tonumber(nodes.os_time)
+				local USBTIME_OK = tonumber(nodes.connected_usb_time)
+				local BALANCE_OK = tonumber(nodes.current_balance_state)
 				local SKIP_IF = not (SIM_READY and OS_TIME_READY and BALANCE_OK and USBTIME_OK)
 				return SKIP_IF
 			end
 		},
 		{
-			["func"] = function (vars)
-				local STEP = os.time() - tonumber(vars.os_time)
+			["func"] = function (nodes)
+				local STEP = os.time() - tonumber(nodes.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
 				local beginning = 180
-				local snrlt = tonumber(vars.sim_not_ready_last_time) or 0
+				local snrlt = tonumber(nodes.sim_not_ready_last_time) or 0
 				local JUST_STARTED = (snrlt == 0)
 				local SIM_JUST_INSERTED = ((snrlt > 0) and (os.time() - snrlt) < beginning )
-				local IS_USB_RECENTLY_CONNECTED = ((tonumber(vars.os_time) - tonumber(vars.connected_usb_time)) < 900)
+				local IS_USB_RECENTLY_CONNECTED = ((tonumber(nodes.os_time) - tonumber(nodes.connected_usb_time)) < 900)
 				if (JUST_STARTED or SIM_JUST_INSERTED or IS_USB_RECENTLY_CONNECTED) then
-					local ubt = tonumber(vars.uci_balance_timeout) or 120
+					local ubt = tonumber(nodes.uci_balance_timeout) or 120
 					-- it uses to coordinate chek balance interval (15_rule) and switch SIM on low balance (03_rule)
 					return math.random (ubt+10, ubt*2)
 				else
@@ -244,8 +244,8 @@ local rule_setting = {
 			end,
 		},
 		{
-			["frozen"] = function (vars)
-				local NOT_CALCULATED_AGAIN_TIME = tonumber(vars.a_balance_interval) and (tonumber(vars.a_balance_interval) + 10)
+			["frozen"] = function (nodes)
+				local NOT_CALCULATED_AGAIN_TIME = tonumber(nodes.a_balance_interval) and (tonumber(nodes.a_balance_interval) + 10)
 				return NOT_CALCULATED_AGAIN_TIME or 0
 			end
         }
@@ -256,26 +256,26 @@ local rule_setting = {
 		default = 0, -- Set default value if you need "reset" variable before skipping
 
 		{
-			["skip"] = function (vars)
-				local JUST_STARTED = (not tonumber(vars.os_time))
+			["skip"] = function (nodes)
+				local JUST_STARTED = (not tonumber(nodes.os_time))
 				return JUST_STARTED
 			end
 		},
 		{
-			["func"] = function (vars)
-				local STEP = os.time() - tonumber(vars.os_time)
+			["func"] = function (nodes)
+				local STEP = os.time() - tonumber(nodes.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
-				local SIM_OK = (vars.sim_ready == "true")
-				local t = tonumber(vars.timer) or 0
-				local bi = tonumber(vars.a_balance_interval) or 0
+				local SIM_OK = (nodes.sim_ready == "true")
+				local t = tonumber(nodes.timer) or 0
+				local bi = tonumber(nodes.a_balance_interval) or 0
                 if (SIM_OK and (t < bi)) then
                     return ( t + STEP )
                 else return 0 end
 			end
 		},
 		{
-            ["save"] = function (vars)
-            	return vars.timer
+            ["save"] = function (nodes)
+            	return nodes.timer
             end
 		}
 	},
@@ -284,7 +284,7 @@ local rule_setting = {
 		note = [[ Максимальное значение timeout, после которого прекращаются неудачные попытки получить баланс ]],
 
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return 600
 			end,
 		}
@@ -295,29 +295,29 @@ local rule_setting = {
 		default = 600, -- Set default value if you need "reset" variable before skipping
 
 		{
-			["skip"] = function (vars)
-				return not tonumber(vars.os_time)
+			["skip"] = function (nodes)
+				return not tonumber(nodes.os_time)
 			end
 		},
 		{
-			["func"] = function (vars)
-				local STEP = os.time() - tonumber(vars.os_time)
+			["func"] = function (nodes)
+				local STEP = os.time() - tonumber(nodes.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local tut = tonumber(vars.timeout) or 0
-				local BALANCE_VALID = (tonumber(vars.current_balance_state))
-				local BALANCE_FAIL = (vars.current_balance_state == "")
+				local tut = tonumber(nodes.timeout) or 0
+				local BALANCE_VALID = (tonumber(nodes.current_balance_state))
+				local BALANCE_FAIL = (nodes.current_balance_state == "")
 
-				if (BALANCE_VALID or BALANCE_FAIL) then return vars.wait_balance
+				if (BALANCE_VALID or BALANCE_FAIL) then return nodes.wait_balance
 				elseif (tut > 0) then
 					return ( tut - STEP )
 				else
-					return vars.wait_balance
+					return nodes.wait_balance
 				end
 			end
 		},
 		{
-			["save"] = function (vars) return vars.timeout end
+			["save"] = function (nodes) return nodes.timeout end
 		}
 	},
 
@@ -326,10 +326,10 @@ local rule_setting = {
 		note = [[ Текущее время системы (вспомогательная переменная) ]],
 
 		{
-            ["func"] = function (vars) return os.time() end
+            ["func"] = function (nodes) return os.time() end
 		},
 		{
-            ["save"] = function (vars) return vars.os_time end
+            ["save"] = function (nodes) return nodes.os_time end
         }
     },
 
@@ -338,17 +338,17 @@ local rule_setting = {
 		default = "false",
 
         {
-            ["skip"] = function (vars)
-				local pid = tonumber(vars.provider_id) or 0
-				local t = tonumber(vars.timer) or 0
-				local USSD_OK = (vars.ussd_command ~= "")
-				local SIM_OK = (vars.sim_ready == "true")
+            ["skip"] = function (nodes)
+				local pid = tonumber(nodes.provider_id) or 0
+				local t = tonumber(nodes.timer) or 0
+				local USSD_OK = (nodes.ussd_command ~= "")
+				local SIM_OK = (nodes.sim_ready == "true")
 				local PROVIDER_IDENTIFIED = (pid ~= 0)
                 local TIME_TO_REQUEST = (t < 5)
-                local BALANCE_OK = tonumber(vars.current_balance_state)
-                local BALANCE_FAIL = (vars.current_balance_state == "")
-                local BALANCE_IN_PROGRESS = (vars.current_balance_state == "*")
-				local NOBODY_SWITCHING = (vars.switching == "false" or vars.switching == "")
+                local BALANCE_OK = tonumber(nodes.current_balance_state)
+                local BALANCE_FAIL = (nodes.current_balance_state == "")
+                local BALANCE_IN_PROGRESS = (nodes.current_balance_state == "*")
+				local NOBODY_SWITCHING = (nodes.switching == "false" or nodes.switching == "")
                 local READY_TO_SEND = SIM_OK and PROVIDER_IDENTIFIED and TIME_TO_REQUEST and (BALANCE_OK or BALANCE_FAIL) and (not BALANCE_IN_PROGRESS) and NOBODY_SWITCHING
                 if USSD_OK and READY_TO_SEND then return false else return true end
             end
@@ -364,16 +364,16 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.send_command) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.send_command) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars) return tostring(vars.send_command) end
+			["func"] = function (nodes) return tostring(nodes.send_command) end
 		},
 		{
-            ["frozen"] = function (vars)
+            ["frozen"] = function (nodes)
 				return 10
 			end, -- Задержать следующий запрос на 10 сек (это debounce)
         }
@@ -384,7 +384,7 @@ local rule_setting = {
 		default = "false",
 
 		{
-			["skip"] = function (vars) return tonumber(vars.timeout) and (tonumber(vars.timeout) > 0) end
+			["skip"] = function (nodes) return tonumber(nodes.timeout) and (tonumber(nodes.timeout) > 0) end
 		},
 		{
 			["load-ubus"] = {
@@ -394,16 +394,16 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.do_switch) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.do_switch) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars) return tostring(vars.do_switch) end
+			["func"] = function (nodes) return tostring(nodes.do_switch) end
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				return 10
 			end
 		}
@@ -440,7 +440,7 @@ function rule:make()
 	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
 	-- Green, Yellow and Red are measure of importance for Application logic
 	-- Green is for timers and some passive variables,
-	-- Yellow is for that vars which switches logic - affects to normal application behavior
+	-- Yellow is for that nodes which switches logic - affects to normal application behavior
 	-- Red is for some extraordinal application ehavior, like watchdog, etc.
 	local overview = {
 		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },

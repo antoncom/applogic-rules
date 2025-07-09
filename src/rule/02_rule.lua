@@ -19,8 +19,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -38,8 +38,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -49,9 +49,9 @@ local rule_setting = {
 		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
 
 		{
-			["func"] = function (vars)
-				if (vars.sim_id == "0" or vars.sim_id == "1") then
-					return ("sim_" .. vars.sim_id)
+			["func"] = function (nodes)
+				if (nodes.sim_id == "0" or nodes.sim_id == "1") then
+					return ("sim_" .. nodes.sim_id)
 				else
 					return "ERROR, no SIM_ID!"
 				end
@@ -74,8 +74,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.timeout) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.timeout) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -87,7 +87,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "01_rule",
-				varname = "sim_ready",
+				nodename = "sim_ready",
 			}
 		},
 	},
@@ -103,18 +103,18 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.network_registration) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.network_registration) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				if (vars.sim_ready == "false") then return "-1"
-				elseif (vars.iface_up == "UP") then return vars.network_registration
-				elseif (vars.iface_up == "*") then return "9"
-				elseif (vars.iface_up == "false") then return "8"
-				else return vars.network_registration end
+			["func"] = function (nodes)
+				if (nodes.sim_ready == "false") then return "-1"
+				elseif (nodes.iface_up == "UP") then return nodes.network_registration
+				elseif (nodes.iface_up == "*") then return "9"
+				elseif (nodes.iface_up == "false") then return "8"
+				else return nodes.network_registration end
 			end
 		}
 	},
@@ -124,19 +124,19 @@ local rule_setting = {
 		default = 0, -- Set default value if you need "reset" variable before skipping
 
 		{
-			["skip"] = function (vars)
-				return (not tonumber(vars.os_time))
+			["skip"] = function (nodes)
+				return (not tonumber(nodes.os_time))
 			end
 		},
 		{
-			["func"] = function (vars)
-				local STEP = os.time() - tonumber(vars.os_time)
+			["func"] = function (nodes)
+				local STEP = os.time() - tonumber(nodes.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local netreg = tonumber(vars.network_registration) or 0
-				local lastreg_t = tonumber(vars.lastreg_timer) or 0
-				local SIM_NOT_OK = (vars.sim_ready ~= "true")
-				local SWITCHING = (vars.switching ~= "false")
+				local netreg = tonumber(nodes.network_registration) or 0
+				local lastreg_t = tonumber(nodes.lastreg_timer) or 0
+				local SIM_NOT_OK = (nodes.sim_ready ~= "true")
+				local SWITCHING = (nodes.switching ~= "false")
 				local REG_OK = netreg and (netreg == 1 or netreg == 7 or netreg == -1)
 				if (REG_OK or SIM_NOT_OK or SWITCHING) then
 					return 0
@@ -144,8 +144,8 @@ local rule_setting = {
 			end
 		},
 		{
-            ["save"] = function (vars)
-				return vars.lastreg_timer
+            ["save"] = function (nodes)
+				return nodes.lastreg_timer
 			end,
 		}
 	},
@@ -154,14 +154,14 @@ local rule_setting = {
 		note = [[ Время ОС на предыдущей итерации ]],
 
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return os.time()
 			end
 		},
 
 		{
-            ["save"] = function (vars)
-				return vars.os_time
+            ["save"] = function (nodes)
+				return nodes.os_time
 			end
 		}
     },
@@ -170,8 +170,8 @@ local rule_setting = {
 		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
 
         {
-			["skip"] = function (vars)
-				return (not (vars.sim_ready == "true" and vars.switching ~= "true") )
+			["skip"] = function (nodes)
+				return (not (nodes.sim_ready == "true" and nodes.switching ~= "true") )
 			end
 		},
 		{
@@ -182,16 +182,16 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.iface_up) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.iface_up) or {}
 				return lua_table.up or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				local lastreg_t = tonumber(vars.lastreg_timer) or 0
+			["func"] = function (nodes)
+				local lastreg_t = tonumber(nodes.lastreg_timer) or 0
 
-				if (vars.iface_up == "true") then
+				if (nodes.iface_up == "true") then
 					return "true"
 				elseif lastreg_t < 30 then
 					return "*"
@@ -211,14 +211,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			["func"] = function (nodes)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
 			end
 		}
 	},
@@ -231,8 +231,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_is_new) or {}
 				return lua_table.unread or ""
 			end
 		}
@@ -246,8 +246,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_reg) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_reg) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -259,10 +259,10 @@ local rule_setting = {
 		default = "false",
 
 		{
-			["skip"] = function (vars)
-				local lastreg_t = tonumber(vars.lastreg_timer) or 0
-				local out = tonumber(vars.timeout) or 0
-				local READY = 	(vars.switching == "" or vars.switching == "false" )
+			["skip"] = function (nodes)
+				local lastreg_t = tonumber(nodes.lastreg_timer) or 0
+				local out = tonumber(nodes.timeout) or 0
+				local READY = 	(nodes.switching == "" or nodes.switching == "false" )
 				local TIMEOUT = ( lastreg_t > out )
 				return ( not (READY and TIMEOUT) )
 			end
@@ -275,18 +275,18 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.do_switch) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.do_switch) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return tostring(vars.do_switch)
+			["func"] = function (nodes)
+				return tostring(nodes.do_switch)
 			end
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				return 10
 			end
 		}
@@ -310,18 +310,18 @@ local rule_setting = {
 	},
 	journal = {
 		{
-			["skip"] = function (vars)
-				if (vars.event_is_new == "true") then return false else return true end
+			["skip"] = function (nodes)
+				if (nodes.event_is_new == "true") then return false else return true end
 			end
 		},
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return({
-					datetime = vars.event_datetime,
+					datetime = nodes.event_datetime,
 					name = "Изменился статус регистрации в GSM-сети",
 					source = "Modem  (02-rule)",
 					command = "AT+CREG?",
-					response = vars.event_reg
+					response = nodes.event_reg
 				})
 			end
 		},
@@ -345,7 +345,7 @@ function rule:make()
 	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
 	-- Green, Yellow and Red are measure of importance for Application logic
 	-- Green is for timers and some passive variables,
-	-- Yellow is for that vars which switches logic - affects to normal application behavior
+	-- Yellow is for that nodes which switches logic - affects to normal application behavior
 	-- Red is for some extraordinal application ehavior, like watchdog, etc.
 	local overview = {
 		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },

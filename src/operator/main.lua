@@ -12,26 +12,26 @@ local ui_update = require "applogic.operator.ui_update"
 
 
 local main = {}
-function main:run_node(node_name, rule)
+function main:run_node(nodename, rule)
     local debug
-    local node_table = rule.setting[node_name]
+    local nodelink = rule.setting[nodename]
 
-    if node_table["saved"] then
-        node_table.output = tostring(node_table["saved"])
-    elseif node_table["frozee"] then
-        node_table.output = tostring(node_table["frozee"])
-    elseif node_table["default"] then
-        node_table.output = tostring(node_table["default"])
+    if nodelink["saved"] then
+        nodelink.output = tostring(nodelink["saved"])
+    elseif nodelink["frozee"] then
+        nodelink.output = tostring(nodelink["frozee"])
+    elseif nodelink["default"] then
+        nodelink.output = tostring(nodelink["default"])
     else
-        node_table.output = ""
+        nodelink.output = ""
     end
 
     if rule.debug_mode.enabled then
-        debug = require "applogic.var.debug"
+        debug = require "applogic.node.debug"
         debug:clear_operators()
     end
 
-    for _, operator_table in ipairs(node_table) do
+    for _, operator_table in ipairs(nodelink) do
         local operator_name, operator_body
 
         -- operator_table: { ["op_name"] = <op_body> }
@@ -40,62 +40,62 @@ function main:run_node(node_name, rule)
             operator_body = value
         end
 
-        if not node_table.frozen  then
+        if not nodelink.frozen  then
             if "skip" == operator_name then
-                local is_skip = skip(rule, node_name, operator_name, operator_body)
+                local is_skip = skip(rule, nodename, operator_name, operator_body)
 
                 if is_skip then
                     -- Если указать у переменной default = "some value"
                     -- то перед отменой обработки присвоить переменной значение из input
                     -- иначе в переменной останется хранится последнее расчётное значение (из output)
-                    if rule["default"][node_name].default then
-                        node_table.default = string.format("%s", rule["default"][node_name].default)
-                        node_table.output = string.format("%s",node_table.default)
+                    if rule["default"][nodename].default then
+                        nodelink.default = string.format("%s", rule["default"][nodename].default)
+                        nodelink.output = string.format("%s",nodelink.default)
                     else
-                        node_table.output = string.format("%s",node_table.output)
+                        nodelink.output = string.format("%s",nodelink.output)
                     end
                     break
                 end
             elseif "func" == operator_name then
-                node_table.output = func(rule, node_name, operator_name, operator_body)
+                nodelink.output = func(rule, nodename, operator_name, operator_body)
 
             elseif "bash" == operator_name then
-                node_table.output = bash(rule, node_name, operator_name, operator_body)
+                nodelink.output = bash(rule, nodename, operator_name, operator_body)
 
             elseif "save" == operator_name then
-                node_table.output = save(rule, node_name, operator_name, operator_body)
+                nodelink.output = save(rule, nodename, operator_name, operator_body)
 
             elseif "load-ubus" == operator_name then
-                node_table.output = load_ubus(rule, node_name, operator_name, operator_body)
+                nodelink.output = load_ubus(rule, nodename, operator_name, operator_body)
 
             elseif "load-rule" == operator_name then
-                node_table.output = load_rule(rule, node_name, operator_name, operator_body)
+                nodelink.output = load_rule(rule, nodename, operator_name, operator_body)
 
             elseif "subscribe" == operator_name then
-                load_subscribed(rule, node_name, operator_name, operator_body)
+                load_subscribed(rule, nodename, operator_name, operator_body)
 
             elseif "ui-update" == operator_name then
-                ui_update(rule, node_name, operator_name, operator_body)
+                ui_update(rule, nodename, operator_name, operator_body)
 
             elseif "store-db" == operator_name then
-                store_db(rule, node_name, operator_name, operator_body)
+                store_db(rule, nodename, operator_name, operator_body)
             end
         end
 
         if "frozen" == operator_name then
-            frozen(rule, node_name, operator_name, operator_body)
+            frozen(rule, nodename, operator_name, operator_body)
         end
     end
 
-    if(type(node_table.output) == "table") then
-        node_table.output = util.serialize_json(node_table.output)
+    if(type(nodelink.output) == "table") then
+        nodelink.output = util.serialize_json(nodelink.output)
     else
-        node_table.output = string.format("%s", node_table.output)
-        local _, n = node_table.output:gsub("\n", "\n")
-        if n == 1 then node_table.output = node_table.output:gsub("%s+$", "") end
+        nodelink.output = string.format("%s", nodelink.output)
+        local _, n = nodelink.output:gsub("\n", "\n")
+        if n == 1 then nodelink.output = nodelink.output:gsub("%s+$", "") end
     end
 
-    if rule.debug_mode.enabled then debug(node_name, rule):output(node_table.output) end
+    if rule.debug_mode.enabled then debug(nodename, rule):output(nodelink.output) end
 end
 
 return main

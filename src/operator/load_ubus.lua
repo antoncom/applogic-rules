@@ -9,9 +9,9 @@ local checkubus = require "applogic.util.checkubus"
 --      params = { empty table or table with params },
 --      cached = "yes" (optional),
 -- }
-local function load_ubus(rule, node_name, op_name, op_body)
+local function load_ubus(rule, nodename, op_name, op_body)
     local debug
-    if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
+    if rule.debug_mode.enabled then debug = require "applogic.node.debug" end
 
     local cache_key = ""
     local cached = op_body["cached"] or "yes" -- Allow to user turn OFF caching the variable
@@ -24,7 +24,6 @@ local function load_ubus(rule, node_name, op_name, op_body)
     local method = string.format("%s", (op_body.method or ""))
     local params = util.clone((op_body.params or {}))
 
-    --util.dumptable(params)
     -- Substitute values from matched variables
     for par_name, par_value in util.kspairs(params) do
         if(par_name == "match") then
@@ -36,10 +35,8 @@ local function load_ubus(rule, node_name, op_name, op_body)
         end
     end
 
-    --cache_key = md5.sumhexa(varname..obj..method..util.serialize_json(params))
     cache_key = md5.sumhexa(obj..method..util.serialize_json(params))
 
-    --if not rule.cache_ubus[cache_key] then
     if ((not rule.cache_ubus[cache_key]) or cached == "no") then
         -- Cache result only if ubus object/method is valid
         noerror, err = checkubus(rule.conn, obj, method)
@@ -52,9 +49,9 @@ local function load_ubus(rule, node_name, op_name, op_body)
     result = rule.cache_ubus[cache_key] or ""
     if rule.debug_mode.enabled then
         if (noerror) then
-            debug(node_name, rule):operator_ubus(obj, method, params, result, noerror, op_body)
+            debug(nodename, rule):operator_ubus(obj, method, params, result, noerror, op_body)
         else
-            debug(node_name, rule):operator_ubus(obj, method, params, err, noerror, op_body)
+            debug(nodename, rule):operator_ubus(obj, method, params, err, noerror, op_body)
         end
     end
 

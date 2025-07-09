@@ -13,11 +13,11 @@ end
 --      evname = "evname",
 --      match = { },
 -- }
-local function loadvar_subscribed(rule, node_name, op_name, op_body)
+local function loadvar_subscribed(rule, nodename, op_name, op_body)
     local debug
-    if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
+    if rule.debug_mode.enabled then debug = require "applogic.node.debug" end
 
-    local node_table = rule.setting[node_name]
+    local nodelink = rule.setting[nodename]
     local subscription = rule.parent.subscription
 
     local noerror = true
@@ -33,21 +33,20 @@ local function loadvar_subscribed(rule, node_name, op_name, op_body)
         local evmatch_md5 = evuuid(evname, evmatch)
         if (subscription.queu[ubusobj] and subscription.queu[ubusobj][evmatch_md5]) then
             if (#subscription.queu[ubusobj][evmatch_md5].events > 0) then
-                node_table.output = util.serialize_json(subscription.queu[ubusobj][evmatch_md5].events[1].msg)
+                nodelink.output = util.serialize_json(subscription.queu[ubusobj][evmatch_md5].events[1].msg)
                 -- удаляем переменную из спика vars_to_load
-                subscription.removeEvent(ubusobj, evmatch_md5, node_table)
+                subscription.removeEvent(ubusobj, evmatch_md5, nodelink)
             else
-                node_table.output = ""
+                nodelink.output = ""
             end
         end
     end
 
-
     if rule.debug_mode.enabled then
         if (noerror) then
-            debug(node_name, rule):operator_subscribe(ubusobj, evname, node_table.output, noerror, op_body)
+            debug(nodename, rule):operator_subscribe(ubusobj, evname, nodelink.output, noerror, op_body)
         else
-            debug(node_name, rule):operator_subscribe(ubusobj, evname, err, noerror, op_body)
+            debug(nodename, rule):operator_subscribe(ubusobj, evname, err, noerror, op_body)
         end
     end
 end

@@ -19,8 +19,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -30,8 +30,8 @@ local rule_setting = {
 		note = [[ Идентификатор секции вида "sim_0" или "sim_1". Источник: /etc/config/tsmodem ]],
 
 		{
-			["func"] = function (vars)
-				if (vars.sim_id == "0" or vars.sim_id == "1") then return ("sim_" .. vars.sim_id) else return "ERROR. SIM_ID is not valid!" end
+			["func"] = function (nodes)
+				if (nodes.sim_id == "0" or nodes.sim_id == "1") then return ("sim_" .. nodes.sim_id) else return "ERROR. SIM_ID is not valid!" end
 			end,
 		}
 	},
@@ -51,8 +51,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.host) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.host) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -73,14 +73,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.uci_timeout_ping) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.uci_timeout_ping) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				local utp = tonumber(vars.uci_timeout_ping) or 120
+			["func"] = function (nodes)
+				local utp = tonumber(nodes.uci_timeout_ping) or 120
 				return utp
 			end,
 		}
@@ -99,8 +99,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.ping_status) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.ping_status) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -114,14 +114,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			["func"] = function (nodes)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
 			end
 		}
 	},
@@ -138,8 +138,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -151,29 +151,29 @@ local rule_setting = {
 		default = "0", -- Set default value each time you use [skip] modifier
 
 		{
-			["skip"] = function (vars)
-				local no_ostime = not tonumber(vars.os_time)
-				local switching = (vars.switching ~= "false")
-				local switch = (vars.do_switch and vars.do_switch == "true")
+			["skip"] = function (nodes)
+				local no_ostime = not tonumber(nodes.os_time)
+				local switching = (nodes.switching ~= "false")
+				local switch = (nodes.do_switch and nodes.do_switch == "true")
 				return (no_ostime or switching or switch)
 			end
 		},
 		{
-			["func"] = function (vars)
-				local STEP = os.time() - tonumber(vars.os_time)
+			["func"] = function (nodes)
+				local STEP = os.time() - tonumber(nodes.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local tmr = tonumber(vars.lastping_timer) or 0
-				local utout = tonumber(vars.uci_timeout_ping) or 120
+				local tmr = tonumber(nodes.lastping_timer) or 0
+				local utout = tonumber(nodes.uci_timeout_ping) or 120
 				local TIMER = tmr + STEP
-				local PING_OK = (tonumber(vars.ping_status) and tonumber(vars.ping_status) == 1)
+				local PING_OK = (tonumber(nodes.ping_status) and tonumber(nodes.ping_status) == 1)
 				if PING_OK then return 0
 				else return TIMER end
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.lastping_timer
+			["save"] = function (nodes)
+				return nodes.lastping_timer
 			end
 		}
 	},
@@ -182,13 +182,13 @@ local rule_setting = {
 		note = [[ Текущее время системы (вспомогательная переменная) ]],
 
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return os.time()
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.os_time
+			["save"] = function (nodes)
+				return nodes.os_time
 			end
 		}
 	},
@@ -198,10 +198,10 @@ local rule_setting = {
 		default = "false",
 
 		{
-			["skip"] = function (vars)
-				local lt = tonumber(vars.lastping_timer) or 0
-				local utp = tonumber(vars.uci_timeout_ping) or 0
-				local READY = 	( vars.switching ~= "true" )
+			["skip"] = function (nodes)
+				local lt = tonumber(nodes.lastping_timer) or 0
+				local utp = tonumber(nodes.uci_timeout_ping) or 0
+				local READY = 	( nodes.switching ~= "true" )
 				local TIMEOUT = ( lt > utp )
 				return ( not (READY and TIMEOUT) )
 			end
@@ -214,13 +214,13 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.do_switch) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.do_switch) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				return 10
 			end
 		}
@@ -243,13 +243,13 @@ local rule_setting = {
 	},
 	journal = {
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return({
-					datetime = vars.event_datetime,
+					datetime = nodes.event_datetime,
 					name = "Изменилось состояние PING",
 					source = "Modem (04-rule)",
 					command = "ping 8.8.8.8",
-					response = vars.ping_status
+					response = nodes.ping_status
 				})
 			end
 		},
@@ -259,9 +259,9 @@ local rule_setting = {
 			}
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				-- Для уменьшения "дребезга", задержим вывод в журнал на 1 минуту при успешном пинге и на 30 сек. при неуспешном
-				if (vars.ping_status == "1") then return 60 else return 30 end
+				if (nodes.ping_status == "1") then return 60 else return 30 end
 			end
 		}
 	},
@@ -279,7 +279,7 @@ function rule:make()
 	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
 	-- Green, Yellow and Red are measure of importance for Application logic
 	-- Green is for timers and some passive variables,
-	-- Yellow is for that vars which switches logic - affects to normal application behavior
+	-- Yellow is for that nodes which switches logic - affects to normal application behavior
 	-- Red is for some extraordinal application ehavior, like watchdog, etc.
 	local overview = {
 		["lastping_timer"] = { ["yellow"] = [[ return (tonumber($lastping_timer) and tonumber($lastping_timer) > 0) ]] },

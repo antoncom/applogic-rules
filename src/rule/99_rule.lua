@@ -19,8 +19,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -38,8 +38,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -57,14 +57,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			["func"] = function (nodes)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
 			end,
 		}
 	},
@@ -75,7 +75,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "01_rule",
-				varname = "do_switch",
+				nodename = "do_switch",
 			}
 		},
 	},
@@ -86,7 +86,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "02_rule",
-				varname = "do_switch",
+				nodename = "do_switch",
 			}
 		},
 	},
@@ -97,7 +97,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "03_rule",
-				varname = "do_switch",
+				nodename = "do_switch",
 			}
 		},
 	},
@@ -108,7 +108,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "04_rule",
-				varname = "do_switch",
+				nodename = "do_switch",
 			}
 		},
 	},
@@ -119,7 +119,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "05_rule",
-				varname = "do_switch",
+				nodename = "do_switch",
 			}
 		},
 	},
@@ -130,7 +130,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "15_rule",
-				varname = "do_switch",
+				nodename = "do_switch",
 			}
 		},
 	},
@@ -139,19 +139,19 @@ local rule_setting = {
 		note = [[ Статус do_switch  ]],
 
 		{
-			["func"] = function (vars)
-				local DO_SWITCH = (vars.r01_do_switch == "true"
-								or vars.r02_do_switch == "true"
-								or vars.r03_do_switch == "true"
-								or vars.r04_do_switch == "true"
-								or vars.r05_do_switch == "true"
-								or vars.r15_do_switch == "true")
+			["func"] = function (nodes)
+				local DO_SWITCH = (nodes.r01_do_switch == "true"
+								or nodes.r02_do_switch == "true"
+								or nodes.r03_do_switch == "true"
+								or nodes.r04_do_switch == "true"
+								or nodes.r05_do_switch == "true"
+								or nodes.r15_do_switch == "true")
 				if DO_SWITCH then return "true" else return "false" end
 			end
 		},
 		{
-			["frozen"] = function (vars)
-				if vars.do_switch == "true" then return 10 else return 0 end
+			["frozen"] = function (nodes)
+				if nodes.do_switch == "true" then return 10 else return 0 end
 			end
 		}
 	},
@@ -171,8 +171,8 @@ local rule_setting = {
 
 	journal = {
 		{
-			["skip"] = function (vars)
-				if (vars.switching ~= "true") then return true else return false end
+			["skip"] = function (nodes)
+				if (nodes.switching ~= "true") then return true else return false end
 			end
 		},
 		{
@@ -184,15 +184,15 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				local jsonc = require "luci.jsonc"
-				local switching_data = string.sub(vars.journal,2,-2)
+				local switching_data = string.sub(nodes.journal,2,-2)
 
 				switching_data, errmsg = jsonc.parse(switching_data)
 				local info_source = switching_data.comment or ""
 				local info_command = switching_data.command or ""
 				return({
-					datetime = vars.event_datetime,
+					datetime = nodes.event_datetime,
 					name = "Переключение СИМ-карты",
 					source = info_source,
 					command = info_command,
@@ -206,7 +206,7 @@ local rule_setting = {
 			}
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				return 10
 			end
 		}

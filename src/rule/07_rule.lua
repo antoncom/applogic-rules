@@ -18,8 +18,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -36,8 +36,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.network_registration) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.network_registration) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -55,14 +55,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["frozen"] = function (vars)
-				if (vars.switching == "true") then return 10 else return 0 end
+			["frozen"] = function (nodes)
+				if (nodes.switching == "true") then return 10 else return 0 end
 			end
 		}
 	},
@@ -78,8 +78,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.netmode) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.netmode) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -94,16 +94,16 @@ local rule_setting = {
         note = [[ Режим мигания светодиода LED2. ]],
 
 		{
-            ["func"] = function (vars)
+            ["func"] = function (nodes)
 				local no_blinking = "v0"
 				local mode_1 = { name = "2G", blinking = "f200,200,200,800" }
 				local mode_2 = { name = "3G", blinking = "f200,200,200,200,200,800" }
 				local mode_3 = { scale = "4G", blinking = "f200,200,200,200,200,200,200,800" }
-				if vars.network_registration ~= "1" then return no_blinking
-					elseif vars.switching == "true" then return no_blinking
-					elseif vars.netmode == "2G" then return mode_1.blinking
-					elseif  vars.netmode == "3G" then return mode_2.blinking
-					elseif  vars.netmode == "4G" then return mode_3.blinking
+				if nodes.network_registration ~= "1" then return no_blinking
+					elseif nodes.switching == "true" then return no_blinking
+					elseif nodes.netmode == "2G" then return mode_1.blinking
+					elseif  nodes.netmode == "3G" then return mode_2.blinking
+					elseif  nodes.netmode == "4G" then return mode_3.blinking
 					else return no_blinking
 				end
         	end
@@ -114,8 +114,8 @@ local rule_setting = {
 		note = [[ Отправка настроек светодиода LED2 ]],
 
 		{
-            ["skip"] = function (vars)
-                return (vars.LED2_mode == vars.previous)
+            ["skip"] = function (nodes)
+                return (nodes.LED2_mode == nodes.previous)
             end
         },
 		{
@@ -133,8 +133,8 @@ local rule_setting = {
         note = [[ Режим мигания светодиода LED2 (на предыдущей итерации). ]],
 
 		{
-            ["func"] = function (vars)
-                return vars.LED2_mode
+            ["func"] = function (nodes)
+                return nodes.LED2_mode
             end
         },
     },
@@ -147,14 +147,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			["func"] = function (nodes)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
 			end
 		}
 	},
@@ -167,26 +167,26 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_is_new) or {}
 				return lua_table.unread or ""
 			end,
 		}
 	},
     journal = {
 		{
-			["skip"] = function (vars)
-				if (vars.event_is_new == "false" or vars.LED2_mode == vars.previous) then return true else return false end
+			["skip"] = function (nodes)
+				if (nodes.event_is_new == "false" or nodes.LED2_mode == nodes.previous) then return true else return false end
 			end
 		},
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return({
-					datetime = vars.event_datetime,
+					datetime = nodes.event_datetime,
 					name = "Изменился статус сети (2G, 3G or 4G)",
 					source = "Modem  (07-rule)",
 					command = "AT+CNSMOD?",
-					response = tostring(vars.netmode)
+					response = tostring(nodes.netmode)
 				})
 			end
 		},

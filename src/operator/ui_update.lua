@@ -9,12 +9,12 @@ end
 
 -- operator: ui-update
 -- ["ui-update"] = { param_list = { "param1", "param2", etc... } }
-local function ui_update(rule, node_name, op_name, op_body)
+local function ui_update(rule, nodename, op_name, op_body)
     local debug
-    if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
+    if rule.debug_mode.enabled then debug = require "applogic.node.debug" end
 
     local pipein_file = "/tmp/wspipein.fifo" -- Gwsocket creates it
-    local node_table = rule.setting[node_name] or {}
+    local nodelink = rule.setting[nodename] or {}
     local param_list = op_body.param_list or {}
     local result = {}
     local noerror = true
@@ -25,11 +25,11 @@ local function ui_update(rule, node_name, op_name, op_body)
             local params, name = {}, ''
             for i=1, #param_list do
                 name = param_list[i]
-                if name == node_name then
+                if name == nodename then
                     if util.contains({ "journal_reg", "journal_usb", "journal_stm" }, name) then
                         name = "journal"
                     end
-                    params[name] = node_table.output or ""
+                    params[name] = nodelink.output or ""
                 else
                     params[name] = rule.setting[name] and rule.setting[name].output or ""
                 end
@@ -48,13 +48,13 @@ local function ui_update(rule, node_name, op_name, op_body)
             noerror = (not result.stderr)
             if rule.debug_mode.enabled then
                 result.stdout = pretty(params):gsub("\t", "  ")
-                debug(node_name, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result.stdout, noerror)
+                debug(nodename, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result.stdout, noerror)
             end
         else -- if no pipein file (or Gwsocket is not started)
             noerror = false
             if rule.debug_mode.enabled then
                 local result_str = "No pipe file existed: " .. pipein_file .. "\nCheck Gwsocket started properly."
-                debug(node_name, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result_str, noerror)
+                debug(nodename, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result_str, noerror)
             end
         end
     end

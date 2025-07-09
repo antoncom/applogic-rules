@@ -18,8 +18,8 @@ local rule_setting = {
         	}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -31,7 +31,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "05_rule",
-				varname = "uci_signal_min"
+				nodename = "uci_signal_min"
 			}
 		}
 	},
@@ -51,20 +51,20 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.uci_signal_min) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.uci_signal_min) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				local usm = tonumber(vars.uci_signal_min) or 5
+			["func"] = function (nodes)
+				local usm = tonumber(nodes.uci_signal_min) or 5
 				return usm
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.uci_signal_min
+			["save"] = function (nodes)
+				return nodes.uci_signal_min
 			end
 		}
 	},
@@ -84,14 +84,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.uci_timeout_signal) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.uci_timeout_signal) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				local uts = tonumber(vars.uci_timeout_signal) or 121
+			["func"] = function (nodes)
+				local uts = tonumber(nodes.uci_timeout_signal) or 121
 				return uts
 			end
 		}
@@ -108,8 +108,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.network_registration) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.network_registration) or {}
 				return lua_table.value or ""
 			end,
 		},
@@ -134,18 +134,18 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "05_rule",
-				varname = "json_signal"
+				nodename = "json_signal"
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.signal) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.signal) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				local s = tonumber(vars.signal) or 0
+			["func"] = function (nodes)
+				local s = tonumber(nodes.signal) or 0
 				if (s > 0) then return s else return "" end
 			end,
 		},
@@ -157,7 +157,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "01_rule",
-				varname = "wait_timer"
+				nodename = "wait_timer"
 			}
 		},
 	},
@@ -168,7 +168,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "02_rule",
-				varname = "lastreg_timer"
+				nodename = "lastreg_timer"
 			}
 		},
 	},
@@ -180,7 +180,7 @@ local rule_setting = {
 			["load-rule"] = {
 				type = "rule",
 				rulename = "03_rule",
-				varname = "lowbalance_timer"
+				nodename = "lowbalance_timer"
 			},
 		}
 	},
@@ -191,7 +191,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "04_rule",
-				varname = "lastping_timer"
+				nodename = "lastping_timer"
 			}
 		},
 	},
@@ -207,8 +207,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_balance) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_balance) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -219,30 +219,30 @@ local rule_setting = {
 		default = 0,
 
 		{
-			["skip"] = function (vars)
-				local no_ostime = not tonumber(vars.os_time)
-				local switching = (vars.switching and vars.switching ~= "false")
-				local switch = (vars.do_switch and vars.do_switch == "true")
+			["skip"] = function (nodes)
+				local no_ostime = not tonumber(nodes.os_time)
+				local switching = (nodes.switching and nodes.switching ~= "false")
+				local switch = (nodes.do_switch and nodes.do_switch == "true")
 				return (no_ostime or switching or switch)
 			end
 		},
 		{
-			["func"] = function (vars)
-				local STEP = os.time() - tonumber(vars.os_time)
+			["func"] = function (nodes)
+				local STEP = os.time() - tonumber(nodes.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local r01t = tonumber(vars.r01_timer) or 0
-				local r02lt = tonumber(vars.r02_lastreg_timer) or 0
-				local r03lt = tonumber(vars.r03_lowbalance_timer) or 0
-				local r04lt = tonumber(vars.r04_lastping_timer) or 0
-				local lst = tonumber(vars.low_signal_timer) or 0
-				local s = tonumber(vars.signal) or 0
-				local usm = tonumber(vars.uci_signal_min) or 0
+				local r01t = tonumber(nodes.r01_timer) or 0
+				local r02lt = tonumber(nodes.r02_lastreg_timer) or 0
+				local r03lt = tonumber(nodes.r03_lowbalance_timer) or 0
+				local r04lt = tonumber(nodes.r04_lastping_timer) or 0
+				local lst = tonumber(nodes.low_signal_timer) or 0
+				local s = tonumber(nodes.signal) or 0
+				local usm = tonumber(nodes.uci_signal_min) or 0
 				local TIMER = lst + STEP
 
 				local PING_NOT_OK = (r04lt > 0)
 				local REG_NOT_OK = (r02lt > 0)
-				local BALANCE_NOT_OK = ((r03lt > 0) and (vars.sim_balance ~= "*") and (vars.sim_balance ~= ""))
+				local BALANCE_NOT_OK = ((r03lt > 0) and (nodes.sim_balance ~= "*") and (nodes.sim_balance ~= ""))
 				local SIM_NOT_OK = (r01t > 0)
 				local SIGNAL_OK = (s > usm)
 				if REG_NOT_OK then return 0
@@ -254,8 +254,8 @@ local rule_setting = {
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.low_signal_timer
+			["save"] = function (nodes)
+				return nodes.low_signal_timer
 			end
 		}
 	},
@@ -264,13 +264,13 @@ local rule_setting = {
 		note = [[ Текущее время системы (вспомогательная переменная) ]],
 
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return os.time()
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.os_time
+			["save"] = function (nodes)
+				return nodes.os_time
 			end
 		}
 	},
@@ -287,8 +287,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -299,10 +299,10 @@ local rule_setting = {
 		default = "false",
 
 		{
-			["skip"] = function (vars)
-				local READY = 	( vars.switching == "" or vars.switching == "false" )
-				local lst = tonumber(vars.low_signal_timer) or 0
-				local uts = tonumber(vars.uci_timeout_signal) or 0
+			["skip"] = function (nodes)
+				local READY = 	( nodes.switching == "" or nodes.switching == "false" )
+				local lst = tonumber(nodes.low_signal_timer) or 0
+				local uts = tonumber(nodes.uci_timeout_signal) or 0
 				local TIMEOUT = ( lst > uts )
 				return ( not (READY and TIMEOUT) )
 			end
@@ -315,13 +315,13 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.do_switch) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.do_switch) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				return 10
 			end
 		}
@@ -345,18 +345,18 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "05_rule",
-				varname = "json_signal"
+				nodename = "json_signal"
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			["func"] = function (nodes)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
 			end
 		}
 	},
@@ -364,39 +364,39 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "05_rule",
-				varname = "json_signal"
+				nodename = "json_signal"
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_is_new) or {}
 				return lua_table.unread or ""
 			end,
 		}
 	},
     journal = {
 		{
-			["skip"] = function (vars)
-				local s = tonumber(vars.signal) or 0
-				local lst = tonumber(vars.low_signal_timer) or 0
-				local ucm = tonumber(vars.uci_signal_min)
-				local ucmb = tonumber(vars.uci_signal_before) or ucm
+			["skip"] = function (nodes)
+				local s = tonumber(nodes.signal) or 0
+				local lst = tonumber(nodes.low_signal_timer) or 0
+				local ucm = tonumber(nodes.uci_signal_min)
+				local ucmb = tonumber(nodes.uci_signal_before) or ucm
 				local LOW_SIGNAL = (lst > 0)
-				local ISNEW = (vars.event_is_new == "true")
+				local ISNEW = (nodes.event_is_new == "true")
 				local USER_UPDATE_SETTING = (ucmb ~= ucm and ucm > s)
-				if (tonumber(vars.signal) and ((LOW_SIGNAL and ISNEW) or USER_UPDATE_SETTING)) then
+				if (tonumber(nodes.signal) and ((LOW_SIGNAL and ISNEW) or USER_UPDATE_SETTING)) then
 					return false else return true
 				end
 			end
 		},
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return({
-					datetime = vars.event_datetime,
+					datetime = nodes.event_datetime,
 					name = "Низкий уровень сигнала базовой станции",
 					source = "Modem  (05-rule)",
 					command = "AT+CSQ",
-					response = tostring(vars.signal .. "%" .. " (при норме  " .. vars.uci_signal_min .."%)")
+					response = tostring(nodes.signal .. "%" .. " (при норме  " .. nodes.uci_signal_min .."%)")
 				})
 			end
 		},
@@ -421,7 +421,7 @@ function rule:make()
 	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
 	-- Green, Yellow and Red are measure of importance for Application logic
 	-- Green is for timers and some passive variables,
-	-- Yellow is for that vars which switches logic - affects to normal application behavior
+	-- Yellow is for that nodes which switches logic - affects to normal application behavior
 	-- Red is for some extraordinal application ehavior, like watchdog, etc.
 	local overview = {
 		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },

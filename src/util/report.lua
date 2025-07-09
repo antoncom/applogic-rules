@@ -11,7 +11,7 @@ local report = {
 
 --[[ Example
 	variables = {
-	    ["varname"] = {
+	    ["nodename"] = {
 			note = "",
 	        source = { code, value, noerror },
 	        input = { value, noerror },
@@ -32,19 +32,19 @@ local report = {
 ]]
 
 
-function report:print_var(varname, level, iter)
+function report:print_var(nodename, level, iter)
 	local vars = report.debug.variables
 	local rule_has_error = (report.debug.noerror == false)
 
-	if not vars[varname] then
-		print(string.format("applogic: report:print() can't find var [%s]", varname))
-		vars[varname].noerror = true
+	if not vars[nodename] then
+		print(string.format("applogic: report:print() can't find var [%s]", nodename))
+		vars[nodename].noerror = true
 		return
 	end
 
-	local var_has_error = report.debug.variables[varname].noerror == false
-	if not vars[varname].input then vars[varname].input = "empty" end
-	if not vars[varname].output then vars[varname].output = "empty" end
+	local var_has_error = report.debug.variables[nodename].noerror == false
+	if not vars[nodename].input then vars[nodename].input = "empty" end
+	if not vars[nodename].output then vars[nodename].output = "empty" end
 
 
 	if (rule_has_error and var_has_error and level == "ERROR") or level == "INFO" then
@@ -59,20 +59,20 @@ function report:print_var(varname, level, iter)
 		ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_ROW_TYPE, ft.ROW_HEADER)
 
 		current_row = 1
-		ftable:write_ln(string.format("[ %s ][ %s ] variable attributes value", report.rule.ruleid, varname):upper(), "", "", "RESULTS ON THE ITERATION", "#"..tostring(report.rule.iteration))
+		ftable:write_ln(string.format("[ %s ][ %s ] variable attributes value", report.rule.ruleid, nodename):upper(), "", "", "RESULTS ON THE ITERATION", "#"..tostring(report.rule.iteration))
 		ftable:add_separator()
 
 		current_row = 2
-		check = (not vars[varname].input["noerror"]) and "✖" or "✔"
-		ftable:write_ln("default", "", "", vars[varname].input["value"], check)
-		if vars[varname].input["noerror"] then
+		check = (not vars[nodename].input["noerror"]) and "✖" or "✔"
+		ftable:write_ln("default", "", "", vars[nodename].input["value"], check)
+		if vars[nodename].input["noerror"] then
 			ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 		else
 			ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_RED)
 		end
 
-		if vars[varname]["operator"] then
-			for _, operator in ipairs(vars[varname]["operator"]) do
+		if vars[nodename]["operator"] then
+			for _, operator in ipairs(vars[nodename]["operator"]) do
 				current_row = current_row + 1
 				table.insert(operator_rows, current_row)
 				check = (not operator["noerror"]) and "✖" or "✔"
@@ -92,9 +92,9 @@ function report:print_var(varname, level, iter)
 		end
 
 		current_row = current_row + 1
-		check = (not vars[varname].output["noerror"]) and "✖" or "✔"
-		ftable:write_ln("output", "", "", vars[varname].output["value"], check)
-		if vars[varname].output["noerror"] then
+		check = (not vars[nodename].output["noerror"]) and "✖" or "✔"
+		ftable:write_ln("output", "", "", vars[nodename].output["value"], check)
+		if vars[nodename].output["noerror"] then
 			ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 		else
 			ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_RED)
@@ -150,18 +150,18 @@ function report:print_rule(level, iteration)
 		ftable:write_ln("VARIABLE", "NOTES", "PASS LOGIC", "RESULTS ON THE ITERATION", "#"..tostring(report.iteration))
 		ftable:add_separator()
 
-		for varname, vardata in  util.spairs(vars,
+		for nodename, vardata in  util.spairs(vars,
 			function(a,b)
 				return (vars[a].order < vars[b].order)
 			end) do
 
-			if varname ~= "title" then
+			if nodename ~= "title" then
 				current_row = current_row + 1
 
 				-- Make passlogic cell
 				local passlogic = ""
-				if vars[varname]["operator"] then
-					for _, operator in ipairs(vars[varname]["operator"]) do
+				if vars[nodename]["operator"] then
+					for _, operator in ipairs(vars[nodename]["operator"]) do
 						if "skip" == operator["op_name"] then
 							if operator["value"] then
 								passlogic = "[skip]"
@@ -183,8 +183,8 @@ function report:print_rule(level, iteration)
 					end
 				end
 
-				check = (not vars[varname].noerror) and "✖" or "✔"
-				ftable:write_ln(varname, vardata["note"], passlogic, vardata.output.value, check)
+				check = (not vars[nodename].noerror) and "✖" or "✔"
+				ftable:write_ln(nodename, vardata["note"], passlogic, vardata.output.value, check)
 				if vardata["noerror"] then
 					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 				else
@@ -226,14 +226,14 @@ function report:overview(rules, iteration)
 	for ruleid, rule in  util.spairs(rules) do
 		if rule["default"].overviewed_vars then
 			local vars = rule.debug.variables
-			local varname = ""
+			local nodename = ""
 			local vardata
 
 			for i = 1, #rule["default"].overviewed_vars do
-				varname = rule["default"].overviewed_vars[i]
-				vardata = vars[varname]
+				nodename = rule["default"].overviewed_vars[i]
+				vardata = vars[nodename]
 
-				-- print("varname",varname)
+				-- print("nodename",nodename)
 				-- log("vardata",vardata)
 
 				current_row = current_row + 1
@@ -261,8 +261,8 @@ function report:overview(rules, iteration)
 
 				-- Make passlogic cell
 				local passlogic = ""
-				if vars[varname]["operator"] then
-					for _, operator in ipairs(vars[varname]["operator"]) do
+				if vars[nodename]["operator"] then
+					for _, operator in ipairs(vars[nodename]["operator"]) do
 						if "skip" == operator["op_name"] then
 							if operator["value"] then
 								passlogic = "[skip]"
@@ -281,8 +281,8 @@ function report:overview(rules, iteration)
 					end
 				end
 
-				check = (not vars[varname].noerror) and "✖" or "✔"
-				ftable:write_ln(rule.ruleid, varname, vardata["note"], passlogic, vardata.output.value, check)
+				check = (not vars[nodename].noerror) and "✖" or "✔"
+				ftable:write_ln(rule.ruleid, nodename, vardata["note"], passlogic, vardata.output.value, check)
 				if vardata["noerror"] then
 					ftable:set_cell_prop(current_row, 6, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 				else

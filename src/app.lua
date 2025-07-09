@@ -5,7 +5,7 @@ local uloop = require "uloop"
 local util = require "luci.util"
 local uci = require "luci.model.uci".cursor()
 local checkubus = require "applogic.util.checkubus"
-local debug_cli = require "applogic.var.debug_cli"
+local debug_cli = require "applogic.node.debug_cli"
 local flist = require "applogic.util.filelist"
 local report = require "applogic.util.report"
 local md5 = require "md5"
@@ -152,10 +152,10 @@ rules.subscription.dispatcher = function(ubusobj, evname, evmsg)
 	-- пробегаем по списку переменных rules.subscription.vars
 	for _,v in ipairs(rules.subscription.vars) do
 
-		local node_table = v
+		local nodelink = v
 		local subscribe_operator = {}
 
-		for operator_index, operator_table in ipairs(node_table) do
+		for operator_index, operator_table in ipairs(nodelink) do
 			local operator_name
 
 			-- operator_table: { ["op_name"] = <op_body> }
@@ -193,7 +193,7 @@ rules.subscription.dispatcher = function(ubusobj, evname, evmsg)
 	end
 end
 
-rules.subscription.removeEvent = function(ubusobj, evmatch_md5, varlink)
+rules.subscription.removeEvent = function(ubusobj, evmatch_md5, nodelink)
 	local evmatch = rules.subscription.queu[ubusobj] and rules.subscription.queu[ubusobj][evmatch_md5] or false
 	if (evmatch) then
 		local event = evmatch.events[1] or false
@@ -201,13 +201,13 @@ rules.subscription.removeEvent = function(ubusobj, evmatch_md5, varlink)
 			local subscribed_vars = evmatch.subscribed_vars
 			local vars_to_load = event.vars_to_load
 			-- Если для данного события есть подписанные переменные
-			if util.contains(subscribed_vars, varlink) then
+			if util.contains(subscribed_vars, nodelink) then
 				-- Если в списке переменных к загрузке есть данная переменная
-				if (util.contains(vars_to_load, varlink)) then
+				if (util.contains(vars_to_load, nodelink)) then
 					local i = false
 					-- Удаляем переменную из списка загруженных
 					for j,vlink in ipairs(vars_to_load) do
-						if vlink == varlink then
+						if vlink == nodelink then
 							i = j
 							break
 						end
@@ -226,12 +226,10 @@ rules.subscription.removeEvent = function(ubusobj, evmatch_md5, varlink)
 end
 
 function rules:make_subscription(rule)
-	for varname, varlink in pairs(rule.setting) do
-
-		local node_table = varlink
+	for nodename, nodelink in pairs(rule.setting) do
 		local subscribe_operator = nil
 
-		for operator_index, operator_table in ipairs(node_table) do
+		for operator_index, operator_table in ipairs(nodelink) do
 			local operator_name
 
 			-- operator_table: { ["op_name"] = <op_body> }
@@ -244,15 +242,10 @@ function rules:make_subscription(rule)
 			end
 		end
 
-		-- if (varlink["source"] and varlink["source"]["type"] == "subscribe") then
 		if (subscribe_operator ~= nil) then
 			-- Записываем переменную в список всех, имеющих подписки
-			table.insert(rules.subscription.vars, rule.setting[varname])
+			table.insert(rules.subscription.vars, rule.setting[nodename])
 
-			-- Формируем каркас пустой очереди
-			-- local ubus_objname = varlink["source"]["ubus"]
-			-- local evname = varlink["source"]["evname"]
-			-- local event_match = varlink["source"]["match"]
 			local ubus_objname = subscribe_operator["ubus"]
 			local evname = subscribe_operator["evname"]
 			local event_match = subscribe_operator["match"]
@@ -265,10 +258,10 @@ function rules:make_subscription(rule)
 				subscribed_varnames = {}, -- for debug needs only
 				events = {}
 			}
-			if (not util.contains(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_vars, varlink)) then
-				table.insert(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_vars, varlink)
+			if (not util.contains(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_vars, nodelink)) then
+				table.insert(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_vars, nodelink)
 				if (debug_cli.rule and debug_cli.rule == "queu") then
-					local vr_name = "[" .. rule.ruleid .. " | " .. varname .. "]"
+					local vr_name = "[" .. rule.ruleid .. " | " .. nodename .. "]"
 					table.insert(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_varnames, vr_name)
 				end
 			end
@@ -343,9 +336,9 @@ function rules:make_ubus()
 					end
 
 					if rules[rule_name] and rules[rule_name].setting then
-						for varname, varparams in pairs(rules[rule_name].setting) do
-							if varname ~= "title" then -- Hide title variable in UBUS response
-								vlist[varname] = (type(varparams["output"]) == "table") and util.serialize_json(varparams["output"]) or varparams["output"]
+						for nodename, varparams in pairs(rules[rule_name].setting) do
+							if nodename ~= "title" then -- Hide title variable in UBUS response
+								vlist[nodename] = (type(varparams["output"]) == "table") and util.serialize_json(varparams["output"]) or varparams["output"]
 							end
 						end
 					else

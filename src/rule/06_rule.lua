@@ -18,8 +18,8 @@ local rule_setting = {
 			}
 		},
 	 	{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -36,8 +36,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.network_registration) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.network_registration) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -55,14 +55,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["frozen"] = function (vars)
-				if (vars.switching == "true") then return 10 else return 0 end
+			["frozen"] = function (nodes)
+				if (nodes.switching == "true") then return 10 else return 0 end
 			end
 		}
 	},
@@ -78,14 +78,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.signal) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.signal) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				if (tonumber(vars.signal)) then return vars.signal else return "-" end
+			["func"] = function (nodes)
+				if (tonumber(nodes.signal)) then return nodes.signal else return "-" end
 			end
 		},
 	},
@@ -94,16 +94,16 @@ local rule_setting = {
         note = [[ Режим мигания светодиода LED1 ]],
 
 		{
-            ["func"] = function (vars)
+            ["func"] = function (nodes)
                 local no_blinking = "v0"
                 local mode_1 = { scale = 25, blinking = "f200,800" }
                 local mode_2 = { scale = 50, blinking = "f200,200,200,800" }
                 local mode_3 = { scale = 75, blinking = "f200,200,200,200,200,800" }
                 local mode_4 = { scale = 100, blinking = "f200,200,200,200,200,200,200,800" }
-				local signal = tonumber(vars.signal) or 0
-                if vars.network_registration ~= "1" then return no_blinking
+				local signal = tonumber(nodes.signal) or 0
+                if nodes.network_registration ~= "1" then return no_blinking
 					elseif (signal == 0) then return no_blinking
-					elseif (vars.switching == "true") then return no_blinking
+					elseif (nodes.switching == "true") then return no_blinking
 					elseif (signal <= mode_1.scale) then return mode_1.blinking
 	                elseif (signal > mode_1.scale and signal <= mode_2.scale) then return mode_2.blinking
 	                elseif (signal > mode_2.scale and signal <= mode_3.scale) then return mode_3.blinking
@@ -128,8 +128,8 @@ local rule_setting = {
 			}
 		},
 		{
-            ["skip"] = function (vars)
-                return (vars.LED1_mode == vars.previous)
+            ["skip"] = function (nodes)
+                return (nodes.LED1_mode == nodes.previous)
             end
         }
     },
@@ -138,8 +138,8 @@ local rule_setting = {
 		note = [[ Режим мигания светодиода LED1 (на предыдущей итерации). ]],
 
 		{
-			["func"] = function (vars)
-				return vars.LED1_mode
+			["func"] = function (nodes)
+				return nodes.LED1_mode
 			end,
 		},
 	},

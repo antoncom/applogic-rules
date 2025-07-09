@@ -3,9 +3,9 @@ local func_debug = require "applogic.util.func_debug"
 
 -- operator: func
 -- ["func"] = function(vars) <lua code> end
-local function func(rule, node_name, op_name, op_body)
+local function func(rule, nodename, op_name, op_body)
     local var_debug
-    if rule.debug_mode.enabled then var_debug = require "applogic.var.debug" end
+    if rule.debug_mode.enabled then var_debug = require "applogic.node.debug" end
 
     local vars = func_vars_builder.make_vars(rule)
 
@@ -29,7 +29,7 @@ local function func(rule, node_name, op_name, op_body)
 
     if rule.debug_mode.enabled then
         local output_info = func_debug.generate_output_info(op_body)
-        var_debug(node_name, rule):operator(op_name, output_info, result, noerror)
+        var_debug(nodename, rule):operator(op_name, output_info, result, noerror)
     end
 
     return result

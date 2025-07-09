@@ -18,8 +18,8 @@ local rule_setting = {
         	}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -36,14 +36,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["frozen"] = function (vars)
-				if (vars.switching == "true") then return 10 else return 0 end
+			["frozen"] = function (nodes)
+				if (nodes.switching == "true") then return 10 else return 0 end
 			end
 		}
 	},
@@ -54,7 +54,7 @@ local rule_setting = {
 		{
 			["load-rule"] = {
 				rulename = "01_rule",
-				varname = "sim_ready"
+				nodename = "sim_ready"
 			}
 		},
 	},
@@ -63,13 +63,13 @@ local rule_setting = {
         note = [[ Режим мигания светодиода LED3. ]],
 
 		{
-            ["func"] = function (vars)
+            ["func"] = function (nodes)
                 local no_blinking = "v0"
                 local mode_1 = { sim_id = "0", blinking = "f200,800" }
                 local mode_2 = { sim_id = "1", blinking = "f200,200,200,800" }
-                if vars.switching == "true" then return no_blinking
-				elseif  (vars.sim_id == "0" and vars.r01_sim_ready == "true") then return mode_1.blinking
-				elseif  (vars.sim_id == "1" and vars.r01_sim_ready == "true") then return mode_2.blinking
+                if nodes.switching == "true" then return no_blinking
+				elseif  (nodes.sim_id == "0" and nodes.r01_sim_ready == "true") then return mode_1.blinking
+				elseif  (nodes.sim_id == "1" and nodes.r01_sim_ready == "true") then return mode_2.blinking
                 else return no_blinking end
             end
         },
@@ -88,8 +88,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["skip"] = function (vars)
-				return (vars.LED3_mode == vars.previous)
+			["skip"] = function (nodes)
+				return (nodes.LED3_mode == nodes.previous)
 			end
 		}
 	},
@@ -98,8 +98,8 @@ local rule_setting = {
         note = [[ Режим мигания светодиода LED3 (на предыдущей итерации). ]],
 
 		{
-            ["func"] = function (vars)
-                return vars.LED3_mode
+            ["func"] = function (nodes)
+                return nodes.LED3_mode
             end
         },
     },

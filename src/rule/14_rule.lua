@@ -19,8 +19,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -37,8 +37,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.network_registration) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.network_registration) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -59,8 +59,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.is_autodetect_provider) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.is_autodetect_provider) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -81,8 +81,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.old_provider_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.old_provider_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -93,8 +93,8 @@ local rule_setting = {
 		default = "",
 
 		{
-			["skip"] = function (vars)
-				local netreg = tonumber(vars.network_registration)
+			["skip"] = function (nodes)
+				local netreg = tonumber(nodes.network_registration)
 				local REG_OK = 	netreg and (netreg >= 0 and netreg <=5)
 				return ( not REG_OK )
 			end
@@ -107,8 +107,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.new_provider_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.new_provider_id) or {}
 				return lua_table.comment or ""
 			end,
 		}
@@ -119,25 +119,25 @@ local rule_setting = {
 		default = "false",
 
 		{
-			["skip"] = function (vars)
-				local ALREADY_SET = (vars.old_provider_id == vars.new_provider_id)
-				local EMPTY_OLD = (vars.old_provider_id == "")
-				local EMPTY_NEW = (vars.new_provider_id == "")
-				local MANUAL_SET = (vars.is_autodetect_provider == "0")
+			["skip"] = function (nodes)
+				local ALREADY_SET = (nodes.old_provider_id == nodes.new_provider_id)
+				local EMPTY_OLD = (nodes.old_provider_id == "")
+				local EMPTY_NEW = (nodes.new_provider_id == "")
+				local MANUAL_SET = (nodes.is_autodetect_provider == "0")
 				return (ALREADY_SET or EMPTY_OLD or EMPTY_NEW or MANUAL_SET)
 			end
 		},
 		{
-			["func"] = function (vars)
-				local sid = vars.sim_id
+			["func"] = function (nodes)
+				local sid = nodes.sim_id
 				local uci = require "luci.model.uci".cursor()
-				uci:set("tsmodem","sim_"..sid,"provider",vars.new_provider_id)
+				uci:set("tsmodem","sim_"..sid,"provider",nodes.new_provider_id)
 				uci:commit("tsmodem")
 				return "true"
 			end
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				return 6
 			end
 		}
@@ -148,9 +148,9 @@ local rule_setting = {
 		default = "",
 
 		{
-			["skip"] = function (vars)
-				local NEW_PROVIDER_IDENTIFIED = tonumber(vars.new_provider_id)
-				local nr = tonumber(vars.network_registration)
+			["skip"] = function (nodes)
+				local NEW_PROVIDER_IDENTIFIED = tonumber(nodes.new_provider_id)
+				local nr = tonumber(nodes.network_registration)
 				local REG_OK = 	nr and ((nr >= 0) and (nr <= 8))
 				return not (REG_OK and NEW_PROVIDER_IDENTIFIED)
 			end
@@ -163,8 +163,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.provider_name) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.provider_name) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -179,14 +179,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			["func"] = function (nodes)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
 			end
 		}
 	},
@@ -215,26 +215,26 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_is_new) or {}
 				return lua_table.unread or ""
 			end,
 		}
 	},
     journal = {
 		{
-			["skip"] = function (vars)
-				if (vars.event_is_new == "true" and vars.new_provider_id ~= vars.old_provider_id and vars.provider_name ~= "" and tostring(vars.sim_id)) then return false else return true end
+			["skip"] = function (nodes)
+				if (nodes.event_is_new == "true" and nodes.new_provider_id ~= nodes.old_provider_id and nodes.provider_name ~= "" and tostring(nodes.sim_id)) then return false else return true end
 			end
 		},
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return({
-					name = "Автоопределение провайдера в слоте SIM-" .. (tonumber(vars.sim_id)+1),
-					datetime = vars.event_datetime,
+					name = "Автоопределение провайдера в слоте SIM-" .. (tonumber(nodes.sim_id)+1),
+					datetime = nodes.event_datetime,
 					source = "Modem  (14-rule)",
 					command = "AT+COPS?",
-					response = vars.provider_name
+					response = nodes.provider_name
 				})
 			end
 		},
@@ -259,7 +259,7 @@ function rule:make()
 	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
 	-- Green, Yellow and Red are measure of importance for Application logic
 	-- Green is for timers and some passive variables,
-	-- Yellow is for that vars which switches logic - affects to normal application behavior
+	-- Yellow is for that nodes which switches logic - affects to normal application behavior
 	-- Red is for some extraordinal application ehavior, like watchdog, etc.
 	local overview = {
 		["set_provider"] = { ["yellow"] = [[ return ($set_provider == "true") ]] },

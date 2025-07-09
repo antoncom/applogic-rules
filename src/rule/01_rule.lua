@@ -20,8 +20,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.resetting) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.resetting) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -39,8 +39,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switching) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switching) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -58,8 +58,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.switch_time) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.switch_time) or {}
 				return lua_table.time or ""
 			end
 		}
@@ -74,14 +74,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			["func"] = function (nodes)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
 			end
 		}
 	},
@@ -95,8 +95,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_is_new) or {}
 				return lua_table.unread or ""
 			end
 		}
@@ -113,8 +113,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -131,8 +131,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.usb) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.usb) or {}
 				return lua_table.value or ""
 			end
 		},
@@ -149,15 +149,15 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_ready) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_ready) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				local unknown = (vars.usb == "disconnected" or vars.switching == "true")
-				if unknown then return "" else return vars.sim_ready end
+			["func"] = function (nodes)
+				local unknown = (nodes.usb == "disconnected" or nodes.switching == "true")
+				if unknown then return "" else return nodes.sim_ready end
 			end
 		}
 	},
@@ -178,8 +178,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.timeout) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.timeout) or {}
 				return lua_table.value or ""
 			end
 		}
@@ -190,20 +190,20 @@ local rule_setting = {
 		default = 0,
 
 		{
-			["skip"] = function (vars)
-				local not_ostime = not tonumber(vars.os_time)
-				local switching = (vars.switching ~= "false")
+			["skip"] = function (nodes)
+				local not_ostime = not tonumber(nodes.os_time)
+				local switching = (nodes.switching ~= "false")
 				return (switching or not_ostime)
 			end
 		},
 		{
-			["func"] = function (vars)
-				local wt = tonumber(vars.wait_timer) or 0
+			["func"] = function (nodes)
+				local wt = tonumber(nodes.wait_timer) or 0
 
-				local STEP = os.time() - tonumber(vars.os_time)
+				local STEP = os.time() - tonumber(nodes.os_time)
 				if STEP > 50 then STEP = 2 end -- it uses when ntpd synced system time
 
-				if (vars.sim_ready == "true" or vars.do_switch == "true") then
+				if (nodes.sim_ready == "true" or nodes.do_switch == "true") then
 					return 0
 				else
 					return (wt + STEP)
@@ -211,8 +211,8 @@ local rule_setting = {
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.wait_timer
+			["save"] = function (nodes)
+				return nodes.wait_timer
 			end
 		}
 	},
@@ -222,15 +222,15 @@ local rule_setting = {
 		default = "false",
 
 		{
-			["skip"] = function (vars)
-				local SIMID_OK = (vars.sim_id == "0" or vars.sim_id == "1")
-				local USB_OK = 	( vars.usb == "connected" )
-				local wt = tonumber(vars.wait_timer) or 0
-				local t = tonumber(vars.timeout) or 0
+			["skip"] = function (nodes)
+				local SIMID_OK = (nodes.sim_id == "0" or nodes.sim_id == "1")
+				local USB_OK = 	( nodes.usb == "connected" )
+				local wt = tonumber(nodes.wait_timer) or 0
+				local t = tonumber(nodes.timeout) or 0
 				local TIMEOUT = (wt >= t)
-				local SIM_NOT_READY = (vars.sim_ready == "false")
-				local NOT_SWITCHING = (vars.switching ~= "true")
-				local NOT_RESETTING = (vars.resetting ~= "true")
+				local SIM_NOT_READY = (nodes.sim_ready == "false")
+				local NOT_SWITCHING = (nodes.switching ~= "true")
+				local NOT_RESETTING = (nodes.resetting ~= "true")
 				return ( not (SIMID_OK and USB_OK and TIMEOUT and SIM_NOT_READY and NOT_SWITCHING and NOT_RESETTING) )
 			end
 		},
@@ -242,13 +242,13 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.do_switch) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.do_switch) or {}
 				return lua_table.value or ""
 			end
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				return 10
 			end
 		}
@@ -259,24 +259,24 @@ local rule_setting = {
 		default = "0", -- Set default value if you need "reset" variable before skipping
 
 		{
-			["skip"] = function (vars)
-				local not_ostime = not tonumber(vars.os_time)
-				local switching = (vars.switching ~= "false")
+			["skip"] = function (nodes)
+				local not_ostime = not tonumber(nodes.os_time)
+				local switching = (nodes.switching ~= "false")
 				return (switching or not_ostime)
 			end
 		},
 		{
-			["func"] = function (vars)
-				local v_ost = tonumber(vars.os_time) or 0
+			["func"] = function (nodes)
+				local v_ost = tonumber(nodes.os_time) or 0
 				local STEP = os.time() - v_ost
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local SIM_OK = (vars.sim_ready == "true")
-				local USB_NOT_CONNECTED = (vars.usb == "disconnected")
-				local st = tonumber(vars.switch_time) or 0
+				local SIM_OK = (nodes.sim_ready == "true")
+				local USB_NOT_CONNECTED = (nodes.usb == "disconnected")
+				local st = tonumber(nodes.switch_time) or 0
 				local JUST_SWITCHED = ((v_ost - st) < 20)
 
-				local rt = tonumber(vars.reset_timer) or 0
+				local rt = tonumber(nodes.reset_timer) or 0
 				local TIMER = rt + STEP
 
 				if USB_NOT_CONNECTED then return 0
@@ -286,8 +286,8 @@ local rule_setting = {
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.reset_timer
+			["save"] = function (nodes)
+				return nodes.reset_timer
 			end
 		}
 	},
@@ -298,9 +298,9 @@ local rule_setting = {
 		default = "false",
 
 		{
-			["skip"] = function (vars)
-				local rt = tonumber(vars.reset_timer) or 0
-				return (rt < 20 or vars.resetting == "true" or vars.switching == "true")
+			["skip"] = function (nodes)
+				local rt = tonumber(nodes.reset_timer) or 0
+				return (rt < 20 or nodes.resetting == "true" or nodes.switching == "true")
 			end
 		},
 		{
@@ -311,12 +311,12 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return "true"
 			end,
 		},
 		{
-			["frozen"] = function (vars)
+			["frozen"] = function (nodes)
 				return 10
 			end
 		}
@@ -326,13 +326,13 @@ local rule_setting = {
 		note = [[ Время ОС на предыдущей итерации ]],
 
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return os.time()
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.os_time
+			["save"] = function (nodes)
+				return nodes.os_time
 			end
 		}
 	},
@@ -358,25 +358,25 @@ local rule_setting = {
 
     journal = {
 		{
-			["skip"] = function (vars)
-				if (vars.event_is_new == "true" and (vars.sim_ready == "true" or vars.sim_ready == "false")) then return false else return true end
+			["skip"] = function (nodes)
+				if (nodes.event_is_new == "true" and (nodes.sim_ready == "true" or nodes.sim_ready == "false")) then return false else return true end
 			end
 		},
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				local response
-				if vars.sim_ready == "" then
+				if nodes.sim_ready == "" then
 					response = "not available"
-				elseif vars.sim_ready == "false" then
+				elseif nodes.sim_ready == "false" then
 					response = "not ready"
-				elseif vars.sim_ready == "true" then
+				elseif nodes.sim_ready == "true" then
 					response = "ready"
 				else
-					response = vars.sim_ready
+					response = nodes.sim_ready
 				end
 
 				return({
-					datetime = vars.event_datetime,
+					datetime = nodes.event_datetime,
 					name = "Sim Card status",
 					source = "Modem  (01-rule)",
 					command = "AT+CPIN?",

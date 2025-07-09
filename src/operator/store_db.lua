@@ -3,31 +3,31 @@ local uci = require "luci.model.uci".cursor()
 
 
 -- Define the LevelDB database path
-local inmemory_db_path = uci:get("tsmjournal", "database", "inmemory")
-local ondisk_db_path = uci:get("tsmjournal", "database", "ondisk")
+-- local inmemory_db_path = uci:get("tsmjournal", "database", "inmemory")
+-- local ondisk_db_path = uci:get("tsmjournal", "database", "ondisk")
 
 
 -- operator: store-db
 -- ["store-db"] = { param_list = { "param1", "param2", etc... } }
 -- Function to store data in the database using db_utils
-local function store_db(rule, node_name, op_name, op_body)
-    local debug
-    if rule.debug_mode.enabled then debug = require "applogic.var.debug" end
+local function store_db(rule, nodename, op_name, op_body)
+    -- local debug
+    -- if rule.debug_mode.enabled then debug = require "applogic.node.debug" end
 
-    local node_table = rule.setting[node_name] or {}
+    local nodelink = rule.setting[nodename] or {}
     local param_list = op_body.param_list or {}
-    local result = {}
-    local noerror = true
+    -- local result = {}
+    -- local noerror = true
 
     if (#param_list > 0) then
         local params, name = {}, ''
         for i = 1, #param_list do
             name = param_list[i]
-            if name == node_name then
+            if name == nodename then
                 if util.contains({ "journal_reg", "journal_usb", "journal_stm", "journal_userbalance" }, name) then
                     name = "journal"
                 end
-                params[name] = node_table.output or ""
+                params[name] = nodelink.output or ""
             else
                 params[name] = rule.setting[name] and rule.setting[name].output or ""
             end

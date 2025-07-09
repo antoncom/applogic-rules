@@ -19,8 +19,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.sim_id) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -37,8 +37,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.usb) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.usb) or {}
 				return lua_table.value or ""
 			end,
 		}
@@ -49,17 +49,17 @@ local rule_setting = {
 		default = 0,
 
 		{
-			["skip"] = function (vars)
-				return (not tonumber(vars.os_time))
+			["skip"] = function (nodes)
+				return (not tonumber(nodes.os_time))
 			end
 		},
 		{
-			["func"] = function (vars)
-				local STEP = os.time() - tonumber(vars.os_time)
+			["func"] = function (nodes)
+				local STEP = os.time() - tonumber(nodes.os_time)
 				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
 
-				local it = tonumber(vars.idle_time) or 0
-				if (vars.usb == "connected") then
+				local it = tonumber(nodes.idle_time) or 0
+				if (nodes.usb == "connected") then
 					return 0
 				else
 					return (it + STEP)
@@ -67,8 +67,8 @@ local rule_setting = {
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.idle_time
+			["save"] = function (nodes)
+				return nodes.idle_time
 			end
 		}
 	},
@@ -77,13 +77,13 @@ local rule_setting = {
 		note = [[ Время ОС на предыдущей итерации ]],
 
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return os.time()
 			end
 		},
 		{
-			["save"] = function (vars)
-				return vars.os_time
+			["save"] = function (nodes)
+				return nodes.os_time
 			end
 		}
 	},
@@ -93,9 +93,9 @@ local rule_setting = {
 		note = [[ Перезапускает модем если USB порт /dev/ttyUSB2 отсутствует более 2 мин. ]],
 
 		{
-			["skip"] = function (vars)
-				local it = tonumber(vars.idle_time) or 0
-				return (vars.usb == "connected" or (it <= 120))
+			["skip"] = function (nodes)
+				local it = tonumber(nodes.idle_time) or 0
+				return (nodes.usb == "connected" or (it <= 120))
 			end
 		},
 		{
@@ -106,12 +106,12 @@ local rule_setting = {
 			}
 		},
 		{
- 			["func"] = function (vars)
+ 			["func"] = function (nodes)
  				return "true"
  			end
 		},
 		{
-            ["frozen"] = function (vars)
+            ["frozen"] = function (nodes)
 				return 30
 			end
 		}
@@ -139,14 +139,14 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_datetime) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
 				return lua_table.time or ""
 			end
 		},
 		{
-			["func"] = function (vars)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(vars.event_datetime)))
+			["func"] = function (nodes)
+				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
 			end
 		}
 	},
@@ -159,26 +159,26 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.event_is_new) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.event_is_new) or {}
 				return lua_table.unread or ""
 			end,
 		}
 	},
     journal = {
 		{
-			["skip"] = function (vars)
-				if (vars.event_is_new == "true") then return false else return true end
+			["skip"] = function (nodes)
+				if (nodes.event_is_new == "true") then return false else return true end
 			end
 		},
 		{
-			["func"] = function (vars)
+			["func"] = function (nodes)
 				return({
-					datetime = vars.event_datetime,
+					datetime = nodes.event_datetime,
 					name = "Изенилось состояние порта /dev/ttyUSB2",
 					source = "Modem  (98-rule)",
 					command = "watchdog",
-					response = vars.usb
+					response = nodes.usb
 				})
 			end
 		},
@@ -202,7 +202,7 @@ function rule:make()
 	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
 	-- Green, Yellow and Red are measure of importance for Application logic
 	-- Green is for timers and some passive, regular variables,
-	-- Yellow is for that vars which switch the logic - e.g. affect to normal application behavior
+	-- Yellow is for that nodes which switch the logic - e.g. affect to normal application behavior
 	-- Red is for some extraordinal application behavior, like watchdog, etc.
 	local overview = {
 		["reinit_modem"] = { ["red"] = [[ return ($reinit_modem == "true") ]] },

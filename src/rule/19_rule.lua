@@ -19,8 +19,8 @@ local rule_setting = {
 			},
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.up_ifname) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.up_ifname) or {}
 				return lua_table.interface or ""
 			end,
 		}
@@ -38,8 +38,8 @@ local rule_setting = {
 			}
 		},
 		{
-			["func"] = function (vars)
-				local lua_table = luci.jsonc.parse(vars.down_ifname) or {}
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.down_ifname) or {}
 				return lua_table.interface or ""
 			end,
 		}
@@ -50,14 +50,14 @@ local rule_setting = {
 		default = "",
 
 		{
-			["skip"] = function (vars)
-				if (vars.up_ifname == "modem" or vars.down_ifname == "modem") then return false else return true end
+			["skip"] = function (nodes)
+				if (nodes.up_ifname == "modem" or nodes.down_ifname == "modem") then return false else return true end
 			end
 		},
 		{
-			["func"] = function (vars)
-				local up = (vars.up_ifname == "modem") and "Modem UP"
-				local down = (vars.down_ifname == "modem") and "Modem DOWN"
+			["func"] = function (nodes)
+				local up = (nodes.up_ifname == "modem") and "Modem UP"
+				local down = (nodes.down_ifname == "modem") and "Modem DOWN"
 				local out = up or down
 				return({
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
