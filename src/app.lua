@@ -51,6 +51,7 @@ rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
 rules.state = 	{
 					mode = "run",	-- "run", "stop" are only possible
 				}					-- "stop" is needed when web-console of AT commands is activated
+									-- or tsmsms module uses tsmodem when processes sms read/send requests.
 									-- "stop" stops ubus-requests from applogic to tsmodem.driver,
 									-- as tsmodem.driver automation is in "stop" mode too.
 
@@ -397,21 +398,26 @@ end
 
 function rules:check_driver_automation()
 	local driver_mode = ""
-	local automation = { mode = "" }
-	if checkubus(rules.conn, "tsmodem.driver", "automation") then
-		automation = util.ubus("tsmodem.driver", "automation", {})
-		driver_mode = automation and automation["mode"] or ""
+	if checkubus(rules.conn, "tsmodem.driver", "lock_status") then
+		local tsmodem_lock_status = util.ubus("tsmodem.driver", "lock_status", {})
+
+		if tsmodem_lock_status and tsmodem_lock_status["owner"] then
+			if tsmodem_lock_status["owner"] == "" then
+				driver_mode = "run"
+			else
+				driver_mode = "stop"
+			end
+		end
+		-- print(os.time(), driver_mode, 'owner: ' .. tsmodem_lock_status["owner"]) -- test print
 
 		rules.state.mode = driver_mode
 	end
-	--return driver_mode
 end
 
 function rules:run_all()
 --profile.start()
 
 	local user_session_alive = rules:check_driver_automation()
-	--if (rules:check_driver_automation() == "run") then
 		local rules_list = self.setting.rules_list.target
 		local state = ''
 
