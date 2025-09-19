@@ -350,21 +350,46 @@ local rule_setting = {
                 local BALANCE_IN_PROGRESS = (nodes.current_balance_state == "*")
 				local NOBODY_SWITCHING = (nodes.switching == "false" or nodes.switching == "")
                 local READY_TO_SEND = SIM_OK and PROVIDER_IDENTIFIED and TIME_TO_REQUEST and (BALANCE_OK or BALANCE_FAIL) and (not BALANCE_IN_PROGRESS) and NOBODY_SWITCHING
-                if USSD_OK and READY_TO_SEND then return false else return true end
+
+				-- delete after test start
+				if pid ~= 25002 then -- megafon only, for test
+					return true
+				end
+				-- delete after test end
+
+				if USSD_OK and READY_TO_SEND then return false else return true end
             end
 		},
 		{
+			["func"] = {
+				function ()
+					print("SEND_COMMAND, UPDATE BALANCE!!!")
+				end
+			}
+		},
+		-- {
+		-- 	["load-ubus"] = {
+		-- 		object = "tsmodem.driver",
+		-- 		method = "send_at",
+		-- 		params = {
+		-- 			["command"] = "AT+CUSD=1,$ussd_command,15",
+		-- 			["what-to-update"] = "balance"
+		-- 		},
+		-- 	}
+		-- },
+		{
 			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "send_at",
+				object = "tsmodem.sms",
+				method = "send_sms",
 				params = {
-					["command"] = "AT+CUSD=1,$ussd_command,15",
-					["what-to-update"] = "balance"
+					["phone"] = "000100", -- megafon only for test; todo: phone for each provider_id;
+					["text"] = "B",
 				},
 			}
 		},
 		{
 			["func"] = function (nodes)
+				print('update balance, send_command node value after ubus call:', nodes.send_command)
 				local lua_table = luci.jsonc.parse(nodes.send_command) or {}
 				return lua_table.value or ""
 			end
