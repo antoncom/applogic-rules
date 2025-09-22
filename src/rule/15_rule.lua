@@ -142,8 +142,8 @@ local rule_setting = {
 		}
 	},
 
-    ussd_command = {
-        note = [[ USSD команда для данного провайдера ]],
+	balance_sms_phone = {
+        note = [[ Номер для получения баланса через СМС для данного провайдера ]],
 		default = "",
 
         {
@@ -158,13 +158,41 @@ local rule_setting = {
 				params = {
 					config = "tsmodem_adapter_provider",
 					section = "$provider_id",
-					option = "balance_ussd"
+					option = "balance_sms_phone"
 				},
 			}
 		},
 		{
 			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.ussd_command) or {}
+				local lua_table = luci.jsonc.parse(nodes.balance_sms_phone) or {}
+				return lua_table.value or ""
+			end,
+        }
+    },
+
+	balance_sms_text = {
+        note = [[ СМС текст для получения баланса для данного провайдера ]],
+		default = "",
+
+        {
+			["skip"] = function (nodes)
+				return not (tonumber(nodes.provider_id) and (nodes.provider_id ~= 0))
+			end
+		},
+		{
+			["load-ubus"] = {
+				object = "uci",
+				method = "get",
+				params = {
+					config = "tsmodem_adapter_provider",
+					section = "$provider_id",
+					option = "balance_sms_text"
+				},
+			}
+		},
+		{
+			["func"] = function (nodes)
+				local lua_table = luci.jsonc.parse(nodes.balance_sms_text) or {}
 				return lua_table.value or ""
 			end,
         }
@@ -334,14 +362,15 @@ local rule_setting = {
     },
 
     send_command = {
-        note = [[ AT-команда запроса баланса - выполняется через каждые $a_balance_interval  ]],
+        note = [[ AT-команда запроса баланса через СМС - выполняется через каждые $a_balance_interval  ]],
 		default = "false",
 
         {
             ["skip"] = function (nodes)
 				local pid = tonumber(nodes.provider_id) or 0
 				local t = tonumber(nodes.timer) or 0
-				local USSD_OK = (nodes.ussd_command ~= "")
+				local BALANCE_SMS_PHONE_OK = (nodes.balance_sms_phone ~= "")
+				local BALANCE_SMS_TEXT_OK = (nodes.balance_sms_text ~= "")
 				local SIM_OK = (nodes.sim_ready == "true")
 				local PROVIDER_IDENTIFIED = (pid ~= 0)
                 local TIME_TO_REQUEST = (t < 5)
@@ -351,45 +380,21 @@ local rule_setting = {
 				local NOBODY_SWITCHING = (nodes.switching == "false" or nodes.switching == "")
                 local READY_TO_SEND = SIM_OK and PROVIDER_IDENTIFIED and TIME_TO_REQUEST and (BALANCE_OK or BALANCE_FAIL) and (not BALANCE_IN_PROGRESS) and NOBODY_SWITCHING
 
-				-- delete after test start
-				if pid ~= 25002 then -- megafon only, for test
-					return true
-				end
-				-- delete after test end
-
-				if USSD_OK and READY_TO_SEND then return false else return true end
+				if (BALANCE_SMS_PHONE_OK and BALANCE_SMS_TEXT_OK) and READY_TO_SEND then return false else return true end
             end
 		},
-		{
-			["func"] = {
-				function ()
-					print("SEND_COMMAND, UPDATE BALANCE!!!")
-				end
-			}
-		},
-		-- {
-		-- 	["load-ubus"] = {
-		-- 		object = "tsmodem.driver",
-		-- 		method = "send_at",
-		-- 		params = {
-		-- 			["command"] = "AT+CUSD=1,$ussd_command,15",
-		-- 			["what-to-update"] = "balance"
-		-- 		},
-		-- 	}
-		-- },
 		{
 			["load-ubus"] = {
 				object = "tsmodem.sms",
 				method = "send_sms",
 				params = {
-					["phone"] = "000100", -- megafon only for test; todo: phone for each provider_id;
-					["text"] = "B",
+					["phone"] = "$balance_sms_phone",
+					["text"] = "$balance_sms_text",
 				},
 			}
 		},
 		{
 			["func"] = function (nodes)
-				print('update balance, send_command node value after ubus call:', nodes.send_command)
 				local lua_table = luci.jsonc.parse(nodes.send_command) or {}
 				return lua_table.value or ""
 			end
@@ -507,7 +512,8 @@ function rule:make()
 	self:follow("connected_usb_time"):debug()
 
 	self:follow("provider_id"):debug()      					-- идентификатор провайдера на актиной Симке, наприм. 250099
-	self:follow("ussd_command"):debug()     					-- USSD-код клманды, напр. #100#
+	self:follow("balance_sms_phone"):debug()					-- Номер на который нужно отправить смс для проверки баланса
+	self:follow("balance_sms_text"):debug()						-- Текст который нужно отправить в смс для проверки баланса
     self:follow("current_balance_state"):debug()				-- Значение текущего баланса
 	self:follow("uci_balance_timeout"):debug()
 	self:follow("a_balance_interval"):debug(overview) 			-- С какой частотой запрашивать баланс у провайдера
