@@ -191,7 +191,7 @@ local rule_setting = {
 			["func"] = function (nodes)
 				local lastreg_t = tonumber(nodes.lastreg_timer) or 0
 
-				if (nodes.iface_up == "true") then
+				if (nodes.iface_up == true) then
 					return "true"
 				elseif lastreg_t < 30 then
 					return "*"
