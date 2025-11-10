@@ -327,8 +327,8 @@ function report:queu(rules, iteration)
 
 	function getMatch(evmatch)
 		local varlinks = evmatch.subscribed_vars
-		if #varlinks > 0 then
-			return util.serialize_json(varlinks[1].source.match)
+		if (#varlinks > 0 and #varlinks[1] > 0 and varlinks[1][1]["subscribe"] and varlinks[1][1]["subscribe"].match) then
+			return util.serialize_json(varlinks[1][1]["subscribe"].match)
 		else
 			return ""
 		end
