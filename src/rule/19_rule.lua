@@ -5,75 +5,208 @@ local rule_init = require "applogic.operator.rule_init"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Журналирование - статус интерфейса MODEM",
+		input = "Журналирование событий Микроконтроллера",
 	},
-	up_ifname = {
-		note = [[ Имя сетевого интерфейса, который up ]],
-		default = "",
-
+	SYS_VER = {
+		note = [[ Подписываемся на команду ~0:SYS.VER ]],
+		default = {},
 		{
 			["subscribe"] = {
-				ubus = "network.interface",
-				evname = "interface.update",
-				match = { interface = "modem"}
+				ubus = "tsmstm",
+				evname = "~0:SYS.VER",
+				match = {}
 			},
 		},
 		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.up_ifname) or {}
-				return lua_table.interface or ""
-			end,
-		}
-	},
-
-	down_ifname = {
-		note = [[ Имя сетевого интерфейса, который down ]],
-		default = "",
-
-		{
-			["subscribe"] = {
-				ubus = "network.interface",
-				evname = "interface.down",
-				match = { interface = "modem"}
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.down_ifname) or {}
-				return lua_table.interface or ""
-			end,
-		}
-	},
-
-
-	journal = {
-		default = "",
-
-		{
 			["skip"] = function (nodes)
-				if (nodes.up_ifname == "modem" or nodes.down_ifname == "modem") then return false else return true end
+				if not nodes.SYS_VER.command then return true else return false end
 			end
 		},
 		{
-			["func"] = function (nodes)
-				local up = (nodes.up_ifname == "modem") and "Modem UP"
-				local down = (nodes.down_ifname == "modem") and "Modem DOWN"
-				local out = up or down
+			["journal"] = function (nodes)
 				return({
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = "Изменился статус интерфейса сетевого интерфейса",
-					source = "Network  (19-rule)",
-					command = "subscribe network.interface",
-					response = out
+					name = nodes.SYS_VER.note,
+					source = "STM32 (19_rule)",
+					command = nodes.SYS_VER.command or "",
+					response = nodes.SYS_VER.result or ""
 				})
 			end
 		},
+	},
+	SIM_SEL = {
+		note = [[ Подписываемся на команду ~0:SIM.SEL ]],
+		default = {},
 		{
-			["store-db"] = {
-				param_list = { "journal" }
+			["subscribe"] = {
+				ubus = "tsmstm",
+				evname = "~0:SIM.SEL",
+				match = {}
 			},
-		}
-	}
+		},
+		{
+			["skip"] = function (nodes)
+				if not nodes.SIM_SEL.command then 
+					return true 
+				elseif (nodes.SIM_SEL.command == "~0:SIM.SEL=?") then
+					return true
+				else
+					return false 
+				end
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				return({
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					name = nodes.SIM_SEL.note,
+					source = "STM32 (19_rule)",
+					command = nodes.SIM_SEL.command or "",
+					response = nodes.SIM_SEL.result or ""
+				})
+			end
+		},
+	},
+
+	SIM_EN = {
+		note = [[ Подписываемся на команду ~0:SIM.EN ]],
+		default = {},
+		{
+			["subscribe"] = {
+				ubus = "tsmstm",
+				evname = "~0:SIM.EN",
+				match = {}
+			},
+		},
+		{
+			["skip"] = function (nodes)
+				if not nodes.SIM_EN.command then return true else return false end
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				return({
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					name = nodes.SIM_EN.note,
+					source = "STM32 (19_rule)",
+					command = nodes.SIM_EN.command or "",
+					response = nodes.SIM_EN.result or ""
+				})
+			end
+		},
+	},
+
+	SIM_RST = {
+		note = [[ Подписываемся на команду ~0:SIM.RST ]],
+		default = {},
+		{
+			["subscribe"] = {
+				ubus = "tsmstm",
+				evname = "~0:SIM.RST",
+				match = {}
+			},
+		},
+		{
+			["skip"] = function (nodes)
+				if not nodes.SIM_RST.command then return true else return false end
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				return({
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					name = nodes.SIM_RST.note,
+					source = "STM32 (19_rule)",
+					command = nodes.SIM_RST.command or "",
+					response = nodes.SIM_RST.result or ""
+				})
+			end
+		},
+	},
+
+	SIM_PWR = {
+		note = [[ Подписываемся на команду ~0:SIM.PWR ]],
+		default = {},
+		{
+			["subscribe"] = {
+				ubus = "tsmstm",
+				evname = "~0:SIM.PWR",
+				match = {}
+			},
+		},
+		{
+			["skip"] = function (nodes)
+				if not nodes.SIM_PWR.command then return true else return false end
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				return({
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					name = nodes.SIM_PWR.note,
+					source = "STM32 (19_rule)",
+					command = nodes.SIM_PWR.command or "",
+					response = nodes.SIM_PWR.result or ""
+				})
+			end
+		},
+	},
+
+	SIM_RSTSW = {
+		note = [[ Подписываемся на команду ~0:SIM.RSTSW ]],
+		default = {},
+		{
+			["subscribe"] = {
+				ubus = "tsmstm",
+				evname = "~0:SIM.RSTSW",
+				match = {}
+			},
+		},
+		{
+			["skip"] = function (nodes)
+				if not nodes.SIM_RSTSW.command then return true else return false end
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				return({
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					name = nodes.SIM_RSTSW.note,
+					source = "STM32 (19_rule)",
+					command = nodes.SIM_RSTSW.command or "",
+					response = nodes.SIM_RSTSW.result or ""
+				})
+			end
+		},
+	},
+
+	SIM_PWRSW = {
+		note = [[ Подписываемся на команду ~0:SIM.PWRSW ]],
+		default = {},
+		{
+			["subscribe"] = {
+				ubus = "tsmstm",
+				evname = "~0:SIM.PWRSW",
+				match = {}
+			},
+		},
+		{
+			["skip"] = function (nodes)
+				if not nodes.SIM_PWRSW.command then return true else return false end
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				return({
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					name = nodes.SIM_PWRSW.note,
+					source = "STM32 (19_rule)",
+					command = nodes.SIM_PWRSW.command or "",
+					response = nodes.SIM_PWRSW.result or ""
+				})
+			end
+		},
+	},
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -91,18 +224,23 @@ function rule:make()
 
 	local all_rules = rule.parent.setting.rules_list.target
 
-	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
-	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
-	if (r01_wait_timer and r01_wait_timer > 0) then 
-		if rule.debug_mode.enabled then print("------ 19_rule SKIPPED as r01_wait_timer > 0 -----") end
-		return
-	end
+	-- -- Пропускаем выполнения правила, если СИМ-карты нет в слоте
+	-- local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
+	-- if (r01_wait_timer and r01_wait_timer > 0) then 
+	-- 	if rule.debug_mode.enabled then print("------ 19_rule SKIPPED as r01_wait_timer > 0 -----") end
+	-- 	return
+	-- end
 
 
 	self:follow("title"):debug()
-	self:follow("up_ifname"):debug()
-	self:follow("down_ifname"):debug()
-    self:follow("journal"):debug()
+	self:follow("SYS_VER"):debug()
+
+	self:follow("SIM_SEL"):debug()
+	--self:follow("SIM_EN"):debug()
+	--self:follow("SIM_RST"):debug()
+	--self:follow("SIM_PWR"):debug()
+	--self:follow("SIM_RSTSW"):debug()
+	--self:follow("SIM_PWRSW"):debug()
 end
 
 

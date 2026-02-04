@@ -150,6 +150,8 @@ function report:print_rule(level, iteration)
 		ftable:write_ln("VARIABLE", "NOTES", "PASS LOGIC", "RESULTS ON THE ITERATION", "#"..tostring(report.iteration))
 		ftable:add_separator()
 
+		local break_outer = false
+
 		for nodename, vardata in  util.spairs(vars,
 			function(a,b)
 				return (vars[a].order < vars[b].order)
@@ -168,15 +170,27 @@ function report:print_rule(level, iteration)
 								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 								break
 							else
-								passlogic = ""
+								--passlogic = ""
 								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+							end
+						elseif "break" == operator["op_name"] then
+							if operator["value"] then
+								passlogic = passlogic.."\n[break]"
+								ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
+								break_outer = true;
+								--break
+							--else
+							--	ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
 							end
 						elseif "ui-update" == operator["op_name"] then
 							passlogic = string.format("%s[ui-update]", passlogic)
 							ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+						elseif "timeout" == operator["op_name"] then
+							passlogic = string.format("%s\n[timeout]", passlogic)
+							ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
 						elseif "frozen" == operator["op_name"] then
 							if operator["value"] and tonumber(operator["value"]) then
-								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(operator["value"]) or operator["value"])
+								passlogic = string.format("%s\n[frozen] %03d", passlogic, tonumber(operator["value"]) or operator["value"])
 								--passlogic = string.format("%s[frozen]", passlogic)
 							end
 						end
@@ -191,6 +205,8 @@ function report:print_rule(level, iteration)
 					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_RED)
 				end
 			end
+
+			if break_outer then break end
 		end
 
 		-- CELL SPANS
@@ -386,6 +402,28 @@ function report:queu(rules, iteration)
 	ftable:set_border_style(ft[style])
 	-- Print ftable
 	print(tostring(ftable))
+
+end
+
+
+function report:queue(rules, iteration)
+	local ftable = ft.new()
+	local check = ""
+	local current_row
+	
+	function getNodeNames(rules, iteration)
+		print(rules.subscriptions)
+	end
+
+	getNodeNames(rules, iteration)
+
+	for ruleid, rule in  util.spairs(rules.setting.rules_list.target) do
+		for nodename, node in util.spairs(rule) do
+			print(node)
+		end
+		
+	end
+	--util.dumptable(util.keys(rules.setting.rules_list.target))
 
 end
 

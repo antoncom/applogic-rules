@@ -2,394 +2,176 @@ local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.operator.rule_init"
 
 
+
 local rule = {}
 local rule_setting = {
 	title = {
 		input = "Правило переключения если нет Cим-карты в слоте",
 	},
 
-	resetting = {
-		note = [[ Статус ресета модема. ]],
-
+	slotinfo = {
+		note = [[ Данные о слотах Сим ]],
 		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "resetting",
-				params = {},
-				cached = "no",
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.resetting) or {}
-				return lua_table.value or ""
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmstm",
+					method = "info",
+					params = {},
+				}
 			end
-		}
-	},
-
-	switching = {
-		note = [[ Статус переключения Sim: true / false. ]],
-
-		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "switching",
-				params = {},
-				cached = "no",
-			}
 		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.switching) or {}
-				return lua_table.value or ""
+		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
+			["break"] = function (nodes)
+				local last_switch_time = nodes.slotinfo.last_switch_time or 0
+				if ((os.time() - last_switch_time) < 10) then return true end
 			end
 		},
 	},
 
-	switch_time = {
-		note = [[ Время переключения Sim ]],
-
-		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "switching",
-				params = {},
-				cached = "no" -- Turn OFF caching of the var, as next rule may use non-actual value
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.switch_time) or {}
-				return lua_table.time or ""
-			end
-		}
-	},
-
-	event_datetime = {
-		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "cpin",
-				params = {}
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.event_datetime) or {}
-				return lua_table.time or ""
-			end
-		},
-		{
-			["func"] = function (nodes)
-				return(os.date("%Y-%m-%d %H:%M:%S", tonumber(nodes.event_datetime)))
-			end
-		}
-	},
-
-	event_is_new = {
-		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "cpin",
-				params = {}
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.event_is_new) or {}
-				return lua_table.unread or ""
-			end
-		}
-	},
-
-	sim_id = {
-		note = [[ Идентификатор активной Сим-карты: 0/1. ]],
-
-		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "sim",
-				params = {},
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.sim_id) or {}
-				return lua_table.value or ""
-			end
-		}
-	},
-
-	usb = {
-		note = [[ Состояние USB-порта: connected / disconnected  ]],
-
-		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "usb",
-				params = {},
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.usb) or {}
-				return lua_table.value or ""
-			end
-		},
-	},
-
-	sim_ready = {
+	sim_found = {
 		note = [[ Сим-карта в слоте? "true" / "false" ]],
-
 		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "cpin",
-				params = {},
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.sim_ready) or {}
-				return lua_table.value or ""
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmodem.driver",
+					method = "cpin",
+					params = {},
+				}
 			end
 		},
 		{
-			["func"] = function (nodes)
-				local unknown = (nodes.usb == "disconnected" or nodes.switching == "true")
-				if unknown then return "" else return nodes.sim_ready end
+			["ui-update"] = function(nodes)
+				return({
+					sim_id = nodes.slotinfo.slot,
+					timeout = nodes.timeout and nodes.timeout.inited or 600,
+					wait_timer = nodes.timeout and nodes.timeout.value or 0,
+					sim_ready = nodes.sim_found.value
+				})
+			end
+		},
+		{	-- Если симка в слоте, то пропускаем дальнейшую обработку правила
+			["break"] = function (nodes)
+				local last_switch_time = nodes.slotinfo.last_switch_time or 0
+				if ((os.time() - last_switch_time) < 20) then return true end
+				return (nodes.sim_found.value == "true")
 			end
 		}
 	},
-
 
 	timeout = {
-		note = [[ Таймаут отсутствия Сим карты. Источник: /etc/config/tsmodem  ]],
-
-		{
-			["load-ubus"] = {
-				object = "uci",
-				method = "get",
-				params = {
-					config = "tsmodem",
-					section = "sim_$sim_id",
-					option = "timeout_sim_absent",
+		note = [[ Таймер ожидания при поиске сим-карты  ]],
+		["default"] = 15,
+		{	-- Загружаем значение таймера из конфига
+			["load-ubus"] = function (nodes)
+				return {
+					object = "uci",
+					method = "get",
+					params = {
+						config = "tsmodem",
+						section = "sim_" .. tostring(nodes.slotinfo.slot),
+						option = "timeout_sim_absent",
+					}
 				}
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.timeout) or {}
-				return lua_table.value or ""
 			end
-		}
+		},
+		{   -- Запускаем таймер
+			["timeout"] = function(nodes)
+				return tonumber(nodes.timeout.value)
+			end
+		},
 	},
 
-	wait_timer = {
-		note = [[ Таймер ожидания на попытки найти Сим-карту в слоте ]],
-		default = 0,
 
+
+	reset = {
+		note = [[ Сбросить модем для поиска Sim в слоте ]],
+		default = "",
 		{
 			["skip"] = function (nodes)
-				local not_ostime = not tonumber(nodes.os_time)
-				local switching = (nodes.switching ~= "false")
-				return (switching or not_ostime)
+				local notyet_found = (nodes.sim_found.value ~= "true")
+				local time_isout = (nodes.timeout.value == 0)
+
+				local stop_resetting_if_timeout = (notyet_found and time_isout)
+				return stop_resetting_if_timeout
 			end
 		},
 		{
-			["func"] = function (nodes)
-				local wt = tonumber(nodes.wait_timer) or 0
-
-				local STEP = os.time() - tonumber(nodes.os_time)
-				if STEP > 50 then STEP = 2 end -- it uses when ntpd synced system time
-
-				if (nodes.sim_ready == "true" or nodes.do_switch == "true") then
-					return 0
-				else
-					return (wt + STEP)
-				end
-			end
-		},
-		{
-			["save"] = function (nodes)
-				return nodes.wait_timer
-			end
-		}
-	},
-
-	do_switch = {
-		note = [[ Переключает слот, если SIM-карта не найдена в текущем слоте  ]],
-		default = "false",
-
-		{
-			["skip"] = function (nodes)
-				local SIMID_OK = (nodes.sim_id == "0" or nodes.sim_id == "1")
-				local USB_OK = 	( nodes.usb == "connected" )
-				local wt = tonumber(nodes.wait_timer) or 0
-				local t = tonumber(nodes.timeout) or 0
-				local TIMEOUT = (wt >= t)
-				local SIM_NOT_READY = (nodes.sim_ready == "false")
-				local NOT_SWITCHING = (nodes.switching ~= "true")
-				local NOT_RESETTING = (nodes.resetting ~= "true")
-				return ( not (SIMID_OK and USB_OK and TIMEOUT and SIM_NOT_READY and NOT_SWITCHING and NOT_RESETTING) )
-			end
-		},
-		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "do_switch",
-				params = { rule = "01_rule"},
-			}
-		},
-		{
-			["func"] = function (nodes)
-				local lua_table = luci.jsonc.parse(nodes.do_switch) or {}
-				return lua_table.value or ""
-			end
-		},
-		{
-			["frozen"] = function (nodes)
-				return 10
-			end
-		}
-	},
-
-	reset_timer = {
-		note = [[ Отсчёт секунд при отсутствии Сим-карты в слоте. ]],
-		default = "0", -- Set default value if you need "reset" variable before skipping
-
-		{
-			["skip"] = function (nodes)
-				local not_ostime = not tonumber(nodes.os_time)
-				local switching = (nodes.switching ~= "false")
-				return (switching or not_ostime)
-			end
-		},
-		{
-			["func"] = function (nodes)
-				local v_ost = tonumber(nodes.os_time) or 0
-				local STEP = os.time() - v_ost
-				if (STEP > 50) then STEP = 2 end -- it uses when ntpd synced system time
-
-				local SIM_OK = (nodes.sim_ready == "true")
-				local USB_NOT_CONNECTED = (nodes.usb == "disconnected")
-				local st = tonumber(nodes.switch_time) or 0
-				local JUST_SWITCHED = ((v_ost - st) < 20)
-
-				local rt = tonumber(nodes.reset_timer) or 0
-				local TIMER = rt + STEP
-
-				if USB_NOT_CONNECTED then return 0
-				elseif JUST_SWITCHED then return 0
-				elseif SIM_OK then return 0
-				else return TIMER end
-			end
-		},
-		{
-			["save"] = function (nodes)
-				return nodes.reset_timer
-			end
-		}
-	},
-
-
-	reset_modem = {
-		note = [[ Подать сигнал сброса на модем через каждые 20 сек. ]],
-		default = "false",
-
-		{
-			["skip"] = function (nodes)
-				local rt = tonumber(nodes.reset_timer) or 0
-				return (rt < 20 or nodes.resetting == "true" or nodes.switching == "true")
-			end
-		},
-		{
-			["load-ubus"] = {
-				object = "tsmodem.driver",
-				method = "do_reset",
-				params = { rule = "01_rule"},
-			}
-		},
-		{
-			["func"] = function (nodes)
-				return "true"
-			end,
-		},
-		{
-			["frozen"] = function (nodes)
-				return 10
-			end
-		}
-	},
-
-	os_time = {
-		note = [[ Время ОС на предыдущей итерации ]],
-
-		{
-			["func"] = function (nodes)
-				return os.time()
-			end
-		},
-		{
-			["save"] = function (nodes)
-				return nodes.os_time
-			end
-		}
-	},
-
-	send_ui = {
-		note = [[ Индикация в веб-интерфейсе ]],
-
-		{
-			["ui-update"] = {
-				param_list = {
-					"sim_id",
-					"wait_timer",
-					"reset_timer",
-					"timeout",
-					"do_switch",
-					"sim_ready",
-					"switching"
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmstm",
+					method = "reset",
+					params = {},
 				}
-			},
-		}
-	},
-
-
-    journal = {
-		{
-			["skip"] = function (nodes)
-				if (nodes.event_is_new == "true" and (nodes.sim_ready == "true" or nodes.sim_ready == "false")) then return false else return true end
 			end
 		},
 		{
-			["func"] = function (nodes)
-				local response
-				if nodes.sim_ready == "" then
-					response = "not available"
-				elseif nodes.sim_ready == "false" then
-					response = "not ready"
-				elseif nodes.sim_ready == "true" then
-					response = "ready"
-				else
-					response = nodes.sim_ready
-				end
-
+			["journal"] = function (nodes)
 				return({
-					datetime = nodes.event_datetime,
-					name = "Sim Card status",
-					source = "Modem  (01-rule)",
-					command = "AT+CPIN?",
-					response = response
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					name = 'Сброс питания Sim-слота',
+					source = "Network (01_rule)",
+					command = "ubus call tsmstm reset",
+					response = "started"
 				})
 			end
 		},
 		{
-			["store-db"] = {
-				param_list = { "journal" }
-			},
+			["frozen"] = function (nodes)
+				return 20
+			end
+		},
+		{
+			["break"] = function (nodes)
+				if nodes.timeout.value > 0 then
+					return true
+				else
+					return false
+				end
+			end
 		}
 	},
+	
+
+	switch = {
+		note = [[ Переключить слот Сим-карт  ]],
+		{
+			["func"] = function (nodes)
+				local new_slotid = nil
+				local current_slotid = nodes.slotinfo.slot
+				if(current_slotid == 0) then new_slotid = "1" else new_slotid = "0" end
+				return new_slotid
+			end
+		},
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmstm",
+					method = "switch",
+					params = { simid = nodes.switch },
+					cached = "no",
+				}
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				return({
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					name = 'Переключение Sim-слота (симка не найдена)',
+					source = "Network (01_rule)",
+					command = "ubus call tsmstm switch",
+					response = "started"
+				})
+			end
+		},
+		{
+			["frozen"] = function (nodes)
+				return 30
+			end
+		},
+	},
+
+
+
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -409,7 +191,7 @@ function rule:make()
 	local overview = {
 		["reset_modem"] = { ["yellow"] = [[ return ($reset_modem == "true") ]] },
 		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
-		["sim_ready"] = { ["yellow"] = [[ return ($sim_ready == "false" or $sim_ready == "*") ]] },
+		["sim_found"] = { ["yellow"] = [[ return ($sim_found == "false" or $sim_found == "*") ]] },
 		["reset_timer"] = { ["yellow"] = [[ return (tonumber($reset_timer) and tonumber($reset_timer) > 0) ]] },
 		["wait_timer"] = { ["yellow"] = [[ return (tonumber($wait_timer) and tonumber($wait_timer) > 0) ]] },
 	}
@@ -418,27 +200,14 @@ function rule:make()
 	if rule.parent.state.mode == "stop" then return end
 
 
-	self:follow("title"):debug() 	-- Use debug(ONLY) to check the var only
-	self:follow("resetting"):debug(overview)
-	self:follow("switching"):debug(overview)
-	self:follow("switch_time"):debug(overview)
-
-	self:follow("event_datetime"):debug()
-	self:follow("event_is_new"):debug()
-
-	self:follow("sim_id"):debug()	-- Use "overview" to include the variable to the all rules overview report in debug mode
-	self:follow("usb"):debug()
-	self:follow("sim_ready"):debug(overview)
-
-	self:follow("timeout"):debug()
-	self:follow("wait_timer"):debug(overview)
-
-	self:follow("do_switch"):debug(overview)
-	self:follow("reset_timer"):debug(overview)
-	self:follow("reset_modem"):debug(overview)
-	self:follow("os_time"):debug()
-	self:follow("send_ui"):debug()
-    self:follow("journal"):debug()
+	self:follow("title"):debug()
+	self:follow("slotinfo"):debug()				-- Пропускаем все узлы ниже, если прошло не более 20 сек после начала переключения слотов
+	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симка найдена в слоте
+	self:follow("timeout"):debug()			-- Сколько ждать симку в слоте (из конфига)
+	self:follow("reset"):debug()			-- Ресеттим модем, таймаут не превышен. Замораживаем узел на 20 сек.,
+											-- а в это время узел "sim_found" ищет симку.
+	self:follow("switch"):debug()			-- Переключаем слот, если вышел таймаут
+	
 end
 
 local metatable = {

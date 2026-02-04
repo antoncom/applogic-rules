@@ -9,6 +9,7 @@ local debug_cli = require "applogic.node.debug_cli"
 local flist = require "applogic.util.filelist"
 local report = require "applogic.util.report"
 local md5 = require "md5"
+local subscript = require "applogic.util.subscriptions"
 
 -- local profile = require "applogic.util.profile"
 -- print(profile)
@@ -41,10 +42,7 @@ end)
 
 local rules = {}
 rules.iteration = 1
-rules.subscription = {
-	queu = {},
-	vars = {}
-}
+
 rules.ubus_object = {}
 rules.conn = nil
 rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
@@ -55,17 +53,21 @@ rules.state = 	{
 									-- "stop" stops ubus-requests from applogic to tsmodem.driver,
 									-- as tsmodem.driver automation is in "stop" mode too.
 
+rules.subscriptions = {}
+
 
 local rules_setting = {
-	title = "Группа правил CPE Agent",
+	title = "Группа правил Applogict",
 	rules_list = {
 		target = {},
 	},
-	tick_size_default = 200	-- use 1900 ms interval in debug mode
+	tick_size_default = 1800	-- use 1900 ms interval in debug mode
 }
 
 function rules:init()
 	rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
+
+	rules.subscriptions = subscript:init(rules.conn)
 end
 
 function rules:clear_cache()
@@ -75,233 +77,14 @@ function rules:clear_cache()
 
 end
 
--- Пробежать по всем переменным всех правил
-
--- Создать подписки (функции обработчики), удовлетворяющие evname, event_matched.
--- Такая функция подписи будет просто складывать подходящие события в очередь
-
--- Создать пустую очередь для вновь поступающих событий
--- Создать функцию-диспетчер, который будет загружать события в переменные
--- при возникновении события.
--- Структура очереди:
---	rules.subscription.queu = {
---		["network.interface"] = {
---			[evmatch_1] = {
---				evname = "interface.up",						-- Имя события
---				subscribed_vars = {varlink1, varlink2},			-- Данный список клонируется в vars_to_load
---				subscribed_varnames = {"[21_rule]: upvar", [21_rule]: downvar"},			-- Данный список клонируется в vars_to_load
---				events = {										-- при поступлении события в очередь
---					[1] = {
---						msg = {},
---						name = "",
---						md5 = {"f4556ff3f17bb744ec8819b42bc1291c"}		-- Содержит контрольную сумму добавленного в очередь события
---						vars_to_load = { varlink1 }				-- Когда все переменые прогрузятся
---					}											-- данное событие удаляется из очереди
---				}
---			},
---			[evmatch_2] = {
---				evname = "interface.down",						-- Имя события
---				subscribed_vars = {varlink1, varlink2},
---				events = {
---					[1] = {
---						msg = {},
---						name = "",
---						md5 = {"f4556ff3f17bb744ec8819b42bc1291c"}		-- Содержит контрольную сумму добавленного в очередь события
---						vars_to_load = { varlink1 }				-- Когда все переменые прогрузятся
---					}											-- данное событие удаляется из очереди
---				}
---			},
---		},
---	}
---  rules.subscription.vars = {									-- Здесь храним список всех переменных, загружаемых по подписке
---		varlink1, varlink2, varlink3							-- При возикновении события из них берутся matched
---	}															-- чтобы не все события помещать в очередь, а только соответствующие условию matched
-
-
-function rules:matched_evmsg(ev, pattern)
-	local msg_matched = false
-	local evmsg = ev
-	if not evmsg then return end
-
-	for attr,value in util.kspairs(pattern) do
-		if (evmsg[attr] and evmsg[attr] == value) then
-			msg_matched = true
-			break
-		end
-	end
-	return msg_matched
-
-end
 
 function evuuid(name, match)
 	return md5.sumhexa(tostring(name)..tostring(util.serialize_json(match)))
 end
 
---	--[[ Диспетчер раскладывает поступающие события по очередям ]]
-rules.subscription.dispatcher = function(ubusobj, evname, evmsg) 
-	-- Проверяем события на дубли. Если повторно возникает - не добавляем в очередь
-	function chekDuplucates(md5, events)
-		local res = false
-		for _, ev in ipairs(events) do
-			if ev["md5"] == md5 then
-				res = true
-				break
-			end
-		end
-		return res
-	end
-	-- пробегаем по списку переменных rules.subscription.vars
-	for _,v in ipairs(rules.subscription.vars) do
-
-		local nodelink = v
-		local subscribe_operator = {}
-
-		for operator_index, operator_table in ipairs(nodelink) do
-			local operator_name
-
-			-- operator_table: { ["op_name"] = <op_body> }
-			for key, value in pairs(operator_table) do
-				operator_name = key
-			end
-
-			if operator_name == "subscribe" then
-				subscribe_operator = operator_table["subscribe"]
-			end
-		end
-
-		-- если событие соответствует условию matched в какой-либо переменной
-		-- if(rules:matched_evmsg(evmsg, v.source.match) == true) then
-		if(rules:matched_evmsg(evmsg, subscribe_operator.match) == true) then
-			-- local evmatch_md5 = evuuid(evname, v.source.match)
-			local evmatch_md5 = evuuid(evname, subscribe_operator.match)
-			if (rules.subscription.queu[ubusobj] and rules.subscription.queu[ubusobj][evmatch_md5]) then
-				-- Отсекаем события дубли, имеющие местj при подписке, например, на объект network.interface
-				local name_message_md5 = evuuid(evname,evmsg)
-				local events = rules.subscription.queu[ubusobj][evmatch_md5].events
-				if (chekDuplucates(name_message_md5, events) == false) then
-					local qu_item = {
-						msg = evmsg,
-						name = evname,
-						md5 = name_message_md5,
-						vars_to_load = util.clone(rules.subscription.queu[ubusobj][evmatch_md5].subscribed_vars, false)
-					}
-					-- добавляем в очередь
-					--print("______EVENT_ADDED______: " .. evname)
-					table.insert(rules.subscription.queu[ubusobj][evmatch_md5].events, qu_item)
-				end
-			end
-		end
-	end
-end
-
-rules.subscription.removeEvent = function(ubusobj, evmatch_md5, nodelink)
-	local evmatch = rules.subscription.queu[ubusobj] and rules.subscription.queu[ubusobj][evmatch_md5] or false
-	if (evmatch) then
-		local event = evmatch.events[1] or false
-		if (event) then
-			local subscribed_vars = evmatch.subscribed_vars
-			local vars_to_load = event.vars_to_load
-			-- Если для данного события есть подписанные переменные
-			if util.contains(subscribed_vars, nodelink) then
-				-- Если в списке переменных к загрузке есть данная переменная
-				if (util.contains(vars_to_load, nodelink)) then
-					local i = false
-					-- Удаляем переменную из списка загруженных
-					for j,vlink in ipairs(vars_to_load) do
-						if vlink == nodelink then
-							i = j
-							break
-						end
-					end
-					if (i) then 
-						table.remove(vars_to_load, i) 
-					end
-				elseif (#vars_to_load == 0) then
-					-- если список загруженных переменных пуст - удаляем данное событие из очереди
-					table.remove(evmatch.events, 1)
-				end
-			end
-		end
-	--util.dumptable(rules.subscription.queu)
-	end
-end
 
 function rules:make_subscription(rule)
-	for nodename, nodelink in pairs(rule.setting) do
-		local subscribe_operator = nil
-
-		for operator_index, operator_table in ipairs(nodelink) do
-			local operator_name
-
-			-- operator_table: { ["op_name"] = <op_body> }
-			for key, value in pairs(operator_table) do
-				operator_name = key
-			end
-
-			if operator_name == "subscribe" then
-				subscribe_operator = operator_table["subscribe"]
-			end
-		end
-
-		if (subscribe_operator ~= nil) then
-			-- Записываем переменную в список всех, имеющих подписки
-			table.insert(rules.subscription.vars, rule.setting[nodename])
-
-			local ubus_objname = subscribe_operator["ubus"]
-			local evname = subscribe_operator["evname"]
-			local event_match = subscribe_operator["match"]
-
-			local evmatch_md5 = evuuid(evname, event_match)
-			rules.subscription.queu[ubus_objname] = rules.subscription.queu[ubus_objname] or {}
-			rules.subscription.queu[ubus_objname][evmatch_md5] = rules.subscription.queu[ubus_objname][evmatch_md5] or {
-				["evname"] = evname,
-				subscribed_vars = {},
-				subscribed_varnames = {}, -- for debug needs only
-				events = {}
-			}
-			if (not util.contains(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_vars, nodelink)) then
-				table.insert(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_vars, nodelink)
-				if (debug_cli.rule and debug_cli.rule == "queu") then
-					local vr_name = "[" .. rule.ruleid .. " | " .. nodename .. "]"
-					table.insert(rules.subscription.queu[ubus_objname][evmatch_md5].subscribed_varnames, vr_name)
-				end
-			end
-
-			-- This is necessary to use pcall()
-			function do_subscribe(ubname, s)
-				rules.conn:subscribe(ubname, s)
-				return 0
-			end
-
-			-- Подписываемся на UBUS
-			for ubusname,_ in util.kspairs(rules.subscription.queu) do
-				local sub = {
-			        notify = function(msg, name)
-			        	--util.perror("=== NOTIFY ===: " .. name)
-			        	--util.dumptable(msg)
-		            	rules.subscription.dispatcher(ubusname, name, msg)
-			        end
-			    }
-				-- TODO: если какой-то сервис, напр. Tsmgpio не стартовал, то при запуске Applogic подписка переменной на его ubus-объект не состоится
-				-- Если же сервис позднее всё-таки стартует - то Applogic придётся перезапустить чтобы он подписал переменные
-				-- на вновь появившийся ubus-объект
-				-- TODO: перезапускать Applogic из-за какого-то другого сервиса - это не хорошо.
-				-- Надо подумать чтобы периодически проверять наличие "потерянного" объекта на шине ubus и пытаться подписаь переменные правил
-				-- TODO: механизм подписки, вообще, надо вынести в отдельный подмодуль Applogic-а и хорошенько переписать с учётом вышесказанного.
-		    	local success, err = pcall(do_subscribe, ubusname, sub)
-		    	if not success then
-					-- If no UBUS object then we only may to inform
-		    		print("SKIP subscribing on [" .. ubusname .. "] as it's absent on the UBUS.")
-		    	end
-
-			end
-
-
-			--print("======= QUEU =========")
-			--util.dumptable(rules.subscription.queu)
-
-		end
-	end
+	subscript:make_subscription(rule)
 end
 
 
@@ -415,53 +198,38 @@ function rules:check_driver_automation()
 end
 
 function rules:run_all()
---profile.start()
 
 	local user_session_alive = rules:check_driver_automation()
-		local rules_list = self.setting.rules_list.target
-		local state = ''
+	local rules_list = self.setting.rules_list.target
+	local state = ''
 
-		for name, rule in util.kspairs(rules_list) do
-			-- rule.debug = (rules.debug_type and (rules.debug_type == "VAR" or rules.debug_type == "RULE") or false
-			-- rule.debug_var = (rules.debug_type and rules.debug_type == "VAR") or false
-			-- rule.debug_rule = (rules.debug_type and rules.debug_type == "RULE") or false
-			-- rule.iteration = self.iteration
-			-- Initiate rule with link to the present (parent) module
-			-- Then the rule can send notification on the ubus object of parent module
+	for name, rule in util.kspairs(rules_list) do
 
-			state = rule(self)
+		state = rule(self)
 
-			-- DEBUG: Print all vars table
-			if rule.debug_mode.enabled then
-				local rule_has_error = rule.debug_mode.level == "ERROR" and (rule.debug and rule.debug.noerror and rule.debug.noerror == false)
-				local report_anyway_mode = rule.debug_mode.level == "INFO"
-				if rule.debug then
-					if rule_has_error or report_anyway_mode then
-						rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
-						rule.debug.report(rule):clear()
-					end
-					rule.debug.noerror = true
+		if rule.debug_mode.enabled then
+			local rule_has_error = rule.debug_mode.level == "ERROR" and (rule.debug and rule.debug.noerror and rule.debug.noerror == false)
+			local report_anyway_mode = rule.debug_mode.level == "INFO"
+			if rule.debug then
+				if rule_has_error or report_anyway_mode then
+					rule.debug.report(rule):print_rule(rule.debug_mode.level, rule.iteration)
+					rule.debug.report(rule):clear()
 				end
+				rule.debug.noerror = true
 			end
 		end
+	end
 
-		if (debug_cli.rule and debug_cli.rule == "overview") then
-			rules:overview(rules_list,rules.iteration)
-		end
+	if (debug_cli.rule and debug_cli.rule == "overview") then
+		rules:overview(rules_list,rules.iteration)
+	end
 
-		if (debug_cli.rule and debug_cli.rule == "queu") then
-			report:queu(rules, iteration)
-		end
+	if (debug_cli.rule and debug_cli.rule == "queue") then
+		report:queue(rules, iteration)
+	end
 
-		rules:clear_cache()
-		--rules:push_next_subscribed()
-		rules.iteration = rules.iteration + 1
-
-	--end
--- execute code that will be profiled
---profile.stop()
--- report for the top 10 functions, sorted by execution time
---print(profile.report(10))
+	rules:clear_cache()
+	rules.iteration = rules.iteration + 1
 end
 
 function rules:overview(rules_list, iteration)
@@ -476,9 +244,8 @@ local metatable = {
 		table.setting = rules_setting
 		local tick = table.setting.tick_size_default
 
-		table:init()
-
 		table:make_ubus()
+		table:init()
 		table:make()
 
 		-- looping

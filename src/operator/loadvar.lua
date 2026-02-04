@@ -2,6 +2,8 @@ local debug_cli = require "applogic.node.debug_cli"
 local util = require "luci.util"
 local substitute = require "applogic.util.substitute"
 local pcallchunk = require "applogic.util.pcallchunk"
+-- Moved here (see below)
+local operator_handler = require "applogic.operator.main"
 
 
 local loadvar = {}
@@ -37,7 +39,8 @@ local loadvar_metatable = {
         -- Also we keep there "overview" debug info if the variable was chosen for this
         -- See below in the debug place
 
-        local operator_handler = require "applogic.operator.main"
+        --local operator_handler = require "applogic.operator.main"
+        -- MOVED ABOVE 28.01.2026
         local nodelink = rule.setting[nodename]
 
         -- Make variable order

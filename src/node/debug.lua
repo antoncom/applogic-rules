@@ -156,7 +156,14 @@ end
 
 function debug:output(val)
     local dnlink = debug[debug.ruleid].variables[debug.nodename]
-    local value = val or ""
+    local value = ""
+    
+    if (type(val) == "table") then 
+        value = util.serialize_json(val)
+    else
+        value = tostring(val)
+    end
+
     if value:len() == 0 then value = "empty" end
     local noerror = (type(value) == "string")
 

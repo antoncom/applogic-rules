@@ -29,16 +29,11 @@ local function loadvar_subscribed(rule, nodename, op_name, op_body)
 
     noerror, err = checkubus(rule.conn, ubusobj)
     if noerror then
-        -- загружаем первое значение из очереди
-        local evmatch_md5 = evuuid(evname, evmatch)
-        if (subscription.queu[ubusobj] and subscription.queu[ubusobj][evmatch_md5]) then
-            if (#subscription.queu[ubusobj][evmatch_md5].events > 0) then
-                nodelink.output = util.serialize_json(subscription.queu[ubusobj][evmatch_md5].events[1].msg)
-                -- удаляем переменную из спика vars_to_load
-                subscription.removeEvent(ubusobj, evmatch_md5, nodelink)
-            else
-                nodelink.output = ""
-            end
+        if not nodelink:queueIsEmpty() then
+            local ev = nodelink:dequeue()
+            nodelink.output = ev["evmsg"] or "No EVMSG in the event queue!"
+        else
+            nodelink.output = ""
         end
     end
 
