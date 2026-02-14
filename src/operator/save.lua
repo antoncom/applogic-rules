@@ -15,6 +15,7 @@ local function save(rule, nodename, op_name, op_body)
 
     if noerror then
         nodelink["saved"] = result
+
     end
 
     if rule.debug_mode.enabled then

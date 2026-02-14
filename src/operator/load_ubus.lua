@@ -24,11 +24,11 @@ local function load_ubus(rule, nodename, op_name, op_body)
     if type(op_body) == "function" then
         noerror, tmp_res = pcall(op_body, vars)
 
-        if type(tmp_res) == "table" then
-            luci.util.dumptable(tmp_res)
-        else
-            print(tostring(tmp_res))
-        end
+        -- if type(tmp_res) == "table" then
+        --     luci.util.dumptable(tmp_res)
+        -- else
+        --     print(tostring(tmp_res))
+        -- end
 
         if noerror == false then
             print("Error: " .. tostring(tmp_res))

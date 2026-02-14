@@ -40,7 +40,7 @@ local function rule_init(table, rule_setting, parent)
             return msg_matched
         end
 
-        -- Подготовить очередь и методы узла для обрабти входящих событий
+        -- Подготовить очередь и методы узла для обработи входящих событий
 
         for _, node in util.kspairs(table.setting) do
             for _, operator in ipairs(node) do
@@ -106,9 +106,9 @@ local function rule_init(table, rule_setting, parent)
         print(string.format("applogic: debug mode enabled for [%s] %s", table.ruleid, table.setting.title.input))
     end
 
-    if table.debug_mode.enabled then
-        table.iteration = table.iteration + 1
-    end
+    -- if table.debug_mode.enabled then
+    --     table.iteration = table.iteration + 1
+    -- end
 
     return table
 end

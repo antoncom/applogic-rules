@@ -193,6 +193,9 @@ function report:print_rule(level, iteration)
 								passlogic = string.format("%s\n[frozen] %03d", passlogic, tonumber(operator["value"]) or operator["value"])
 								--passlogic = string.format("%s[frozen]", passlogic)
 							end
+						elseif "save" == operator["op_name"] then
+							passlogic = "[save]"
+							ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
 						end
 					end
 				end

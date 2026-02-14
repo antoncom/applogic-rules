@@ -27,7 +27,19 @@ local function func(rule, nodename, op_name, op_body)
     
     result = tmp_res
     if (type(result) == "boolean" and result == true) then 
-        rule.break_in = true 
+        rule.break_in = true
+
+        -- TODO
+        -- Очистить значения узлов правила
+        -- для того, чтобы после возобновления обработки, не остались старые значния (до break)
+
+        for name, node in luci.util.kspairs(rule.setting) do
+            if node.saved then
+                node.saved = nil
+                node.output = nil
+            end
+        end
+
     else 
         rule.break_in = false
     end

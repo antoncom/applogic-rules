@@ -51,7 +51,6 @@ function main:run_node(nodename, rule)
                 local is_skip = skip(rule, nodename, operator_name, operator_body)
 
                 if is_skip then
-                    nodelink.output = nodelink.subtotal
                     break
                 end
             elseif "func" == operator_name then

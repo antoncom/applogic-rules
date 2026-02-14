@@ -37,6 +37,7 @@ local function journal(rule, nodename, op_name, op_body)
     jour_record["ruleid"] = rule.ruleid
 
     util.ubus("tsmodem.journal", "send", jour_record)
+    --print("[JOURNAL] OPERATOR RUN ......[" .. rule.ruleid .. "]..........[" .. nodename .. "]................................. at: "  .. os.date("%Y-%m-%d %H:%M:%S"))
 
     if rule.debug_mode.enabled then
         local output_info = func_debug.generate_output_info(op_body)
