@@ -118,7 +118,7 @@ local rule_setting = {
 
 	},
 	provider_detected_before = {
-		note = [[ Идентификатор провайдера на педыдущей итерации ]],
+		note = [[ Идентификатор провайдера на предыдущей итерации ]],
 		{
 			["save"] = function (nodes)
 				return(nodes.provider_detected)
