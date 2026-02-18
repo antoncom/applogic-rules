@@ -61,7 +61,7 @@ local rules_setting = {
 	rules_list = {
 		target = {},
 	},
-	tick_size_default = 1800	-- use 1900 ms interval in debug mode
+	tick_size_default = 3000	-- use 1900 ms interval in debug mode
 }
 
 function rules:init()

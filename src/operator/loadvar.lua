@@ -44,8 +44,10 @@ local loadvar_metatable = {
         local nodelink = rule.setting[nodename]
 
         -- Make variable order
-        rule.variterator = rule.variterator + 1
-        nodelink.order = rule.variterator
+        if not nodelink.order then
+            rule.variterator = rule.variterator + 1
+            nodelink.order = rule.variterator
+        end
 
         if rule.debug_mode.enabled then debug(nodename, rule):order() end
         if rule.debug_mode.enabled then debug(nodename, rule):note(nodelink.note or "") end

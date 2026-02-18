@@ -84,7 +84,7 @@ local rule_setting = {
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
 					timeout = nodes.timeout and nodes.timeout.inited or "600",
-					lastreg_timer = nodes.timeout and tostring(nodes.timeout.value) or "0",
+					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "600",
 					network_registration = tostring(nodes.network_registration)
 				})
 			end

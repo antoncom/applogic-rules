@@ -44,7 +44,7 @@ local rule_setting = {
 				return({
 					sim_id = nodes.slotinfo.slot,
 					timeout = nodes.timeout and nodes.timeout.inited or 600,
-					wait_timer = nodes.timeout and nodes.timeout.value or 0,
+					wait_timer = nodes.timeout and nodes.timeout.value or 600,
 					sim_ready = nodes.sim_found.value
 				})
 			end

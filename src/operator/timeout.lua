@@ -77,7 +77,7 @@ local function timeout(rule, nodename, op_name, op_body)
     -- с тем, чтобы на новой итерации он при необходимости был вновь инициализирован первичными значениями
 
     if rule.timers[nodename] and tonumber(rule.timers[nodename].value) and rule.timers[nodename].value < 0 then
-        result.value = 0
+        result.value = tonumber(rule.timers[nodename].inited)
         result.inited = tonumber(rule.timers[nodename].inited)
         -- Удаляем объект таймаут, если он окончен
         rule.timers[nodename] = rule.timers[nodename] and nil

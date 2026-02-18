@@ -1,5 +1,6 @@
 local func_vars_builder = require "applogic.util.func_vars_builder"
 local func_debug = require "applogic.util.func_debug"
+local func_clear_next_nodes = require "applogic.util.func_clear_next_nodes"
 
 -- operator: break
 -- ["break"] = function(vars) <lua code> end
@@ -29,16 +30,10 @@ local function func(rule, nodename, op_name, op_body)
     if (type(result) == "boolean" and result == true) then 
         rule.break_in = true
 
-        -- TODO
-        -- Очистить значения узлов правила
+        -- Очистить значения последующих узлов правила
         -- для того, чтобы после возобновления обработки, не остались старые значния (до break)
 
-        for name, node in luci.util.kspairs(rule.setting) do
-            if node.saved then
-                node.saved = nil
-                node.output = nil
-            end
-        end
+        func_clear_next_nodes(rule, nodename)
 
     else 
         rule.break_in = false

@@ -46,7 +46,8 @@ function main:run_node(nodename, rule)
             operator_body = value
         end
 
-        if not (nodelink.frozen or (rule.timers and rule.timers[nodename] and tonumber(rule.timers[nodename].value) and rule.timers[nodename].value > 0)) then
+        --if not (nodelink.frozen or (rule.timers and rule.timers[nodename] and tonumber(rule.timers[nodename].value) and rule.timers[nodename].value > 0)) then
+        if not (nodelink.frozen) then
             if "skip" == operator_name then
                 local is_skip = skip(rule, nodename, operator_name, operator_body)
 
@@ -78,15 +79,17 @@ function main:run_node(nodename, rule)
 
             elseif "journal" == operator_name then
                 journal(rule, nodename, operator_name, operator_body)
+            elseif "timeout" == operator_name then
+                nodelink.output = timeout(rule, nodename, operator_name, operator_body)
             end
         end
 
         if "frozen" == operator_name then
             frozen(rule, nodename, operator_name, operator_body)
         end
-        if "timeout" == operator_name then
-            nodelink.output = timeout(rule, nodename, operator_name, operator_body)
-        end
+        -- if "timeout" == operator_name then
+        --     nodelink.output = timeout(rule, nodename, operator_name, operator_body)
+        -- end
         if "break" == operator_name then
             break_op(rule, nodename, operator_name, operator_body)
             if rule.break_in and rule.break_in == true then
