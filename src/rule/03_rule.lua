@@ -173,48 +173,47 @@ local rule_setting = {
 		        }
 	    	end
 		},
-	},
-
-	event_datetime = {
-		note = [[ Дата актуального баланса в формате для Web-интерфейса. ]],
-
-		{
-			["func"] = function (nodes)
-				local bt = tonumber(nodes.actual_balance.updated) or 0
-				if (bt ~= 0) then return(os.date("%Y-%m-%d %H:%M:%S", bt)) else return "" end
-			end
-		}
-	},
-
-	send_ui = {
-		note = [[ Индикация в веб-интерфейсе ]],
 
 		{
 			["ui-update"] = function (nodes)
+				local balance_time_str = ""
+				local balance_time = tonumber(nodes.actual_balance.updated) or 0
+				if (balance_time ~= 0) then balance_time_str = tostring(os.date("%Y-%m-%d %H:%M:%S", balance_time)) end
+
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
-					-- do_switch = nodes.do_switch,
 					sim_balance = nodes.actual_balance.value,
-					event_datetime = nodes.event_datetime,
+					event_datetime = balance_time_str,
 					-- lowbalance_timer = 20,
+					timeout = 100,
+					
 				})
 			end
-		}
-	},
+		},
 
-	min_balance_check = {
-		note = [[ Пропускает узлы ниже, если баланс выше минимума ]],
 		{
 			["break"] = function (nodes)
 				local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
 				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value) or 0
 				return (BALANCE_ACTUAL >= BALANCE_MIN)
 			end
-		}
+		},
 	},
 
 	timeout = {
 		note = [[ Таймер ожидания при низком балансе  ]],
+		{
+			["ui-update"] = function (nodes)
+				-- print(nodes.uci_slot_config.values.timeout_bal)
+
+				return({
+					sim_id = tostring(nodes.slotinfo.slot),
+					-- lowbalance_timer = 20,
+					lowbalance_timer = nodes.uci_slot_config.values.timeout_bal,
+				})
+			end
+		},
+
 		{   -- Запускаем таймер
 			["timeout"] = function(nodes)
 				return tonumber(nodes.uci_slot_config.values.timeout_bal)
@@ -225,7 +224,7 @@ local rule_setting = {
 	switch = {
 		note = [[ Переключить слот Сим-карт  ]],
 		{
-			["break"] = function (nodes)
+			["skip"] = function (nodes)
 				if nodes.timeout.value > 0 then
 					return true
 				else
@@ -305,12 +304,6 @@ function rule:make()
 	self:follow("check_balance_on_sim_registered"):debug()-- Посылаем SMS-команду получения баланса как только симка зарегистрировалась
 	self:follow("check_balance_daily"):debug()-- Посылаем SMS-команду получения баланса 1 раз в день
 	self:follow("actual_balance"):debug()		-- Текущее значение баланса
-
-	self:follow("event_datetime"):debug() -- Дата баланса в формате для веб-интерфейса
-
-	self:follow("send_ui"):debug() -- Отправляем информацию в веб-интерфейс
-
-	self:follow("min_balance_check"):debug() -- Пропускаем все узлы ниже, если баланс на Сим-карте выше минимума
 
 	self:follow("timeout"):debug() -- Если таймаут вышел - переключаем слот
 	self:follow("switch"):debug() -- Переключение слота Сим-карты
