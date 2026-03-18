@@ -12,6 +12,8 @@ local journal = require "applogic.operator.journal"
 local ui_update = require "applogic.operator.ui_update"
 local break_op = require "applogic.operator.break"
 local timeout = require "applogic.operator.timeout"
+local send_email = require "applogic.operator.send_email"
+local send_sms = require "applogic.operator.send_sms"
 
 
 local main = {}
@@ -67,6 +69,12 @@ function main:run_node(nodename, rule)
 
             elseif "load-rule" == operator_name then
                 nodelink.output = load_rule(rule, nodename, operator_name, operator_body)
+
+            elseif "send-sms" == operator_name then
+                nodelink.output = send_sms(rule, nodename, operator_name, operator_body)
+
+            elseif "send-email" == operator_name then
+                nodelink.output = send_email(rule, nodename, operator_name, operator_body)
 
             elseif "subscribe" == operator_name then
                 load_subscribed(rule, nodename, operator_name, operator_body)

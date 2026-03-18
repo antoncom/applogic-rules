@@ -218,6 +218,28 @@ function debug:operator_bash(op_name, body, result, noerror)
     debug:set_noerrors(dnlink, noerror)
 end
 
+function debug:operator_send_email(op_name, body, result, noerror)
+    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    dnlink.operator[#dnlink.operator+1] = {
+        ["op_name"] = op_name,
+        ["body"] = wrap_text(body),
+        ["value"] = result,
+        ["noerror"] = noerror,
+    }
+    debug:set_noerrors(dnlink, noerror)
+end
+
+function debug:operator_send_sms(op_name, body, result, noerror)
+    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    dnlink.operator[#dnlink.operator+1] = {
+        ["op_name"] = op_name,
+        ["body"] = wrap_text(body),
+        ["value"] = result,
+        ["noerror"] = noerror,
+    }
+    debug:set_noerrors(dnlink, noerror)
+end
+
 function debug:clear_operators()
     local dnlink = debug[debug.ruleid].variables[debug.nodename]
     dnlink.operator = {}
