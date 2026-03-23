@@ -26,16 +26,7 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (nodes)
-                print('received_sms: ')
-                print(nodes.received_sms)
-                print('-')
-                print(luci.util.dumptable(nodes.received_sms))
                 local lua_table = luci.jsonc.parse(nodes.received_sms) or {}
-
-                print('received_sms (lua_table): ')
-                print(lua_table)
-                print('-')
-                print(luci.util.dumptable(lua_table))
 				return lua_table or ""
 			end,
 		}
@@ -46,11 +37,6 @@ local rule_setting = {
 
         {
             ["skip"] = function (nodes)
-                -- print('received_sms <call_tsmsmscomm_run>: ')
-                -- print(nodes.received_sms)
-                -- print('-')
-                -- print(luci.util.dumptable(nodes.received_sms))
-
                 return #nodes.received_sms <= 2
             end
         },
@@ -83,20 +69,32 @@ local rule_setting = {
         },
         {
             ["func"] = function (nodes)
-                local lua_table = luci.jsonc.parse(nodes.tsmsmscomm_run_result) or {}
-                return lua_table or ""
+                -- print('tsmsmscomm_run_result type: ', type(nodes.tsmsmscomm_run_result))
+                -- print('tsmsmscomm_run_result: ', nodes.tsmsmscomm_run_result)
+
+                -- local lua_table = luci.jsonc.parse(nodes.tsmsmscomm_run_result)
+
+                if type(nodes.tsmsmscomm_run_result) == "table" then
+                    local file = io.open(nodes.tsmsmscomm_run_result.tmp_file, "r")
+                    if file ~= nil then
+                        nodes.tsmsmscomm_run_result.result = file:read("*a")
+                        file:close()
+                    end
+                end
+
+                return nodes.tsmsmscomm_run_result or ""
             end
         },
     },
 
-    send_result_via_sms = {
+    sms_answer = {
         title = [[ Отправляет результат по смс, если текст вмещается в max_text_size ]],
 
         {
             ["skip"] = function (nodes)
                 if nodes.tsmsmscomm_run_result == nil or
-                    #nodes.tsmsmscomm_run_result == 0 or
-                    nodes.tsmsmscomm_run_result == nil or
+                    type(nodes.tsmsmscomm_run_result) ~= "table" or
+                    nodes.tsmsmscomm_run_result.run == nil or
                     nodes.tsmsmscomm_run_result.run == false
                 then
                     return true
@@ -114,6 +112,18 @@ local rule_setting = {
                 })
             end
         },
+        -- { -- send sms (load-ubus instead of send-sms)
+        --     ["load-ubus"] = function (nodes)
+        --         return ({
+        --             object = "tsmodem.sms",
+        --             method = "send_sms",
+        --             params = {
+        --                 phone = nodes.tsmsmscomm_run_result.trusted_phone,
+        --                 text = nodes.tsmsmscomm_run_result.result,
+        --             }
+        --         })
+        --     end
+        -- },
     },
 
 
@@ -192,7 +202,7 @@ function rule:make()
 
     self:follow("call_tsmsmscomm_run"):debug()
     self:follow("tsmsmscomm_run_result"):debug()
-    self:follow("send_result_via_sms"):debug()
+    self:follow("sms_answer"):debug()
 
 
 
