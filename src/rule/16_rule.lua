@@ -25,17 +25,6 @@ local rule_setting = {
 				match = { status = "ok"},
 			}
 		},
-		{
-			["func"] = function (nodes)
-
-                -- print(type(nodes.received_sms))
-                -- print(nodes.received_sms)
-                -- print(luci.jsonc.parse(nodes.received_sms))
-
-                local lua_table = luci.jsonc.parse(nodes.received_sms) or {}
-				return lua_table or ""
-			end,
-		}
 	},
 
     call_tsmsmscomm_run = {
@@ -43,19 +32,17 @@ local rule_setting = {
 
         {
             ["skip"] = function (nodes)
-                return #nodes.received_sms <= 2
+                return type(nodes.received_sms) ~= "table"
             end
         },
         {
             ["load-ubus"] = function (nodes)
-                local sms_data_table = luci.jsonc.parse(nodes.received_sms)
-
                 return ({
                     object = "tsmsmscomm",
                     method = "run",
                     params = {
-                        phone = sms_data_table.sender,
-                        message = sms_data_table.message,
+                        phone = nodes.received_sms.sender,
+                        message = nodes.received_sms.message,
                     },
                 })
             end
@@ -89,7 +76,7 @@ local rule_setting = {
     },
 
     sms_answer = {
-        title = [[ Отправляет результат по смс, если текст вмещается в max_text_size ]],
+        note = [[ Отправляет результат по смс, если текст вмещается в max_text_size ]],
 
         {
             ["skip"] = function (nodes)
@@ -128,7 +115,7 @@ local rule_setting = {
     },
 
     email_answer = {
-        title = [[ Отправляет результат по email, если текст более чем max_text_size ]],
+        note = [[ Отправляет результат по email, если текст более чем max_text_size ]],
 
         {
             ["skip"] = function (nodes)
@@ -164,6 +151,7 @@ local rule_setting = {
     },
 
     journal = {
+        note = "Отправляет результат в журнал событий",
         {
             ["skip"] = function (nodes)
                 if nodes.tsmsmscomm_run_result == nil or
