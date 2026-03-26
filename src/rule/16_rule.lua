@@ -27,12 +27,39 @@ local rule_setting = {
 		},
 	},
 
+    received_sms_check = {
+        note = [[ Проверяет смс на дублирование ]],
+
+        {
+            ["save"] = function (nodes)
+                if(
+                    type(nodes.received_sms) == "table"
+                ) then
+                    local prev = nodes.received_sms_check.current or ""
+                    local current = nodes.received_sms.date
+
+                    return {
+                        prev = prev,
+                        current = current,
+                        repeated = prev == current,
+                    }
+                end
+
+                return {
+                    prev = nodes.received_sms_check.current or "",
+                    current = "",
+                    repeated = false,
+                }
+            end
+        },
+    },
+
     call_tsmsmscomm_run = {
         note = [[ Вызывает метод выполнения команды полученной по смс ]],
 
         {
             ["skip"] = function (nodes)
-                return type(nodes.received_sms) ~= "table"
+                return type(nodes.received_sms) ~= "table" or nodes.received_sms_check.repeated
             end
         },
         {
@@ -75,6 +102,33 @@ local rule_setting = {
         },
     },
 
+    tsmsmscomm_run_result_check = {
+        note = [[ Проверяет результат shell команды на дублирование ]],
+
+        {
+            ["save"] = function (nodes)
+                if(
+                    type(nodes.tsmsmscomm_run_result) == "table"
+                ) then
+                    local prev = nodes.tsmsmscomm_run_result_check.current or ""
+                    local current = nodes.tsmsmscomm_run_result.tmp_file
+
+                    return {
+                        prev = prev,
+                        current = current,
+                        repeated = prev == current,
+                    }
+                end
+
+                return {
+                    prev = nodes.tsmsmscomm_run_result_check.current or "",
+                    current = "",
+                    repeated = false,
+                }
+            end
+        },
+    },
+
     sms_answer = {
         note = [[ Отправляет результат по смс, если текст вмещается в max_text_size ]],
 
@@ -83,7 +137,8 @@ local rule_setting = {
                 if nodes.tsmsmscomm_run_result == nil or
                     type(nodes.tsmsmscomm_run_result) ~= "table" or
                     nodes.tsmsmscomm_run_result.run == nil or
-                    nodes.tsmsmscomm_run_result.run == false
+                    nodes.tsmsmscomm_run_result.run == false or
+                    nodes.tsmsmscomm_run_result_check.repeated
                 then
                     return true
                 end
@@ -93,25 +148,17 @@ local rule_setting = {
             end
         },
         {
-            ["send-sms"] = function (nodes)
+            ["load-ubus"] = function (nodes)
                 return ({
-                    phone = nodes.tsmsmscomm_run_result.trusted_phone,
-                    text = nodes.tsmsmscomm_run_result.result,
+                    object = "tsmodem.sms",
+                    method = "send_sms",
+                    params = {
+                        phone = nodes.tsmsmscomm_run_result.trusted_phone,
+                        text = nodes.tsmsmscomm_run_result.result,
+                    }
                 })
             end
         },
-        -- { -- send sms (load-ubus instead of send-sms)
-        --     ["load-ubus"] = function (nodes)
-        --         return ({
-        --             object = "tsmodem.sms",
-        --             method = "send_sms",
-        --             params = {
-        --                 phone = nodes.tsmsmscomm_run_result.trusted_phone,
-        --                 text = nodes.tsmsmscomm_run_result.result,
-        --             }
-        --         })
-        --     end
-        -- },
     },
 
     email_answer = {
@@ -122,7 +169,8 @@ local rule_setting = {
                 if nodes.tsmsmscomm_run_result == nil or
                     type(nodes.tsmsmscomm_run_result) ~= "table" or
                     nodes.tsmsmscomm_run_result.run == nil or
-                    nodes.tsmsmscomm_run_result.run == false
+                    nodes.tsmsmscomm_run_result.run == false or
+                    nodes.tsmsmscomm_run_result_check.repeated
                 then
                     return true
                 end
@@ -133,18 +181,16 @@ local rule_setting = {
         },
         {
             ["load-ubus"] = function (nodes)
-                local params = {
-                    from = uci:get("tsmail", "general", "auth_user"),
-                    to = nodes.tsmsmscomm_run_result.trusted_email,
-                    subj = "Результат выполнения смс команды",
-                    body = "Результат выполнения смс команды",
-                    attach = nodes.tsmsmscomm_run_result.tmp_file,
-                }
-
                 return ({
                     object = "tsmail",
                     method = "send",
-                    params = params,
+                    params = {
+                        from = uci:get("tsmail", "general", "auth_user"),
+                        to = nodes.tsmsmscomm_run_result.trusted_email,
+                        subj = "Результат выполнения смс команды",
+                        body = "Результат выполнения смс команды",
+                        attach = nodes.tsmsmscomm_run_result.tmp_file,
+                    },
                 })
             end
         },
@@ -157,7 +203,8 @@ local rule_setting = {
                 if nodes.tsmsmscomm_run_result == nil or
                     type(nodes.tsmsmscomm_run_result) ~= "table" or
                     nodes.tsmsmscomm_run_result.run == nil or
-                    nodes.tsmsmscomm_run_result.run == false
+                    nodes.tsmsmscomm_run_result.run == false or
+                    nodes.tsmsmscomm_run_result_check.repeated
                 then
                     return true
                 end
@@ -193,9 +240,11 @@ function rule:make()
 
     self:follow("max_text_size"):debug()
     self:follow("received_sms"):debug()
+    self:follow("received_sms_check"):debug()
 
     self:follow("call_tsmsmscomm_run"):debug()
     self:follow("tsmsmscomm_run_result"):debug()
+    self:follow("tsmsmscomm_run_result_check"):debug()
     self:follow("sms_answer"):debug()
     self:follow("email_answer"):debug()
     self:follow("journal"):debug()
