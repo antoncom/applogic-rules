@@ -12,20 +12,21 @@ local journal = require "applogic.operator.journal"
 local ui_update = require "applogic.operator.ui_update"
 local break_op = require "applogic.operator.break"
 local timeout = require "applogic.operator.timeout"
-local send_email = require "applogic.operator.send_email"
-local send_sms = require "applogic.operator.send_sms"
+-- local send_email = require "applogic.operator.send_email"
+-- local send_sms = require "applogic.operator.send_sms"
 
 
 local main = {}
 function main:run_node(nodename, rule)
-    -- Отменяем обрабтку узла, если где-то в данном правиле сработал оператор [break]
+    -- Отменяем обработку узла, если где-то в данном правиле сработал оператор [break]
     if (rule.break_in) then return end
 
     local debug
     local nodelink = rule.setting[nodename]
 
     if nodelink["saved"] then
-        nodelink.output = tostring(nodelink["saved"])
+        -- nodelink.output = tostring(nodelink["saved"])
+        nodelink.output = nodelink["saved"]
     elseif nodelink["frozee"] then
         nodelink.output = tostring(nodelink["frozee"])
     elseif nodelink["default"] then
@@ -70,11 +71,11 @@ function main:run_node(nodename, rule)
             elseif "load-rule" == operator_name then
                 nodelink.output = load_rule(rule, nodename, operator_name, operator_body)
 
-            elseif "send-sms" == operator_name then
-                nodelink.output = send_sms(rule, nodename, operator_name, operator_body)
+            -- elseif "send-sms" == operator_name then
+            --     nodelink.output = send_sms(rule, nodename, operator_name, operator_body)
 
-            elseif "send-email" == operator_name then
-                nodelink.output = send_email(rule, nodename, operator_name, operator_body)
+            -- elseif "send-email" == operator_name then
+            --     nodelink.output = send_email(rule, nodename, operator_name, operator_body)
 
             elseif "subscribe" == operator_name then
                 load_subscribed(rule, nodename, operator_name, operator_body)
@@ -106,7 +107,7 @@ function main:run_node(nodename, rule)
         end
     end
 
-    -- Предлагается избавиться отпостоянного преобразования значений узлов в текстовый формат
+    -- Предлагается избавиться от постоянного преобразования значений узлов в текстовый формат
     -- if(type(nodelink.output) == "table") then
     --     nodelink.output = util.serialize_json(nodelink.output)
     -- else
