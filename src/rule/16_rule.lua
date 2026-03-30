@@ -64,7 +64,6 @@ local rule_setting = {
         },
         {
             ["load-ubus"] = function (nodes)
-                -- print('call_tsmsmscomm_run load-ubus: ' .. os.date("%Y-%m-%d %H:%M:%S"))
                 return ({
                     object = "tsmsmscomm",
                     method = "run",
@@ -90,7 +89,6 @@ local rule_setting = {
         },
         {
             ["func"] = function (nodes)
-                -- print('tsmsmscomm_run_result func: ' .. os.date("%Y-%m-%d %H:%M:%S"))
                 if type(nodes.tsmsmscomm_run_result) == "table" then
                     local file = io.open(nodes.tsmsmscomm_run_result.tmp_file, "r")
                     if file ~= nil then
@@ -98,7 +96,6 @@ local rule_setting = {
                         file:close()
                     end
                 end
-                -- print('tsmsmscomm_run_result func (end): ' .. os.date("%Y-%m-%d %H:%M:%S"))
                 return nodes.tsmsmscomm_run_result or ""
             end
         },
@@ -202,21 +199,8 @@ local rule_setting = {
         note = "Отправляет результат в журнал событий",
         {
             ["skip"] = function (nodes)
-                -- print(nodes.tsmsmscomm_run_result)
-                -- print(nodes.tsmsmscomm_run_result == nil)
-                -- print( type(nodes.tsmsmscomm_run_result) ~= "table" )
-                -- print( nodes.tsmsmscomm_run_result_check.repeated )
-                -- print( nodes.tsmsmscomm_run_result.result == nil )
-                -- if nodes.tsmsmscomm_run_result.result then
-                --     print('size: ', #nodes.tsmsmscomm_run_result.result == 0 )
-                -- end
-                -- print( nodes.tsmsmscomm_run_result.result )
-
-
                 if nodes.tsmsmscomm_run_result == nil or
                     type(nodes.tsmsmscomm_run_result) ~= "table" or
-                    -- nodes.tsmsmscomm_run_result.run == nil or
-                    -- nodes.tsmsmscomm_run_result.run == false or
                     nodes.tsmsmscomm_run_result_check.repeated
                 then
                     return true
