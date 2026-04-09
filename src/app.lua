@@ -102,58 +102,8 @@ function rules:make_ubus()
 				function(req, msg)
 					local rlist = {}
 
-					-- print('=== === === === ===')
-
-					-- print( 'self.setting.rules_list.target: ' )
-					-- print( self.setting.rules_list.target )
-
-					-- -- for index, value in ipairs(self.setting.rules_list.target) do
-					-- -- 	print('index: ' .. index)
-					-- -- 	print('value: ' .. value)
-					-- -- end
-
-					-- print('=== === === === ===')
-
-
-
 					for rule_file, rule_obj in util.kspairs(self.setting.rules_list.target) do
-						print('--- --- --- --- --- --- --- --- --- ---')
-						-- print('rule_file: ', rule_file)
-						-- print('rule_obj.setting.title.output: ', rule_obj.setting.title.output)
-
-
-						-- ----------------------------------------
-						print('rule_obj: ')
-						print( luci.util.dumptable(rule_obj["setting"]["title"]) ) ---- TEST
-
-						print( rule_obj["setting"]["title"] )
-						print( rule_obj["setting"]["title"]["input"] )
-						-- ----------------------------------------
-
-
-						-- for index, value in ipairs(rule_obj) do
-						-- 	print('index: ' .. index)
-						-- 	print('value: ' .. value)
-						-- end
-
-						-- print('rule_obj.setting: ', luci.util.dumptable(rule_obj.setting or {} ))
-						-- print('rule_obj.setting.title: ', luci.util.dumptable(rule_obj.setting.title or {} ))
-						-- print('rule_obj.setting.title.output: ', rule_obj.setting.title.output or {} )
-
-						print('--- --- --- --- --- --- --- --- --- ---')
-
-
-						-- rlist[rule_file] = rule_obj.setting.title.output
-
-
 						rlist[rule_file] = rule_obj["setting"]["title"]["input"]
-
-
-						-- rlist[rule_file] = rule_obj.setting.title.input
-
-
-
-						-- rlist[rule_file] = "test"
 					end
 
 					self.conn:reply(req, rlist)
@@ -309,47 +259,6 @@ local metatable = {
 		end
 		timer = uloop.timer(t)
 		timer:set(tick)
-
-
-
-		-- -- ---
-		-- -- for rule_file, rule_obj in util.kspairs(self.setting.rules_list.target) do
-		-- -- end
-
-		-- -- rules_setting rules_list target
-
-		-- rules:make()
-
-		-- print( 'self.setting.rules_list.target: ' )
-		-- -- print( rules_setting.rules_list.target )
-
-		-- print( luci.util.dumptable( rules_setting.rules_list.target ) )
-		-- -- print( luci.util.dumptable(rules_setting.rules_list.target.make ))
-
-		-- for rule_file, rule_obj in util.kspairs( rules_setting.rules_list.target ) do
-		-- 	print('---')
-		-- 	print('rule_file: ')
-		-- 	print(rule_file)
-		-- 	print()
-
-		-- 	print('rule_obj: ')
-		-- 	print(luci.util.dumptable(rule_obj))
-
-		-- 	print( rule_obj["make"] )
-		-- 	-- print(luci.util.dumptable(rule_obj["make"]))
-
-		-- 	print( rule_obj["make"]() )
-
-		-- 	print('---')
-		-- 	-- rlist[rule_file] = rule_obj.setting.title.output
-		-- 	-- print( rule_obj.setting.title.output )
-		-- end
-
-		-- os.exit()
-		-- -- ---
-
-
-
 		uloop.run()
 
 		table.conn:close()
