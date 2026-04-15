@@ -173,6 +173,23 @@ local rule_setting = {
 		        }
 	    	end
 		},
+	},
+
+	is_balance_ok = {
+		note = [[ Проверка соответствия баланса минимальному лимиту ]],
+
+		{
+			["func"] = function (nodes)
+				local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
+				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value) or 0
+				return (BALANCE_ACTUAL >= BALANCE_MIN)
+			end
+		},
+	},
+
+	actual_balance_ui_update = {
+		note = [[ Отправляет баланс в веб-интерфейс ]],
+
 		{
 			["ui-update"] = function (nodes)
 				local balance_time_str = ""
@@ -183,15 +200,13 @@ local rule_setting = {
 					sim_id = tostring(nodes.slotinfo.slot),
 					sim_balance = nodes.actual_balance.value,
 					event_datetime = balance_time_str,
-					no_switch = "true",
+					is_balance_ok = tostring(nodes.is_balance_ok),
 				})
 			end
 		},
 		{
 			["break"] = function (nodes)
-				local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
-				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value) or 0
-				return (BALANCE_ACTUAL >= BALANCE_MIN)
+				return nodes.is_balance_ok
 			end
 		},
 	},
@@ -209,7 +224,7 @@ local rule_setting = {
 					sim_id = tostring(nodes.slotinfo.slot),
 					timeout = tostring(nodes.uci_slot_config.values.timeout_bal),
 					wait_timer = tostring(nodes.timeout.value),
-					no_switch = "false",
+					is_balance_ok = tostring(nodes.is_balance_ok),
 				})
 			end
 		},
@@ -297,7 +312,9 @@ function rule:make()
 	self:follow("uci_slot_config"):debug()	-- Получаем минимальный уровень баланса на Сим-карте
 	self:follow("check_balance_on_sim_registered"):debug()-- Посылаем SMS-команду получения баланса как только симка зарегистрировалась
 	self:follow("check_balance_daily"):debug()-- Посылаем SMS-команду получения баланса 1 раз в день
-	self:follow("actual_balance"):debug()		-- Текущее значение баланса
+	self:follow("actual_balance"):debug()		-- Получаем текущее значение баланса
+	self:follow("is_balance_ok"):debug() -- Проверяем соответствие баланса минимальному лимиту
+	self:follow("actual_balance_ui_update"):debug() -- Отправляем значение баланса в веб-интерфейс
 	self:follow("timeout"):debug() -- Если таймаут вышел - переключаем слот
 	self:follow("switch"):debug() -- Переключение слота Сим-карты
 end
