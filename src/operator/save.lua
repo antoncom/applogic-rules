@@ -11,11 +11,16 @@ local function save(rule, nodename, op_name, op_body)
     local vars = func_vars_builder.make_vars(rule)
 
     local noerror, tmp_res = pcall(op_body, vars)
-    local result = tmp_res or ""
+
+    local result
+    if tmp_res == nil then
+        result = ""
+    else
+        result = tmp_res
+    end
 
     if noerror then
         nodelink["saved"] = result
-
     end
 
     if rule.debug_mode.enabled then
