@@ -1,5 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.operator.rule_init"
+local uci = require "luci.model.uci".cursor()
 
 
 local rule = {}
@@ -24,284 +25,198 @@ local rule_setting = {
 				match = { status = "ok"},
 			}
 		},
-		{
-			["func"] = function (nodes)
-                local lua_table = luci.jsonc.parse(nodes.received_sms) or {}
-				return lua_table or ""
-			end,
-		}
 	},
 
-    new_sms_phone = {
-        note = [[ Получает номер телефона из смс ]],
+    received_sms_check = {
+        note = [[ Проверяет смс на дублирование ]],
 
         {
-            ["skip"] = function (nodes)
-                return #nodes.received_sms <= 2
-            end
-        },
-        {
-            ["func"] = function (nodes)
-                local sms_data_table = luci.jsonc.parse(nodes.received_sms)
-                return sms_data_table.sender
-            end
-        }
-    },
+            ["save"] = function (nodes)
+                if(
+                    type(nodes.received_sms) == "table"
+                ) then
+                    local prev = nodes.received_sms_check.current or ""
+                    local current = nodes.received_sms.date
 
-    new_sms_message = {
-        note = [[ Получает текст сообщения из смс ]],
-
-        {
-            ["skip"] = function (nodes)
-                return #nodes.received_sms <= 2
-            end
-        },
-        {
-            ["func"] = function (nodes)
-                local sms_data_table = luci.jsonc.parse(nodes.received_sms)
-                return sms_data_table.message
-            end
-        }
-    },
-
-    trusted_phone = {
-        note = [[ Получает разрешенный номер телефона для команд ]],
-
-        {
-            ["skip"] = function (nodes)
-                return #nodes.received_sms <= 2 and (nodes.new_sms_phone == nil or #nodes.new_sms_phone == 0)
-            end
-        },
-        {
-            ["load-ubus"] = {
-                object = "uci",
-				method = "get",
-				params = {
-					config = "tsmsmscomm",
-					type = "remote_control",
-					option = "trusted_phone",
-				},
-            },
-        },
-        {
-            ["func"] = function (nodes)
-                local values = luci.jsonc.parse(nodes.trusted_phone)['values']
-
-                for key, value in pairs(values) do
-                    if nodes.new_sms_phone == value['trusted_phone'] then
-                        return value['trusted_phone']
-                    end
+                    return {
+                        prev = prev,
+                        current = current,
+                        repeated = prev == current,
+                    }
                 end
-            end
-        },
-        {
-            ["func"] = function (nodes)
-                return nodes.trusted_phone
-            end
-        }
-    },
 
-    allowed_command = {
-        note = [[ Получает разрешенную команду для выполнения ]],
-
-        {
-            ["skip"] = function (nodes)
-                return #nodes.received_sms <= 2 and (nodes.new_sms_message == nil or #nodes.new_sms_message == 0)
-            end
-        },
-        {
-            ["load-ubus"] = {
-                object = "uci",
-				method = "get",
-				params = {
-					config = "tsmsmscomm",
-					type = "sms_command",
-					option = "shell_command",
-				},
-            }
-        },
-        {
-            ["func"] = function (nodes)
-                local values = luci.jsonc.parse(nodes.allowed_command)['values']
-
-                for key, value in pairs(values) do
-                    if nodes.new_sms_message == value['sms_command'] then
-                        return value['shell_command']
-                    end
-                end
-            end
-        },
-        {
-            ["func"] = function (nodes)
-                return nodes.allowed_command
-            end
-        }
-    },
-
-    trusted_email = {
-        note = [[ Получает email связанный с номером ]],
-
-        {
-            ["skip"] = function (nodes)
-                return #nodes.received_sms <= 2 and (nodes.trusted_phone == nil or #nodes.trusted_phone == 0)
-            end
-        },
-        {
-            ["load-ubus"] = {
-                object = "uci",
-				method = "get",
-				params = {
-					config = "tsmsmscomm",
-					type = "remote_control",
-					option = "trusted_email",
-				},
-            },
-        },
-        {
-            ["func"] = function (nodes)
-                local values = luci.jsonc.parse(nodes.trusted_email)['values']
-                for key, value in pairs(values) do
-                    if nodes.new_sms_phone == value['trusted_phone'] then
-                        return value['trusted_email']
-                    end
-                end
+                return {
+                    prev = nodes.received_sms_check.current or "",
+                    current = "",
+                    repeated = false,
+                }
             end
         },
     },
 
-    run_cmd = {
-        note = [[ Запускает bash команду, если номер и команда разрешены ]],
+    call_tsmsmscomm_run = {
+        note = [[ Вызывает метод выполнения команды полученной по смс ]],
 
         {
             ["skip"] = function (nodes)
-                return (nodes.trusted_phone == nil or #nodes.trusted_phone == 0) or
-                        (nodes.allowed_command == nil or #nodes.allowed_command == 0)
+                return type(nodes.received_sms) ~= "table" or nodes.received_sms_check.repeated
             end
         },
         {
-            ["func"] = function (nodes)
-                local handle = io.popen("df -k /tmp | awk 'NR==2 {print $2}'")
-                local tmp_memory_half
-                if handle ~= nil then
-                    local kb_value = tonumber(handle:read("*a"))
-                    local bytes = kb_value * 1024
-                    tmp_memory_half = math.floor(bytes / 2)
-                    handle:close()
-                end
-
-                local shell_cmd = nodes.allowed_command
-
-                local tmp_file = '/tmp/sms_command_output.txt'
-                local timeout_seconds = 10
-
-                shell_cmd = string.format("%s | tail -c %d", shell_cmd, tmp_memory_half)
-                local bash = string.format("timeout %d sh -c '%s' > %s 2>&1", timeout_seconds, shell_cmd, tmp_file)
-                local status = os.execute(bash)
-                local exit_code = math.floor(status / 256)
-
-                if exit_code == 124 then
-                    return ({
-                        status = true,
-                        result = "Произошел таймаут",
-                    })
-                end
-
-                local file = io.open(tmp_file, "r")
-                if file ~= nil then
-                    local result = file:read("*a")
-                    file:close()
-                    return ({
-                        status = true,
-                        result = result,
-                    })
-                end
-
+            ["load-ubus"] = function (nodes)
                 return ({
-                    status = false,
-                    result = nil,
+                    object = "tsmsmscomm",
+                    method = "run",
+                    params = {
+                        phone = nodes.received_sms.sender,
+                        message = nodes.received_sms.message,
+                    },
+                })
+            end
+        }
+    },
+
+    tsmsmscomm_run_result = {
+        note = [[ Подписка на получение результата выполненной команды ]],
+        default = "",
+
+        {
+            ["subscribe"] = {
+                ubus = "tsmsmscomm",
+                evname = "result",
+                match = {},
+            },
+        },
+        {
+            ["func"] = function (nodes)
+                if type(nodes.tsmsmscomm_run_result) == "table" then
+                    local file = io.open(nodes.tsmsmscomm_run_result.tmp_file, "r")
+                    if file ~= nil then
+                        nodes.tsmsmscomm_run_result.result = file:read("*a")
+                        file:close()
+                    end
+                end
+                return nodes.tsmsmscomm_run_result or ""
+            end
+        },
+    },
+
+    tsmsmscomm_run_result_check = {
+        note = [[ Проверяет результат shell команды на дублирование ]],
+
+        {
+            ["save"] = function (nodes)
+                if(
+                    type(nodes.tsmsmscomm_run_result) == "table"
+                ) then
+                    local prev = nodes.tsmsmscomm_run_result_check.current or ""
+                    local current = nodes.tsmsmscomm_run_result.result .. nodes.tsmsmscomm_run_result.tmp_file
+
+                    return {
+                        prev = prev,
+                        current = current,
+                        repeated = prev == current,
+                    }
+                end
+
+                return {
+                    prev = nodes.tsmsmscomm_run_result_check.current or "",
+                    current = "",
+                    repeated = false,
+                }
+            end
+        },
+    },
+
+    sms_answer = {
+        note = [[ Отправляет результат по смс, если текст вмещается в max_text_size ]],
+
+        {
+            ["skip"] = function (nodes)
+                if nodes.tsmsmscomm_run_result == nil or
+                    type(nodes.tsmsmscomm_run_result) ~= "table" or
+                    nodes.tsmsmscomm_run_result.run == nil or
+                    nodes.tsmsmscomm_run_result.run == false or
+                    nodes.tsmsmscomm_run_result_check.repeated
+                then
+                    return true
+                end
+
+                return (nodes.tsmsmscomm_run_result.result == nil or #nodes.tsmsmscomm_run_result.result == 0)
+                    or #nodes.tsmsmscomm_run_result.result > tonumber(nodes.max_text_size)
+            end
+        },
+        {
+            ["load-ubus"] = function (nodes)
+                return ({
+                    object = "tsmodem.sms",
+                    method = "send_sms",
+                    params = {
+                        phone = nodes.tsmsmscomm_run_result.trusted_phone,
+                        text = nodes.tsmsmscomm_run_result.result,
+                    }
                 })
             end
         },
     },
 
-    send_result_via_sms = {
-        title = [[ Отправляет результат по смс, если текст вмещается в max_text_size символ ]],
+    email_answer = {
+        note = [[ Отправляет результат по email, если текст более чем max_text_size ]],
 
         {
             ["skip"] = function (nodes)
-                if nodes.run_cmd == nil or #nodes.run_cmd == 0 then return true end
-
-                local run_cmd = luci.jsonc.parse(nodes.run_cmd)
-                if run_cmd.status == false then
+                if nodes.tsmsmscomm_run_result == nil or
+                    type(nodes.tsmsmscomm_run_result) ~= "table" or
+                    nodes.tsmsmscomm_run_result.run == nil or
+                    nodes.tsmsmscomm_run_result.run == false or
+                    nodes.tsmsmscomm_run_result_check.repeated
+                then
                     return true
                 end
 
-                return (run_cmd.result == nil or #run_cmd.result == 0) or #run_cmd.result > tonumber(nodes.max_text_size)
+                return (nodes.tsmsmscomm_run_result.result == nil or #nodes.tsmsmscomm_run_result.result == 0)
+                    or #nodes.tsmsmscomm_run_result.result <= tonumber(nodes.max_text_size)
             end
         },
         {
-            ["func"] = function (nodes)
-                local run_cmd = luci.jsonc.parse(nodes.run_cmd)
-                return run_cmd.result
+            ["load-ubus"] = function (nodes)
+                return ({
+                    object = "tsmail",
+                    method = "send",
+                    params = {
+                        from = uci:get("tsmail", "general", "auth_user"),
+                        to = nodes.tsmsmscomm_run_result.trusted_email,
+                        subj = "Результат выполнения смс команды",
+                        body = "Результат выполнения смс команды",
+                        attach = nodes.tsmsmscomm_run_result.tmp_file,
+                    },
+                })
             end
         },
-        {
-            ["send-sms"] = {
-                phone = "$trusted_phone",
-                text = "$send_result_via_sms",
-            },
-        },
-    },
-
-    send_result_via_email = {
-        title = [[ Отправляет результат по email, если текст более чем max_text_size символ ]],
-
-        {
-            ["skip"] = function (nodes)
-                if nodes.run_cmd == nil or #nodes.run_cmd == 0 then return true end
-
-                local run_cmd = luci.jsonc.parse(nodes.run_cmd)
-                if run_cmd.status == false then
-                    return true
-                end
-
-                return (run_cmd.result == nil or #run_cmd.result == 0) or #run_cmd.result <= tonumber(nodes.max_text_size)
-            end
-        },
-        {
-            ["func"] = function (nodes)
-                local run_cmd = luci.jsonc.parse(nodes.run_cmd)
-                return run_cmd.result
-            end
-        },
-        {
-            ["send-email"] = {
-                to = "$trusted_email",
-                subj = "Результат выполнения команды",
-                body = "Результат выполнения команды",
-                attach = "/tmp/sms_command_output.txt",
-            }
-        }
     },
 
     journal = {
-		{
-			["skip"] = function (nodes)
-                if nodes.run_cmd == nil or #nodes.run_cmd == 0 then return true end
-                local run_cmd = luci.jsonc.parse(nodes.run_cmd)
-                return run_cmd.status == false
-			end
-		},
+        note = "Отправляет результат в журнал событий",
+        {
+            ["skip"] = function (nodes)
+                if nodes.tsmsmscomm_run_result == nil or
+                    type(nodes.tsmsmscomm_run_result) ~= "table" or
+                    nodes.tsmsmscomm_run_result_check.repeated
+                then
+                    return true
+                end
+
+                return (nodes.tsmsmscomm_run_result.result == nil or #nodes.tsmsmscomm_run_result.result == 0)
+            end
+        },
 		{
 			["func"] = function (nodes)
-				local received_sms = luci.jsonc.parse(nodes.received_sms)
-                local run_cmd = luci.jsonc.parse(nodes.run_cmd)
 				return({
-					datetime = received_sms.date,
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
 					name = "Получена SMS-команда",
-					source = received_sms.sender,
-					command = received_sms.message,
-					response = run_cmd.result,
+					source = nodes.tsmsmscomm_run_result.trusted_phone,
+					command = nodes.tsmsmscomm_run_result.shell_command,
+					response = nodes.tsmsmscomm_run_result.result,
 				})
 			end
 		},
@@ -322,18 +237,13 @@ function rule:make()
 
     self:follow("max_text_size"):debug()
     self:follow("received_sms"):debug()
-    self:follow("new_sms_phone"):debug()
-    self:follow("new_sms_message"):debug()
+    self:follow("received_sms_check"):debug()
 
-    self:follow("trusted_phone"):debug()
-    self:follow("allowed_command"):debug()
-    self:follow("trusted_email"):debug()
-
-    self:follow("run_cmd"):debug()
-
-    self:follow("send_result_via_sms"):debug()
-    self:follow("send_result_via_email"):debug()
-
+    self:follow("call_tsmsmscomm_run"):debug()
+    self:follow("tsmsmscomm_run_result"):debug()
+    self:follow("tsmsmscomm_run_result_check"):debug()
+    self:follow("sms_answer"):debug()
+    self:follow("email_answer"):debug()
     self:follow("journal"):debug()
 end
 

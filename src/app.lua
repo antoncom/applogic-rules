@@ -87,7 +87,6 @@ function rules:make_subscription(rule)
 	subscript:make_subscription(rule)
 end
 
-
 function rules:make_ubus()
 	self.conn = ubus.connect()
 	if not self.conn then
@@ -102,9 +101,11 @@ function rules:make_ubus()
 			list = {
 				function(req, msg)
 					local rlist = {}
+
 					for rule_file, rule_obj in util.kspairs(self.setting.rules_list.target) do
-						rlist[rule_file] = rule_obj.setting.title.output
+						rlist[rule_file] = rule_obj["setting"]["title"]["input"]
 					end
+
 					self.conn:reply(req, rlist)
 				end, {id = ubus.INT32, msg = ubus.STRING }
 			},
@@ -258,7 +259,6 @@ local metatable = {
 		end
 		timer = uloop.timer(t)
 		timer:set(tick)
-
 		uloop.run()
 
 		table.conn:close()
