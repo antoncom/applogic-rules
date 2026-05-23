@@ -13,7 +13,12 @@ end
 --      evname = "evname",
 --      match = { },
 -- }
-local function loadvar_subscribed(rule, nodename, op_name, op_body)
+
+-- Оператор [subscribe] достаёт очередное значение из очереди поступивших по подписке данных,
+-- и возвращает это значение в узел.
+-- На каждой итерации из очереди событий достаётся одна запись по принципу FIFO.
+
+local function loadnode_subscribed(rule, nodename, op_name, op_body)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.node.debug" end
 
@@ -46,4 +51,4 @@ local function loadvar_subscribed(rule, nodename, op_name, op_body)
     end
 end
 
-return loadvar_subscribed
+return loadnode_subscribed

@@ -1,3 +1,6 @@
+
+-- Служит для формирования отладочных таблиц в режиме debug
+
 --- Fort Module
 -- @module fort
 -- @pragma nostrip

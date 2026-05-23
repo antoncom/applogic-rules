@@ -1,5 +1,5 @@
 local util = require "luci.util"
-local func_vars_builder = require "applogic.util.func_vars_builder"
+local func_nodes_builder = require "applogic.util.func_nodes_builder"
 local sys  = require "luci.sys"
 local pretty = require "applogic.util.prettyjson"
 
@@ -15,7 +15,7 @@ local function ui_update(rule, nodename, op_name, op_body)
     local nodelink = rule.setting[nodename] or {}
     local result = {}
     local noerror = true
-    local vars = func_vars_builder.make_vars(rule)
+    local vars = func_nodes_builder:make_nodes(rule)
 
     local noerror = true
     local tmp_res

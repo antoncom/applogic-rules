@@ -1,3 +1,6 @@
+
+-- Вспомогательная функция - проверяет существует ли на шине UBUS указаный объект и метод
+
 function check_ubus_object(conn, obj, method)
 	if conn then
 		local namespaces = conn:objects()

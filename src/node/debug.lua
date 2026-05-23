@@ -7,7 +7,7 @@ require "applogic.util.wrap_text"
 
 
 --[[ Example of structure to populate
-	variables = {
+	nodes = {
 	    ["nodename"] = {
 			note = "",
 	        source = { code, value, noerror },
@@ -30,26 +30,22 @@ function debug:init(rule)
      if not debug[rule.ruleid] then
         debug[rule.ruleid] = {}
         debug[rule.ruleid].rule = rule
-        debug[rule.ruleid].variables = {}
+        debug[rule.ruleid].nodes = {}
         debug[rule.ruleid].noerror = true
         debug[rule.ruleid].report = report
         rule.debug = debug[rule.ruleid]
     end
-    --rule.debug = debug      -- Add populated debug table to the rule table for sharing the data
-    --debug.report = report   -- Link to "report" table to access print_var(), print_rule() methods
 end
 
-function debug:set_noerrors(varl, noerror)
-    local asvarattr = varl
+function debug:set_noerrors(nodelink, noerror)
+    local asnodeattr = nodelink
     local asruleattr = debug[debug.ruleid]
 
-    if noerror == true and asvarattr.noerror == true then
-        asvarattr.noerror = true
+    if noerror == true and asnodeattr.noerror == true then
+        asnodeattr.noerror = true
     else
-        asvarattr.noerror = false
+        asnodeattr.noerror = false
     end
-    -- asvarattr.noerror = noerror and asvarattr.noerror
-    -- asruleattr.noerror = noerror and asruleattr.noerror
 
     if noerror == true and asruleattr.noerror == true then
         asruleattr.noerror = true
@@ -60,7 +56,7 @@ end
 
 function debug:note(val)
     local value = val or ""
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
     if value:len() == 0 then value = "empty" end
     local noerror = (type(value) == "string")
     value = value:gsub("%s+\n", " \n"):gsub("\n%s+", "\n")
@@ -77,12 +73,12 @@ function debug:note(val)
 end
 
 function debug:order()
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
     dnlink.order = debug[debug.ruleid].rule.setting[self.nodename].order
 end
 
 function debug:operator_ubus(object, method, params, result, noerror, src)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
 
     local src = string.format([[
         ["load-ubus"] = {
@@ -103,7 +99,7 @@ function debug:operator_ubus(object, method, params, result, noerror, src)
 end
 
 function debug:operator_subscribe(object, event_name, event_data, noerror, src)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
 
     local src = string.format([[
         ["subscribe"] = {
@@ -123,7 +119,7 @@ function debug:operator_subscribe(object, event_name, event_data, noerror, src)
 end
 
 function debug:operator_rule(rulename, nodename, result, noerror)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
 
     local src = string.format([[
         ["load-rule"] = {
@@ -143,7 +139,7 @@ function debug:operator_rule(rulename, nodename, result, noerror)
 end
 
 function debug:input(val)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
     local value = tostring(val) or ""
     if value:len() == 0 then value = "empty" end
     local noerror = (type(value) == "string")
@@ -155,7 +151,7 @@ function debug:input(val)
 end
 
 function debug:output(val)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
     local value = ""
     
     if (type(val) == "table") then 
@@ -183,7 +179,7 @@ function debug:output(val)
 end
 
 function debug:operator(op_name, body, result, noerror)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
 
     body = body:gsub("\t+", "\t"):gsub("%c+", "\n")
     body = wrap_text(body)
@@ -202,7 +198,7 @@ function debug:operator(op_name, body, result, noerror)
 end
 
 function debug:operator_bash(op_name, body, result, noerror)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
 
     dnlink.operator[#dnlink.operator+1] = {
         ["op_name"] = op_name,
@@ -219,7 +215,7 @@ function debug:operator_bash(op_name, body, result, noerror)
 end
 
 function debug:operator_send_email(op_name, body, result, noerror)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
     dnlink.operator[#dnlink.operator+1] = {
         ["op_name"] = op_name,
         ["body"] = wrap_text(body),
@@ -230,7 +226,7 @@ function debug:operator_send_email(op_name, body, result, noerror)
 end
 
 function debug:operator_send_sms(op_name, body, result, noerror)
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
     dnlink.operator[#dnlink.operator+1] = {
         ["op_name"] = op_name,
         ["body"] = wrap_text(body),
@@ -241,7 +237,7 @@ function debug:operator_send_sms(op_name, body, result, noerror)
 end
 
 function debug:clear_operators()
-    local dnlink = debug[debug.ruleid].variables[debug.nodename]
+    local dnlink = debug[debug.ruleid].nodes[debug.nodename]
     dnlink.operator = {}
 end
 
@@ -251,9 +247,9 @@ local metatable = {
         local ruleid = rule.ruleid
         table.ruleid = ruleid
         table:init(rule)
-        if not debug[ruleid].variables[nodename] then
-            debug[ruleid].variables[nodename] = {}
-            debug[ruleid].variables[nodename].noerror = true
+        if not debug[ruleid].nodes[nodename] then
+            debug[ruleid].nodes[nodename] = {}
+            debug[ruleid].nodes[nodename].noerror = true
         end
 		return table
 	end

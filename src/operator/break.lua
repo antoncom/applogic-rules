@@ -1,20 +1,20 @@
-local func_vars_builder = require "applogic.util.func_vars_builder"
+local func_nodes_builder = require "applogic.util.func_nodes_builder"
 local func_debug = require "applogic.util.func_debug"
 local func_clear_next_nodes = require "applogic.util.func_clear_next_nodes"
 
 -- operator: break
--- ["break"] = function(vars) <lua code> end
+-- ["break"] = function(nodes) <lua code> end
 local function func(rule, nodename, op_name, op_body)
-    local var_debug
-    if rule.debug_mode.enabled then var_debug = require "applogic.node.debug" end
+    local node_debug
+    if rule.debug_mode.enabled then node_debug = require "applogic.node.debug" end
 
-    local vars = func_vars_builder.make_vars(rule)
+    local nodes = func_nodes_builder:make_nodes(rule)
 
     local noerror = true
     local result
 
     if type(op_body) == "function" then
-        noerror, result = pcall(op_body, vars)
+        noerror, result = pcall(op_body, nodes)
 
         if noerror == false then
             print("Error: " .. tostring(result))
@@ -39,7 +39,7 @@ local function func(rule, nodename, op_name, op_body)
 
     if rule.debug_mode.enabled then
         local output_info = func_debug.generate_output_info(op_body)
-        var_debug(nodename, rule):operator(op_name, output_info, result, noerror)
+        node_debug(nodename, rule):operator(op_name, output_info, result, noerror)
     end
 end
 

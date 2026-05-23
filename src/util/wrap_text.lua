@@ -1,3 +1,6 @@
+
+-- Служит для форматирания длинных строк при выводе в отладочных таблицах режима debug/
+
 function wrap_text(str, limit, indent, indent1)
   indent = indent or ""
   indent1 = indent1 or indent

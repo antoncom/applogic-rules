@@ -1,3 +1,6 @@
+
+-- Формирует вывод отладочной таблицы в режиме debug
+
 local util = require "luci.util"
 local ft = require "applogic.util.fort"
 ft.ANY_ROW = 4294967295

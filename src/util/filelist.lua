@@ -1,3 +1,7 @@
+
+-- Получает список файлов в каталоге /src/rule,
+-- то есть готовит сисок файлов правил для загрузки.
+
 local util = require 'luci.util'
 
 local function filelist(pg)

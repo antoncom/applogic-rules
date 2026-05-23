@@ -1,19 +1,22 @@
-local func_vars_builder = require "applogic.util.func_vars_builder"
+local func_nodes_builder = require "applogic.util.func_nodes_builder"
 local func_debug = require "applogic.util.func_debug"
 
 -- operator: skip
--- ["skip"] = function(vars) return <logical expression> end
-local function skip(rule, nodename, op_name, op_body)
-    local var_debug
-    if rule.debug_mode.enabled then var_debug = require "applogic.node.debug" end
+-- ["skip"] = function(nodes) return <logical expression> end
 
-    local vars = func_vars_builder.make_vars(rule)
+-- Оператор [skip]=true пропускает обработку следующих за ним операторов узла.
+
+local function skip(rule, nodename, op_name, op_body)
+    local node_debug
+    if rule.debug_mode.enabled then node_debug = require "applogic.node.debug" end
+
+    local nodes = func_nodes_builder:make_nodes(rule)
 
     local result = false
     local noerror, tmp_res
 
     if type(op_body) == "function" then
-        noerror, tmp_res = pcall(op_body, vars)
+        noerror, tmp_res = pcall(op_body, nodes)
     else
         result = true -- skip if not a function
         tmp_res = nil
@@ -35,7 +38,7 @@ local function skip(rule, nodename, op_name, op_body)
             output_info = "not a function"
         end
 
-        var_debug(nodename, rule):operator(op_name, output_info, result, noerror)
+        node_debug(nodename, rule):operator(op_name, output_info, result, noerror)
     end
 
     return result

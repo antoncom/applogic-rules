@@ -1,7 +1,7 @@
 local util = require "luci.util"
 
 local uloop = require "uloop"
-local func_vars_builder = require "applogic.util.func_vars_builder"
+local func_nodes_builder = require "applogic.util.func_nodes_builder"
 local func_debug = require "applogic.util.func_debug"
 
 --[[
@@ -14,12 +14,15 @@ rule.timers = {
 }
 ]]
 -- operator: timeout
--- ["timeout"] = function(vars) return <number> end
-local function timeout(rule, nodename, op_name, op_body)
-    local var_debug
-    if rule.debug_mode.enabled then var_debug = require "applogic.node.debug" end
+-- ["timeout"] = function(nodes) return <number> end
 
-    local nodes = func_vars_builder.make_vars(rule)
+-- Оператор [timeout] создаёт стстемный таймер обратного отсчёта.
+
+local function timeout(rule, nodename, op_name, op_body)
+    local node_debug
+    if rule.debug_mode.enabled then node_debug = require "applogic.node.debug" end
+
+    local nodes = func_nodes_builder:make_nodes(rule)
     local result = {
         inited = 0,
         value = 0
@@ -87,14 +90,14 @@ local function timeout(rule, nodename, op_name, op_body)
     end
 
     -- TODO
-    -- при изменении Timeout в веб-интерфейсе
-    -- надо чтобы текущий порогрог (init_value) автоматически обновляся
+    -- при изменении Timeout в веб-интерфейсе (панель "Настройка сим-карт")
+    -- надо чтобы текущий порог (init_value) автоматически обновляся
     -- т.к. сейчас таймер продолжает достигать начально загруженного порога
 
     
     if rule.debug_mode.enabled then
         local output_info = func_debug.generate_output_info(op_body)
-        var_debug(nodename, rule):operator(op_name, output_info, result, noerror)
+        node_debug(nodename, rule):operator(op_name, output_info, result, noerror)
     end
 
     return result

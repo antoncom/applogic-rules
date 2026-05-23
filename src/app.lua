@@ -11,10 +11,6 @@ local report = require "applogic.util.report"
 local md5 = require "md5"
 local subscript = require "applogic.util.subscriptions"
 
--- local profile = require "applogic.util.profile"
--- print(profile)
-
-
 --[[ Restore UCI config of Applogic once the debug stopped by Ctrl-C ]]
 local signal = require("posix.signal")
 signal.signal(signal.SIGINT, function(signum)
@@ -34,10 +30,6 @@ signal.signal(signal.SIGINT, function(signum)
   os.exit(128 + signum)
 end)
 
-
-
---local F = require "posix.fcntl"
---local U = require "posix.unistd"
 
 
 local rules = {}
@@ -61,22 +53,27 @@ local rules_setting = {
 	rules_list = {
 		target = {},
 	},
-	tick_size_default = 3000	-- use 1900 ms interval in debug mode
+	tick_size_default = 1600	-- use 1900 ms interval in debug mode
 }
+
+-- Подготавливаем таблицы для кэширования ответов от UBUS.
+-- Создаём таблицу для хранения подписок узлов на события UBUS.
 
 function rules:init()
 	rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
-
 	rules.subscriptions = subscript:init(rules.conn)
 end
 
+-- Вспомогательная функция для очистки кэшированных UBUS-запросов.
+-- Данный кэш очищается перед каждой новой итерацией обработки правил.
+
 function rules:clear_cache()
-	--rules.cache_ubus, rules.cache_uci, rules.cache_bash = nil, nil, nil
 	rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
 	collectgarbage()
 
 end
 
+-- Вспомогательная функция для генерации ключа доступа к кэшированным данным
 
 function evuuid(name, match)
 	return md5.sumhexa(tostring(name)..tostring(util.serialize_json(match)))
@@ -98,6 +95,9 @@ function rules:make_ubus()
 
 	local ubus_object = {
 		[ubus_name] = {
+
+			-- Метод выводит список правил в консоль прибора по команде "applogic list"
+
 			list = {
 				function(req, msg)
 					local rlist = {}
@@ -107,31 +107,6 @@ function rules:make_ubus()
 					end
 
 					self.conn:reply(req, rlist)
-				end, {id = ubus.INT32, msg = ubus.STRING }
-			},
-
-			vars = {
-				function(req, msg)
-					local vlist = {}
-					local rules = self.setting.rules_list.target
-					local rule_name = msg["rule"]
-					if not rule_name then
-						self.conn:reply(req, { ["error"] = "Rule name was not found. Try 'list' to see all names."})
-						return
-					end
-
-					if rules[rule_name] and rules[rule_name].setting then
-						for nodename, varparams in pairs(rules[rule_name].setting) do
-							if nodename ~= "title" then -- Hide title variable in UBUS response
-								vlist[nodename] = (type(varparams["output"]) == "table") and util.serialize_json(varparams["output"]) or varparams["output"]
-							end
-						end
-					else
-						self.conn:reply(req, { ["error"] = string.format("Rule '%s' was not found.", tostring(rule_name)) })
-					end
-
-					self.conn:reply(req, vlist)
-
 				end, {id = ubus.INT32, msg = ubus.STRING }
 			},
 
@@ -179,6 +154,8 @@ function rules:make()
 	end
 end
 
+-- Если сервис Tsmodem (драйвер модема) занят други сервисом,
+-- то приостанавливаем обработку правил Applogic.
 
 function rules:check_driver_automation()
 	local driver_mode = ""
@@ -192,15 +169,12 @@ function rules:check_driver_automation()
 				driver_mode = "stop"
 			end
 		end
-		-- print(os.time(), driver_mode, 'owner: ' .. tsmodem_lock_status["owner"]) -- test print
-
 		rules.state.mode = driver_mode
 	end
 end
 
 function rules:run_all()
 
-	local user_session_alive = rules:check_driver_automation()
 	local rules_list = self.setting.rules_list.target
 	local state = ''
 
@@ -233,9 +207,9 @@ function rules:run_all()
 	rules.iteration = rules.iteration + 1
 end
 
+-- Выводим общую отладочную таблицу, которая показывается при выполнении консольной команды "applogic debug overview"
+
 function rules:overview(rules_list, iteration)
-	--log("self.setting.rules_list.target", self.setting.rules_list.target["01_rule"].debug)
-	--print("COUNT", #util.keys(rules_list), iteration)
 	report:overview(rules_list, iteration)
 end
 

@@ -1,3 +1,6 @@
+
+-- Служит для вывода номера строки в отладочную таблицу режима debug
+
 local func_debug = {}
 
 function func_debug.generate_output_info(func)

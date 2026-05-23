@@ -2,6 +2,10 @@ local sys = require "luci.sys"
 
 -- operator: bash
 -- ["bash"] = [[ <bash code> ]]
+
+-- Оператор [bash] позволяет выполнить произвольную shell-команду.
+-- Результат выпонения возвращается в узел.
+
 local function bash(rule, nodename, op_name, op_body)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.node.debug" end

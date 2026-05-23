@@ -1,20 +1,22 @@
 local util = require "luci.util"
+
 local skip = require "applogic.operator.skip"
 local func = require "applogic.operator.func"
 local bash = require "applogic.operator.bash"
 local save = require "applogic.operator.save"
 local frozen = require "applogic.operator.frozen"
 local load_ubus = require "applogic.operator.load_ubus"
-local load_rule = require "applogic.operator.load_rule"
 local load_subscribed = require "applogic.operator.load_subscribed"
-local store_db = require "applogic.operator.store_db"
 local journal = require "applogic.operator.journal"
-local ui_update = require "applogic.operator.ui_update"
+local websocket = require "applogic.operator.websocket"
 local break_op = require "applogic.operator.break"
 local timeout = require "applogic.operator.timeout"
--- local send_email = require "applogic.operator.send_email"
--- local send_sms = require "applogic.operator.send_sms"
 
+-- Обрабатываем последовательно все операторы узла.
+-- Если встречается оператор [break]=true, прерываем обработку правила.
+-- Если встречается оператор [skip]=true, прерываем обрабтку операторов узла, следующих за [skip].
+-- Если в узле сработал оператор [frozen], то откладываем повторную обработку данного узла на заданное кол-во секунд.
+-- Если в узле сработал оператор [save], то перед началом новой итерации загружаем в узел значение, сохранённое на предыдущей итерации.
 
 local main = {}
 function main:run_node(nodename, rule)
@@ -25,7 +27,6 @@ function main:run_node(nodename, rule)
     local nodelink = rule.setting[nodename]
 
     if nodelink["saved"] then
-        -- nodelink.output = tostring(nodelink["saved"])
         nodelink.output = nodelink["saved"]
     elseif nodelink["frozee"] then
         nodelink.output = tostring(nodelink["frozee"])
@@ -49,7 +50,6 @@ function main:run_node(nodename, rule)
             operator_body = value
         end
 
-        --if not (nodelink.frozen or (rule.timers and rule.timers[nodename] and tonumber(rule.timers[nodename].value) and rule.timers[nodename].value > 0)) then
         if not (nodelink.frozen) then
             if "skip" == operator_name then
                 local is_skip = skip(rule, nodename, operator_name, operator_body)
@@ -71,23 +71,15 @@ function main:run_node(nodename, rule)
             elseif "load-rule" == operator_name then
                 nodelink.output = load_rule(rule, nodename, operator_name, operator_body)
 
-            -- elseif "send-sms" == operator_name then
-            --     nodelink.output = send_sms(rule, nodename, operator_name, operator_body)
-
-            -- elseif "send-email" == operator_name then
-            --     nodelink.output = send_email(rule, nodename, operator_name, operator_body)
-
             elseif "subscribe" == operator_name then
                 load_subscribed(rule, nodename, operator_name, operator_body)
 
             elseif "ui-update" == operator_name then
-                ui_update(rule, nodename, operator_name, operator_body)
-
-            elseif "store-db" == operator_name then
-                store_db(rule, nodename, operator_name, operator_body)
+                websocket(rule, nodename, operator_name, operator_body)
 
             elseif "journal" == operator_name then
                 journal(rule, nodename, operator_name, operator_body)
+            
             elseif "timeout" == operator_name then
                 nodelink.output = timeout(rule, nodename, operator_name, operator_body)
             end
@@ -96,9 +88,7 @@ function main:run_node(nodename, rule)
         if "frozen" == operator_name then
             frozen(rule, nodename, operator_name, operator_body)
         end
-        -- if "timeout" == operator_name then
-        --     nodelink.output = timeout(rule, nodename, operator_name, operator_body)
-        -- end
+
         if "break" == operator_name then
             break_op(rule, nodename, operator_name, operator_body)
             if rule.break_in and rule.break_in == true then
@@ -106,15 +96,6 @@ function main:run_node(nodename, rule)
             end
         end
     end
-
-    -- Предлагается избавиться от постоянного преобразования значений узлов в текстовый формат
-    -- if(type(nodelink.output) == "table") then
-    --     nodelink.output = util.serialize_json(nodelink.output)
-    -- else
-    --     nodelink.output = string.format("%s", nodelink.output)
-    --     local _, n = nodelink.output:gsub("\n", "\n")
-    --     if n == 1 then nodelink.output = nodelink.output:gsub("%s+$", "") end
-    -- end
 
     if rule.debug_mode.enabled then debug(nodename, rule):output(nodelink.output) end
 end

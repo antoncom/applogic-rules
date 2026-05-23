@@ -1,3 +1,6 @@
+
+-- Делает красивый вывод JSON в отладочных таблицах
+
 -- https://github.com/bungle/lua-resty-prettycjson
 
 local ok, cjson = pcall(require, "cjson.safe")

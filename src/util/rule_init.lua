@@ -1,12 +1,13 @@
 local debug_mode = require "applogic.debug_mode"
-local loadvar = require "applogic.operator.loadvar"
+local loadnode = require "applogic.node.loadnode"
 local ev_queue = require "applogic.util.queue"
 local util = require "luci.util"
 
+-- Инициализируем правило после в начале каждой иерации
 
 local function rule_init(table, rule_setting, parent)
     function table:follow(nodename)
-        return loadvar(table, nodename):run_node()
+        return loadnode(table, nodename):run_node()
     end
 
     -- if the rule is not inited yet
@@ -16,7 +17,7 @@ local function rule_init(table, rule_setting, parent)
         table.ubus = parent.ubus_object
         table.conn = parent.conn
         table.debug_mode = debug_mode   -- It will be overrided automatically when edit rule:make() functiom in the rule file
-        table.variterator = 0           -- Counting variables to make them orderd in the "Rule" report
+        table.nodeiterator = 0           -- Counting nodes to make them orderd in the "Rule" report
         table.ruleid = debug.getinfo(2, "S").source:match("%d+_rule\.lua"):sub(1,-5)
         table.all_rules = parent.setting.rules_list.target
         table.parent = parent
@@ -88,7 +89,7 @@ local function rule_init(table, rule_setting, parent)
 
         Для этого служит флаг rule.break_in.
 
-        Если break_in установлен в true, то обрабтка очередного узла отменяется.
+        Если break_in установлен в true, то обработка очередного узла отменяется.
 
         В начале новой итерации - флаг сбрасывается.
     ]]

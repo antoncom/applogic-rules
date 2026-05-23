@@ -1,11 +1,14 @@
-local func_vars_builder = require "applogic.util.func_vars_builder"
+local func_nodes_builder = require "applogic.util.func_nodes_builder"
 local util = require "luci.util"
 
 -- operator: frozen
--- ["frozen"] = function(vars) return <table { seconds_to_froze, value_after_unfroze } or number (seconds_to_froze)> end
+-- ["frozen"] = function(nodes) return <table { seconds_to_froze, value_after_unfroze } or number (seconds_to_froze)> end
+
+-- Оператор [frozen] задерживает вычисленное значение узла на заданное количество секунд.
+
 local function frozen(rule, nodename, op_name, op_body)
     --[[
-    To froze variable value once it calculated first time.
+    To froze node value once it calculated first time.
     Should return number of seconds to froze.
     Or it may return table like this {seconds, "value after unfroze"}.
     ----------------------------------------]]
@@ -20,13 +23,13 @@ local function frozen(rule, nodename, op_name, op_body)
     local seconds_to_froze = 0
     local value_after_unfroze = nil
 
-    -- Keep value of variable while first time operator applied
+    -- Keep value of node while first time operator applied
     if not nodelink.frozen then
-        local vars = func_vars_builder.make_vars(rule)
+        local nodes = func_nodes_builder:make_nodes(rule)
 
         if(type(op_body) == "function") then
             local tmp_res
-            noerror, tmp_res = pcall(op_body, vars)
+            noerror, tmp_res = pcall(op_body, nodes)
 
             if (type(tmp_res) == "table") then
                 seconds_to_froze = tmp_res[1] or 0
@@ -69,14 +72,14 @@ local function frozen(rule, nodename, op_name, op_body)
         end
     end
 
-    -- Check delay and unfroze variable's value if time is up
+    -- Check delay and unfroze node's value if time is up
     if (noerror == true) then
         if nodelink.frozen and nodelink.frozen.cancel_time then
             -- Update Frozen modifier seconds_to_froze (for debug)
             frozen_value = nodelink.frozen.value
             local now = os.time()
             if (now > nodelink.frozen.cancel_time) then
-                -- After unfroze put predefined value to the var output
+                -- After unfroze put predefined value to the node output
                 if (nodelink.frozen.value_after) then
                     nodelink.output = tostring(nodelink.frozen.value_after)
                     nodelink.input = tostring(nodelink.frozen.value_after)
