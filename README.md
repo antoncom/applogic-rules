@@ -3,7 +3,7 @@
 **Applogic**, сокращение от “Application Logic” — это сервис в составе встраиваемого ПО, предназначенный для гибкой настройки работы микроэлектронного прибора посредством пользовательских сценариев на языке скриптов Lua.
 
 
-<img src="/img/applogic_main.png" alt="картинка" style="max-width: 989px; width: 100%; height: auto;">
+<img src="/doc/attachments/applogic_main.png" alt="картинка" style="max-width: 989px; width: 100%; height: auto;">
 
 
 ## Правила
