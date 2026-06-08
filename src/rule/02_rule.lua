@@ -21,7 +21,7 @@ local rule_setting = {
 		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
 			["break"] = function (nodes)
 				local last_switch_time = nodes.slotinfo.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 30) then return true end
+				if ((os.time() - last_switch_time) < 60) then return true end
 			end
 		},
 	},
@@ -83,8 +83,6 @@ local rule_setting = {
 			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
-					timeout = nodes.timeout and nodes.timeout.inited or "600",
-					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "600",
 					network_registration = tostring(nodes.network_registration)
 				})
 			end
@@ -114,6 +112,16 @@ local rule_setting = {
 		{   -- Запускаем таймер
 			["timeout"] = function(nodes)
 				return tonumber(nodes.timeout.value)
+			end
+		},
+		{
+			["websocket"] = function(nodes)
+				return({
+					sim_id = tostring(nodes.slotinfo.slot),
+					timeout = nodes.timeout and nodes.timeout.inited or "60",
+					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "60",
+					network_registration = tostring(nodes.network_registration)
+				})
 			end
 		},
 	},

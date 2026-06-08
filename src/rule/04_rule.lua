@@ -98,8 +98,6 @@ local rule_setting = {
 			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
-					timeout = nodes.timeout and nodes.timeout.inited or "120", 
-					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "120",
 					ping_status = tostring(nodes.ping_status.value)
 				})
 			end
