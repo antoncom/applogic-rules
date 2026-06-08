@@ -23,7 +23,7 @@ local rule_setting = {
 		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
 			["break"] = function (nodes)
 				local last_switch_time = nodes.slotinfo.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 10) then return true end
+				if ((os.time() - last_switch_time) < 30) then return true end
 			end
 		},
 	},
@@ -126,7 +126,7 @@ local rule_setting = {
 		{
 			-- Запросив баланс сразу после регистации Симки, замораживаем, чтобы не было повторов ubus-запроса в эти 10 сек.
 			["frozen"] = function (nodes)
-				return 10
+				return 30
 			end
 		},
 	},
@@ -158,7 +158,7 @@ local rule_setting = {
 		},
 		{
 			["frozen"] = function (nodes)
-				return 5
+				return 30
 			end
 		},
 	},
@@ -219,7 +219,8 @@ local rule_setting = {
 			["func"] = function (nodes)
 				local new_slotid = nil
 				local current_slotid = nodes.slotinfo.slot
-				if(current_slotid == 0) then new_slotid = "1" else new_slotid = "0" end
+				if(current_slotid == "0") then new_slotid = "1" end
+				if(current_slotid == "1") then new_slotid = "0" end
 				return new_slotid
 			end
 		},
@@ -228,7 +229,7 @@ local rule_setting = {
 				return {
 					object = "tsmslot",
 					method = "switch",
-					params = { simid = nodes.switch },
+					params = { slotid = nodes.switch },
 					cached = "no",
 				}
 			end

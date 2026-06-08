@@ -8,8 +8,6 @@ local rule_setting = {
 		input = "Правило переключения Сим-карты при отсутствии PING сети",
 	},
 
-	-- Хммм, изучить построение зависимости правил - данное не имеет смысла без первых двух
-	-- TO DO: Добавить проверку подключения к сети или перенастроить таймера так, что б предыдущие срабатывали раньше (ну или нет, если нам всё равно какое правило переключит сим-карту)
 	sim_found = {
 		note = [[ Сим-карта в слоте? "true" / "false" ]],
 		{
@@ -26,7 +24,7 @@ local rule_setting = {
 				return (nodes.sim_found.value ~= "true")
 			end
 		}
-	}, -- sim_found
+	},
 
 	slotinfo = {
 		note = [[ Данные о слотах Сим ]],
@@ -42,10 +40,10 @@ local rule_setting = {
 		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
 			["break"] = function (nodes)
 				local last_switch_time = nodes.slotinfo.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 20) then return true end
+				if ((os.time() - last_switch_time) < 30) then return true end
 			end
-		}
-	}, -- slotinfo
+		},
+	},
 
 	host = {
 		note = [[ Пробный хост для тестирования (обычно Google-сервер) ]],
@@ -221,7 +219,7 @@ local rule_setting = {
 				return {
 					object = "tsmslot",
 					method = "switch",
-					params = { simid = new_slotid },
+					params = { slotid = new_slotid },
 					cached = "no",
 				}
 			end

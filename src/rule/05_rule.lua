@@ -126,7 +126,7 @@ local rule_setting = {
 				return {
 					object = "tsmslot",
 					method = "switch",
-					params = { simid = new_slotid },
+					params = { slotid = new_slotid },
 					cached = "no",
 				}
 			end

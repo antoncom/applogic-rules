@@ -21,7 +21,7 @@ local rule_setting = {
 		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
 			["break"] = function (nodes)
 				local last_switch_time = nodes.slotinfo.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 20) then return true end
+				if ((os.time() - last_switch_time) < 30) then return true end
 			end
 		},
 	},
@@ -98,7 +98,6 @@ local rule_setting = {
 
 	timeout = {
 		note = [[ Таймаут отсутствия регистрации в сети.  ]],
-		["default"] = 15,
 		{	-- Загружаем значение таймера из конфига
 			["load-ubus"] = function (nodes)
 				return {
@@ -129,15 +128,20 @@ local rule_setting = {
 			end
 		},
 		{
-			["load-ubus"] = function (nodes)
+			["func"] = function (nodes)
 				local new_slotid = nil
 				local current_slotid = nodes.slotinfo.slot
-				if(current_slotid == 0) then new_slotid = "1" else new_slotid = "0" end
-
+				if(current_slotid == "0") then new_slotid = "1" end
+				if(current_slotid == "1") then new_slotid = "0" end
+				return new_slotid
+			end
+		},
+		{
+			["load-ubus"] = function (nodes)
 				return {
 					object = "tsmslot",
 					method = "switch",
-					params = { simid = new_slotid },
+					params = { slotid = new_slotid },
 					cached = "no",
 				}
 			end
