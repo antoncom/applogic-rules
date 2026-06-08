@@ -8,7 +8,7 @@ local function file_exists(name)
    if f~=nil then io.close(f) return true else return false end
 end
 
-local function ui_update(rule, nodename, op_name, op_body)
+local function websocket(rule, nodename, op_name, op_body)
     local debug
     if rule.debug_mode.enabled then debug = require "applogic.node.debug" end
     local pipein_file = "/tmp/wspipein.fifo" -- Gwsocket creates it
@@ -57,4 +57,4 @@ local function ui_update(rule, nodename, op_name, op_body)
     end
 end
 
-return ui_update
+return websocket

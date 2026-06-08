@@ -1,5 +1,5 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.operator.rule_init"
+local rule_init = require "applogic.util.rule_init"
 
 
 
@@ -14,7 +14,7 @@ local rule_setting = {
 		{
 			["load-ubus"] = function (nodes)
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "info",
 					params = {},
 				}
@@ -98,7 +98,7 @@ local rule_setting = {
 		{
 			["load-ubus"] = function (nodes)
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "reset",
 					params = {},
 				}
@@ -110,7 +110,7 @@ local rule_setting = {
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
 					name = 'Сброс питания Sim-слота',
 					source = "Network (01_rule)",
-					command = "ubus call tsmstm reset",
+					command = "ubus call tsmslot reset",
 					response = "started"
 				})
 			end
@@ -145,7 +145,7 @@ local rule_setting = {
 		{
 			["load-ubus"] = function (nodes)
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "switch",
 					params = { simid = nodes.switch },
 					cached = "no",
@@ -158,7 +158,7 @@ local rule_setting = {
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
 					name = 'Переключение Sim-слота (симка не найдена)',
 					source = "Network (01_rule)",
-					command = "ubus call tsmstm switch",
+					command = "ubus call tsmslot switch",
 					response = "started"
 				})
 			end

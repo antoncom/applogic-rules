@@ -6,9 +6,9 @@ local pcallchunk = require "applogic.util.pcallchunk"
 local operator_handler = require "applogic.operator.main"
 
 
-local loadvar = {}
-local loadvar_metatable = {
-    __call = function(loadvar_metatable, rule, nodename)
+local loadnode = {}
+local loadnode_metatable = {
+    __call = function(loadnode_metatable, rule, nodename)
         local debug
         -- Turn debug mode ON for this rule
         --rule.debug_mode.enabled = (debug_cli.rule and debug_cli.rule == rule.ruleid) or rule.debug_mode.enabled
@@ -19,7 +19,7 @@ local loadvar_metatable = {
             debug = require "applogic.node.debug"
         end
 
-        --[[ Make default var.input untouched
+        --[[ Make default node.input untouched
             as we need initial input value on every iteration of rules operating
         ]]
         -- create default rule setting table
@@ -27,8 +27,8 @@ local loadvar_metatable = {
             rule["default"] = {}
         end
 
-        -- remove source, note, modifier from the default var table
-        -- only "input" has to exist in the "default" var setting table
+        -- remove source, note, modifier from the default node table
+        -- only "input" has to exist in the "default" node setting table
         if (not rule["default"][nodename]) then
             rule["default"][nodename] = util.clone(rule.setting[nodename])
             if rule["default"][nodename].source then rule["default"][nodename].source = nil end
@@ -36,14 +36,14 @@ local loadvar_metatable = {
             if rule["default"][nodename].modifier then rule["default"][nodename].modifier = nil end
         end
 
-        -- Also we keep there "overview" debug info if the variable was chosen for this
+        -- Also we keep there "overview" debug info if the node was chosen for this
         -- See below in the debug place
 
         --local operator_handler = require "applogic.operator.main"
         -- MOVED ABOVE 28.01.2026
         local nodelink = rule.setting[nodename]
 
-        -- Make variable order
+        -- Make node order
         if not nodelink.order then
             rule.nodeiterator = rule.nodeiterator + 1
             nodelink.order = rule.nodeiterator
@@ -72,55 +72,55 @@ local loadvar_metatable = {
                      в том случае, если при её обработке возникла ошибка.
                      Это поможет сразу выводить в консоль таблицу дебага переменной.
                 ]]
-                local error_in_var = rule and rule.debug and rule.debug.variables[nodename] and (rule.debug.variables[nodename].noerror == false)
+                local error_in_node = rule and rule.debug and rule.debug.nodes[nodename] and (rule.debug.nodes[nodename].noerror == false)
 
-                if report_by_cli then -- debug var by CLI like this: "applogic debug 01_rule sim_id"
-                    if (error_in_var or util.contains(debug_cli.showvar, nodename)) then
-                         rule.debug.report(rule):print_var(nodename, "INFO", rule.iteration)
+                if report_by_cli then -- debug node by CLI like this: "applogic debug 01_rule sim_id"
+                    if (error_in_node or util.contains(debug_cli.shownode, nodename)) then
+                         rule.debug.report(rule):print_node(nodename, "INFO", rule.iteration)
                     end
                 elseif overview_by_cli then
                     if (type(level) == "table") then
-                        local overview_vars_for_this_rule = util.keys(level)
-                        rule["default"]["overviewed_vars"] = util.clone(overview_vars_for_this_rule)
-                        if (util.contains(overview_vars_for_this_rule, nodename)) then
+                        local overview_nodes_for_this_rule = util.keys(level)
+                        rule["default"]["overviewed_nodes"] = util.clone(overview_nodes_for_this_rule)
+                        if (util.contains(overview_nodes_for_this_rule, nodename)) then
                             if(type(level[nodename]) == "string") then
-                                rule.debug.variables[nodename].overview = level[nodename]
+                                rule.debug.nodes[nodename].overview = level[nodename]
                             elseif(type(level[nodename]) == "table") then
                                 -- realize colorizing policy of overview report according to subsituted value
-                                rule.debug.variables[nodename].overview = {}
+                                rule.debug.nodes[nodename].overview = {}
                                 if(level[nodename].yellow) then
                                     local luacode = substitute(rule, level[nodename].yellow, true)
                                     local noerror
                                     noerror, level[nodename].yellow = pcallchunk(luacode)
-                                    rule.debug.variables[nodename].overview["yellow"] = level[nodename].yellow
+                                    rule.debug.nodes[nodename].overview["yellow"] = level[nodename].yellow
 
                                     -- if nodename == "set_provider" then
                                     -- 	print(rule.ruleid .. nodename, level[nodename].yellow, luacode, level[nodename].yellow)
                                     -- end
                                     --
                                     -- if nodename == "sim_ready" then
-                                    -- 	print(rule.ruleid, " : " .. nodename,rule.debug.variables[nodename].overview["yellow"], luacode)
+                                    -- 	print(rule.ruleid, " : " .. nodename,rule.debug.nodes[nodename].overview["yellow"], luacode)
                                     -- end
                                 end
                                 if(level[nodename].green) then
                                     local luacode = substitute(rule, level[nodename].green, true)
                                     local noerror
                                     noerror, level[nodename].green = pcallchunk(luacode)
-                                    rule.debug.variables[nodename].overview["green"] = level[nodename].green
+                                    rule.debug.nodes[nodename].overview["green"] = level[nodename].green
                                 end
                                 if(level[nodename].red) then
                                     local luacode = substitute(rule, level[nodename].red, true)
                                     local noerror
                                     noerror, level[nodename].red = pcallchunk(luacode)
-                                    rule.debug.variables[nodename].overview["red"] = level[nodename].red
+                                    rule.debug.nodes[nodename].overview["red"] = level[nodename].red
                                 end
                             end
                         end
                     end
                 else
-                    local report_only_this_variable = level and (level == "INFO" or level == "ERROR") and rule.debug_mode.enabled
-                    if report_only_this_variable then -- debug var by editing the rule file (see comments there)
-                        rule.debug.report(rule):print_var(nodename, "INFO", rule.iteration)
+                    local report_only_this_node = level and (level == "INFO" or level == "ERROR") and rule.debug_mode.enabled
+                    if report_only_this_node then -- debug node by editing the rule file (see comments there)
+                        rule.debug.report(rule):print_node(nodename, "INFO", rule.iteration)
                     end
                 end
             end
@@ -132,5 +132,5 @@ local loadvar_metatable = {
     end
 }
 
-setmetatable(loadvar, loadvar_metatable)
-return loadvar
+setmetatable(loadnode, loadnode_metatable)
+return loadnode

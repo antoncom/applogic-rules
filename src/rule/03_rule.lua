@@ -1,5 +1,5 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.operator.rule_init"
+local rule_init = require "applogic.util.rule_init"
 
 
 
@@ -14,7 +14,7 @@ local rule_setting = {
 		{
 			["load-ubus"] = function (nodes)
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "info",
 					params = {},
 				}
@@ -67,7 +67,6 @@ local rule_setting = {
 		},
 
 	},
-
 	uci_provider_config = {
         note = [[ Настройки провайдера для GSM-оператора активной симки ]],
 		{
@@ -103,8 +102,9 @@ local rule_setting = {
 		},
 	},
 
+
 	check_balance_on_sim_registered = {
-	    note = [[ Отправляем SMS-запрос о балансе как только симка зарегистрировалась ]],
+	    note = [[ Отправляем SMS-запрос о балансе кактолько симка зарегистрировалась ]],
 		{
 			["skip"] = function (nodes)
 				-- Если CREG установился в 1 и с этого момента прошло более 10 сек
@@ -117,7 +117,7 @@ local rule_setting = {
 					object = "tsmodem.sms",
 		        	method = "send_sms",
 		        	params = {
-		        		phone = nodes.uci_provider_config.values.balance_sms_phone,
+		        		phone = nodes.uci_provider_config.values.balance_sms_phone, 
 		        		text = nodes.uci_provider_config.values.balance_sms_text
 		        	},
 		        }
@@ -130,14 +130,15 @@ local rule_setting = {
 			end
 		},
 	},
-
+	
 	check_balance_daily = {
 	    note = [[ Отправляем SMS-запрос о балансе раз в день ]],
-	    {
+	    {   
 			["timeout"] = function(nodes)
 				return 86400	-- число секунд в 24-х часах
 			end
 		},
+
 		{
 			["skip"] = function (nodes)
 				return (nodes.check_balance_daily.value > 0)
@@ -149,7 +150,7 @@ local rule_setting = {
 					object = "tsmodem.sms",
 		        	method = "send_sms",
 		        	params = {
-		        		phone = nodes.uci_provider_config.values.balance_sms_phone,
+		        		phone = nodes.uci_provider_config.values.balance_sms_phone, 
 		        		text = nodes.uci_provider_config.values.balance_sms_text
 		        	},
 		        }
@@ -173,44 +174,21 @@ local rule_setting = {
 		        }
 	    	end
 		},
-	},
-
-	is_balance_ok = {
-		note = [[ Проверка соответствия баланса минимальному лимиту ]],
-
 		{
-			["func"] = function (nodes)
-				local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
-				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value) or 0
-				return (BALANCE_ACTUAL >= BALANCE_MIN)
-			end
-		},
-	},
-
-	actual_balance_ui_update = {
-		note = [[ Отправляет баланс в веб-интерфейс ]],
-
-		{
-			["ui-update"] = function (nodes)
-				local balance_time_str = ""
-				local balance_time = tonumber(nodes.actual_balance.updated) or 0
-				if (balance_time ~= 0) then balance_time_str = tostring(os.date("%Y-%m-%d %H:%M:%S", balance_time)) end
-
-				return({
-					sim_id = tostring(nodes.slotinfo.slot),
-					sim_balance = nodes.actual_balance.value,
-					event_datetime = balance_time_str,
-					is_balance_ok = tostring(nodes.is_balance_ok),
-				})
+			["websocket"] = function (nodes)
+				return {
+					["sim_balance"] = nodes.actual_balance
+				}
 			end
 		},
 		{
 			["break"] = function (nodes)
-				return nodes.is_balance_ok
+				local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
+				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value) or 0
+				return (BALANCE_ACTUAL >= BALANCE_MIN)
 			end
-		},
+		}
 	},
-
 	timeout = {
 		note = [[ Таймер ожидания при низком балансе  ]],
 		{   -- Запускаем таймер
@@ -218,22 +196,18 @@ local rule_setting = {
 				return tonumber(nodes.uci_slot_config.values.timeout_bal)
 			end
 		},
-		{
-			["ui-update"] = function(nodes)
-				return({
-					sim_id = tostring(nodes.slotinfo.slot),
-					timeout = tostring(nodes.uci_slot_config.values.timeout_bal),
-					wait_timer = tostring(nodes.timeout.value),
-					is_balance_ok = tostring(nodes.is_balance_ok),
-				})
+				{
+		["websocket"] = function (nodes)
+				return {
+					["sim_balance"] = nodes.actual_balance
+				}
 			end
 		},
 	},
-
 	switch = {
 		note = [[ Переключить слот Сим-карт  ]],
 		{
-			["skip"] = function (nodes)
+			["break"] = function (nodes)
 				if nodes.timeout.value > 0 then
 					return true
 				else
@@ -252,7 +226,7 @@ local rule_setting = {
 		{
 			["load-ubus"] = function (nodes)
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "switch",
 					params = { simid = nodes.switch },
 					cached = "no",
@@ -265,7 +239,7 @@ local rule_setting = {
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
 					name = 'Переключение Sim-слота (баланс ниже минимума)',
 					source = "STM32 (03_rule)",
-					command = "ubus call tsmstm switch",
+					command = "ubus call tsmslot switch",
 					response = "started"
 				})
 			end
@@ -276,6 +250,7 @@ local rule_setting = {
 			end
 		},
 	},
+
 }
 
 -- Use "ERROR", "INFO" to override the debug level
@@ -300,11 +275,11 @@ function rule:make()
 		["wait_timer"] = { ["yellow"] = [[ return (tonumber($wait_timer) and tonumber($wait_timer) > 0) ]] },
 	}
 
-	-- Пропускаем выполнение правила, если tsmodem automation == "stop"
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
-	self:follow("title"):debug()
 
+	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже, если прошло не более 20 сек после начала переключения слотов
 	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симка найдена в слоте
 	self:follow("provider_detected"):debug()-- Определяем какой провайдер определился на Сим-карте
@@ -312,11 +287,19 @@ function rule:make()
 	self:follow("uci_slot_config"):debug()	-- Получаем минимальный уровень баланса на Сим-карте
 	self:follow("check_balance_on_sim_registered"):debug()-- Посылаем SMS-команду получения баланса как только симка зарегистрировалась
 	self:follow("check_balance_daily"):debug()-- Посылаем SMS-команду получения баланса 1 раз в день
-	self:follow("actual_balance"):debug()		-- Получаем текущее значение баланса
-	self:follow("is_balance_ok"):debug() -- Проверяем соответствие баланса минимальному лимиту
-	self:follow("actual_balance_ui_update"):debug() -- Отправляем значение баланса в веб-интерфейс
-	self:follow("timeout"):debug() -- Если таймаут вышел - переключаем слот
-	self:follow("switch"):debug() -- Переключение слота Сим-карты
+	self:follow("actual_balance"):debug()		-- Текущее значение баланса
+	self:follow("timeout"):debug()
+	self:follow("switch"):debug()
+											
+
+	
+											-- Пропускаем все узлы ниже, если баланс на сике выше минимума
+											
+											-- Если таймаут вышел - переключаем слот
+
+
+
+	
 end
 
 local metatable = {

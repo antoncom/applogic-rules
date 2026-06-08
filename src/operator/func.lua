@@ -26,7 +26,7 @@ local function func(rule, nodename, op_name, op_body)
 
     if rule.debug_mode.enabled then
         local output_info = func_debug.generate_output_info(op_body)
-        var_debug(nodename, rule):operator(op_name, output_info, result, noerror)
+        node_debug(nodename, rule):operator(op_name, output_info, result, noerror)
     end
 
     return result

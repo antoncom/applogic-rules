@@ -1,5 +1,5 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.operator.rule_init"
+local rule_init = require "applogic.util.rule_init"
 
 
 
@@ -14,7 +14,7 @@ local rule_setting = {
 		{
 			["load-ubus"] = function (nodes)
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "info",
 					params = {},
 				}
@@ -40,7 +40,7 @@ local rule_setting = {
 			end
 		},
 		{
-			["ui-update"] = function(nodes)
+			["websocket"] = function(nodes)
 				if(nodes.sim_found.value ~= "true") then
 					return({
 						sim_id = tostring(nodes.slotinfo.slot),
@@ -91,7 +91,7 @@ local rule_setting = {
 			end
 		},
 		{
-			["ui-update"] = function(nodes)
+			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
 					provider_name = nodes.provider_detected.value

@@ -1,5 +1,5 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.operator.rule_init"
+local rule_init = require "applogic.util.rule_init"
 
 local rule = {}
 local rule_setting = {
@@ -11,7 +11,7 @@ local rule_setting = {
 		{
 			["load-ubus"] = function (nodes)
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "info",
 					params = {},
 				}
@@ -82,6 +82,11 @@ local rule_setting = {
             end
         },
 		{
+			-- TODO: переделать мигание светодиодов
+			-- ранее это делалось через STM32
+			-- теперь надо сджелать через GPIO
+			-- быстрее всего подойдёт сервис Tsmslot
+			-- =====================================
 			["load-ubus"] = function (nodes)
 				return {
 					object = "tsmstm",

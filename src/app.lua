@@ -53,7 +53,7 @@ local rules_setting = {
 	rules_list = {
 		target = {},
 	},
-	tick_size_default = 1600	-- use 1900 ms interval in debug mode
+	tick_size_default = 800	-- use 1900 ms interval in debug mode
 }
 
 -- Подготавливаем таблицы для кэширования ответов от UBUS.

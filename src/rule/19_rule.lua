@@ -1,46 +1,20 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.operator.rule_init"
+local rule_init = require "applogic.util.rule_init"
 
 
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Журналирование событий Микроконтроллера",
+		input = "Журналирование событий GPIO (ToDO: доработать под БР-02)",
 	},
-	SYS_VER = {
-		note = [[ Подписываемся на команду ~0:SYS.VER ]],
-		default = {},
-		{
-			["subscribe"] = {
-				ubus = "tsmstm",
-				evname = "~0:SYS.VER",
-				match = {}
-			},
-		},
-		{
-			["skip"] = function (nodes)
-				if not nodes.SYS_VER.command then return true else return false end
-			end
-		},
-		{
-			["journal"] = function (nodes)
-				return({
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = nodes.SYS_VER.note,
-					source = "STM32 (19_rule)",
-					command = nodes.SYS_VER.command or "",
-					response = nodes.SYS_VER.result or ""
-				})
-			end
-		},
-	},
+
 	SIM_SEL = {
-		note = [[ Подписываемся на команду ~0:SIM.SEL ]],
+		note = [[ Подписываемся на команду "SIM_SEL" (смена слота) ]],
 		default = {},
 		{
 			["subscribe"] = {
-				ubus = "tsmstm",
-				evname = "~0:SIM.SEL",
+				ubus = "tsmslot",
+				evname = "SIM_SEL",
 				match = {}
 			},
 		},
@@ -48,7 +22,7 @@ local rule_setting = {
 			["skip"] = function (nodes)
 				if not nodes.SIM_SEL.command then 
 					return true 
-				elseif (nodes.SIM_SEL.command == "~0:SIM.SEL=?") then
+				elseif (nodes.SIM_SEL.command == "SIM_SEL") then
 					return true
 				else
 					return false 
@@ -60,7 +34,7 @@ local rule_setting = {
 				return({
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
 					name = nodes.SIM_SEL.note,
-					source = "STM32 (19_rule)",
+					source = "GPIO (19_rule)",
 					command = nodes.SIM_SEL.command or "",
 					response = nodes.SIM_SEL.result or ""
 				})
@@ -69,12 +43,12 @@ local rule_setting = {
 	},
 
 	SIM_EN = {
-		note = [[ Подписываемся на команду ~0:SIM.EN ]],
+		note = [[ Подписываемся на команду SIM_EN (вкл/выкл питания модема) ]],
 		default = {},
 		{
 			["subscribe"] = {
-				ubus = "tsmstm",
-				evname = "~0:SIM.EN",
+				ubus = "tsmslot",
+				evname = "SIM_EN",
 				match = {}
 			},
 		},
@@ -88,121 +62,9 @@ local rule_setting = {
 				return({
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
 					name = nodes.SIM_EN.note,
-					source = "STM32 (19_rule)",
+					source = "GPIO (19_rule)",
 					command = nodes.SIM_EN.command or "",
 					response = nodes.SIM_EN.result or ""
-				})
-			end
-		},
-	},
-
-	SIM_RST = {
-		note = [[ Подписываемся на команду ~0:SIM.RST ]],
-		default = {},
-		{
-			["subscribe"] = {
-				ubus = "tsmstm",
-				evname = "~0:SIM.RST",
-				match = {}
-			},
-		},
-		{
-			["skip"] = function (nodes)
-				if not nodes.SIM_RST.command then return true else return false end
-			end
-		},
-		{
-			["journal"] = function (nodes)
-				return({
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = nodes.SIM_RST.note,
-					source = "STM32 (19_rule)",
-					command = nodes.SIM_RST.command or "",
-					response = nodes.SIM_RST.result or ""
-				})
-			end
-		},
-	},
-
-	SIM_PWR = {
-		note = [[ Подписываемся на команду ~0:SIM.PWR ]],
-		default = {},
-		{
-			["subscribe"] = {
-				ubus = "tsmstm",
-				evname = "~0:SIM.PWR",
-				match = {}
-			},
-		},
-		{
-			["skip"] = function (nodes)
-				if not nodes.SIM_PWR.command then return true else return false end
-			end
-		},
-		{
-			["journal"] = function (nodes)
-				return({
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = nodes.SIM_PWR.note,
-					source = "STM32 (19_rule)",
-					command = nodes.SIM_PWR.command or "",
-					response = nodes.SIM_PWR.result or ""
-				})
-			end
-		},
-	},
-
-	SIM_RSTSW = {
-		note = [[ Подписываемся на команду ~0:SIM.RSTSW ]],
-		default = {},
-		{
-			["subscribe"] = {
-				ubus = "tsmstm",
-				evname = "~0:SIM.RSTSW",
-				match = {}
-			},
-		},
-		{
-			["skip"] = function (nodes)
-				if not nodes.SIM_RSTSW.command then return true else return false end
-			end
-		},
-		{
-			["journal"] = function (nodes)
-				return({
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = nodes.SIM_RSTSW.note,
-					source = "STM32 (19_rule)",
-					command = nodes.SIM_RSTSW.command or "",
-					response = nodes.SIM_RSTSW.result or ""
-				})
-			end
-		},
-	},
-
-	SIM_PWRSW = {
-		note = [[ Подписываемся на команду ~0:SIM.PWRSW ]],
-		default = {},
-		{
-			["subscribe"] = {
-				ubus = "tsmstm",
-				evname = "~0:SIM.PWRSW",
-				match = {}
-			},
-		},
-		{
-			["skip"] = function (nodes)
-				if not nodes.SIM_PWRSW.command then return true else return false end
-			end
-		},
-		{
-			["journal"] = function (nodes)
-				return({
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = nodes.SIM_PWRSW.note,
-					source = "STM32 (19_rule)",
-					command = nodes.SIM_PWRSW.command or "",
-					response = nodes.SIM_PWRSW.result or ""
 				})
 			end
 		},
@@ -233,14 +95,9 @@ function rule:make()
 
 
 	self:follow("title"):debug()
-	self:follow("SYS_VER"):debug()
 
 	self:follow("SIM_SEL"):debug()
-	--self:follow("SIM_EN"):debug()
-	--self:follow("SIM_RST"):debug()
-	--self:follow("SIM_PWR"):debug()
-	--self:follow("SIM_RSTSW"):debug()
-	--self:follow("SIM_PWRSW"):debug()
+	self:follow("SIM_EN"):debug()
 end
 
 

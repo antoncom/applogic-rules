@@ -1,5 +1,5 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.operator.rule_init"
+local rule_init = require "applogic.util.rule_init"
 
 local rule = {}
 local rule_setting = {
@@ -12,7 +12,7 @@ local rule_setting = {
 		{
 			["load-ubus"] = function (nodes)
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "info",
 					params = {},
 				}
@@ -80,7 +80,7 @@ local rule_setting = {
 			end
 		},
 		{
-			["ui-update"] = function(nodes)
+			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
 					timeout = nodes.timeout and nodes.timeout.inited or "600",
@@ -135,7 +135,7 @@ local rule_setting = {
 				if(current_slotid == 0) then new_slotid = "1" else new_slotid = "0" end
 
 				return {
-					object = "tsmstm",
+					object = "tsmslot",
 					method = "switch",
 					params = { simid = new_slotid },
 					cached = "no",
@@ -148,7 +148,7 @@ local rule_setting = {
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
 					name = 'Переключение Sim-слота (нет регистрации)',
 					source = "Network (02_rule)",
-					command = "ubus call tsmstm switch",
+					command = "ubus call tsmslot switch",
 					response = "started"
 				})
 			end

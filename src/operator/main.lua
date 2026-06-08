@@ -74,7 +74,7 @@ function main:run_node(nodename, rule)
             elseif "subscribe" == operator_name then
                 load_subscribed(rule, nodename, operator_name, operator_body)
 
-            elseif "ui-update" == operator_name then
+            elseif "websocket" == operator_name then
                 websocket(rule, nodename, operator_name, operator_body)
 
             elseif "journal" == operator_name then

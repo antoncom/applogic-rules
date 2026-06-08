@@ -1,67 +1,71 @@
 local debug_mode = require "applogic.debug_mode"
-local rule_init = require "applogic.operator.rule_init"
+local rule_init = require "applogic.util.rule_init"
 
 
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Правило открывания/закрывания шторки 'Переключение Сим' в веб-интерфейсе",
+		input = "Правило отображения процесса 'Переключение Сим' в веб-интерфейсе",
 	},
 
-	show_cover = {
+	show_cover = {																		-- создаём логический узел "show_cover"
 		note = [[ Показываем заставку "Идёт переключение слотов" ]],
 		{
-			["load-ubus"] = function (nodes)
-				return {
-					object = "tsmstm",
+			["load-ubus"] = function (nodes)											-- оператор [load-ubus] получает состояние
+				return {																-- слотов от Микроконтроллера
+					object = "tsmslot",
 					method = "info",
 					params = {},
 				}
 			end
 		},
 		{	
-			["skip"] = function (nodes)
-				local last_switch_time = nodes.show_cover.last_switch_time or 0
-				if ((os.time() - last_switch_time) > 15) then return true else return false end
+			["skip"] = function (nodes)													-- если в данный момент происходит 
+				local last_switch_time = nodes.show_cover.last_switch_time		 		-- переключение слотов, то оператор [skip]
+				if ((os.time() - last_switch_time) > 15) then 							-- отменяет обработку следующих за ним операторов
+					return true else return false 										-- узла, таких как: [ui-update] и [break]
+				end
 			end
 		},
 		{
-			["ui-update"] = function(nodes)
-				return({
-					simid = nodes.show_cover.slot,
-					switching = "true"
+			["websocket"] = function(nodes)												-- если же имеет место переключение слотов, то
+				return({																-- отправляем в веб-интерфейс switching="true"
+					simid = nodes.show_cover.slot,										-- при помощи оператора [ui-update]								
+					switching = "true"													
 				})
 			end
 		},
 		{
-			["break"] = function(nodes)
-				return true
-			end
+			["break"] = function(nodes)													-- и прерываем дальнейшую обработку данного
+				return true 															-- правила оператором [break],
+			end 																		-- так как в этом нет необходимости
 		},
 	},
 
-	hide_cover = {
+	hide_cover = {																		-- создаём логический узел "hide_cover"
 		note = [[ Скрываем заставку "Идёт переключение слотов" ]],
 		{
-			["load-ubus"] = function (nodes)
-				return {
-					object = "tsmstm",
+			["load-ubus"] = function (nodes)											-- оператор [load-ubus] получает состояние
+				return {																-- слотов от Микроконтроллера
+					object = "tsmslot",
 					method = "info",
 					params = {},
 				}
 			end
 		},
 		{	
-			["skip"] = function (nodes)
-				local last_switch_time = nodes.show_cover.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 15) then return true else return false end
+			["skip"] = function (nodes)													-- если переключение слотов окончено, то 
+				local last_switch_time = nodes.show_cover.last_switch_time				-- оператор [skip] возвращает "false"
+				if ((os.time() - last_switch_time) < 15) then 
+					return true else return false 
+				end
 			end
 		},
 		{
-			["ui-update"] = function(nodes)
-				return({
-					simid = nodes.show_cover.slot,
-					switching = "false"
+			["websocket"] = function(nodes)												-- следовательно, если [skip]=false,
+				return({																-- то оператор [ui-updte] не отменяется,
+					simid = nodes.show_cover.slot,										-- а выполняется, посылая в веб-интерфейс
+					switching = "false"													-- значение switching="false"
 				})
 			end
 		},
