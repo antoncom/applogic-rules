@@ -23,14 +23,14 @@ local rule_setting = {
 			["skip"] = function (nodes)													-- если в данный момент происходит 
 				local last_switch_time = nodes.show_cover.last_switch_time		 		-- переключение слотов, то оператор [skip]
 				if ((os.time() - last_switch_time) > 15) then 							-- отменяет обработку следующих за ним операторов
-					return true else return false 										-- узла, таких как: [ui-update] и [break]
+					return true else return false 										-- узла, таких как: [websocket] и [break]
 				end
 			end
 		},
 		{
 			["websocket"] = function(nodes)												-- если же имеет место переключение слотов, то
 				return({																-- отправляем в веб-интерфейс switching="true"
-					simid = nodes.show_cover.slot,										-- при помощи оператора [ui-update]								
+					simid = nodes.show_cover.slot,										-- при помощи оператора [websocket]								
 					switching = "true"													
 				})
 			end

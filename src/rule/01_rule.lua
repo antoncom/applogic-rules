@@ -40,7 +40,7 @@ local rule_setting = {
 			end
 		},
 		{
-			["ui-update"] = function(nodes)
+			["websocket"] = function(nodes)
 				return({
 					sim_id = nodes.slotinfo.slot,
 					timeout = nodes.timeout and nodes.timeout.inited or 600,
