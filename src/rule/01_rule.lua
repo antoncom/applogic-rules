@@ -138,7 +138,8 @@ local rule_setting = {
 			["func"] = function (nodes)
 				local new_slotid = nil
 				local current_slotid = nodes.slotinfo.slot
-				if(current_slotid == 0) then new_slotid = "1" else new_slotid = "0" end
+				if(current_slotid == "0") then new_slotid = "1" end
+				if(current_slotid == "1") then new_slotid = "0" end
 				return new_slotid
 			end
 		},
@@ -147,7 +148,7 @@ local rule_setting = {
 				return {
 					object = "tsmslot",
 					method = "switch",
-					params = { simid = nodes.switch },
+					params = { slotid = nodes.switch },
 					cached = "no",
 				}
 			end
