@@ -131,21 +131,16 @@ local rule_setting = {
 		note = [[ Переключить слот Сим-карт  ]],
 		{
 			["skip"] = function (nodes)
-				local stil_wait = (nodes.timeout.value > 0)
+				local stil_wait = (nodes.timeout.value > 5)
 				return stil_wait
 			end
 		},
 		{
-			["func"] = function (nodes)
+			["load-ubus"] = function (nodes)
 				local new_slotid = nil
 				local current_slotid = nodes.slotinfo.slot
 				if(current_slotid == "0") then new_slotid = "1" end
 				if(current_slotid == "1") then new_slotid = "0" end
-				return new_slotid
-			end
-		},
-		{
-			["load-ubus"] = function (nodes)
 				return {
 					object = "tsmslot",
 					method = "switch",

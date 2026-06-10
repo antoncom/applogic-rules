@@ -8,24 +8,6 @@ local rule_setting = {
 		input = "Правило переключения Сим-карты при отсутствии PING сети",
 	},
 
-	sim_found = {
-		note = [[ Сим-карта в слоте? "true" / "false" ]],
-		{
-			["load-ubus"] = function (nodes)
-				return {
-					object = "tsmodem.driver",
-					method = "cpin",
-					params = {},
-				}
-			end
-		},
-		{	-- Если симка не в слоте, то пропускаем дальнейшую обработку правила
-			["break"] = function (nodes)
-				return (nodes.sim_found.value ~= "true")
-			end
-		}
-	},
-
 	slotinfo = {
 		note = [[ Данные о слотах Сим ]],
 		{
@@ -43,6 +25,24 @@ local rule_setting = {
 				if ((os.time() - last_switch_time) < 30) then return true end
 			end
 		},
+	},
+
+	sim_found = {
+		note = [[ Сим-карта в слоте? "true" / "false" ]],
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmodem.driver",
+					method = "cpin",
+					params = {},
+				}
+			end
+		},
+		{	-- Если симка не в слоте, то пропускаем дальнейшую обработку правила
+			["break"] = function (nodes)
+				return (nodes.sim_found.value ~= "true")
+			end
+		}
 	},
 
 	host = {
@@ -76,21 +76,11 @@ local rule_setting = {
 		{
 			-- Проверяем дребезг: пропускаем обработку, если прошло мало времени с последнего изменения
 			["skip"] = function (nodes)
-				-- print('===== ===== start ===== =====')
-				-- print( luci.util.dumptable(nodes.ping_status) )
-				-- print('===== =====  end  ===== =====')
-
-				-- print('===== ===== start ===== =====')
-				-- print(  luci.util.dumptable(nodes.slotinfo)  )
-				-- print('===== =====  end  ===== =====')
-
-				local debounce_time = 9
-                -- Защита от nil
+				local debounce_time = 10
                 local changed = nodes.ping_status.changed or 0
                 local updated = nodes.ping_status.updated or 0
 				local diff = math.abs(changed - updated)
 
-                -- Возвращаем true (skip), если время меньше порога (защита активна)
 				return (diff < debounce_time)
 			end
 		},
@@ -104,8 +94,8 @@ local rule_setting = {
 		},
 		{
 			["journal"] = function (nodes)
-				local current_val = tostring(nodes.ping_status.value or "0")
-				local prev_val = tostring(nodes.ping_before or "0")
+				local current_val = tostring(nodes.ping_status.value) or "0"
+				local prev_val = tostring(nodes.ping_before) or "0"
 
                 if current_val == prev_val then
                     return nil
@@ -137,16 +127,12 @@ local rule_setting = {
 		},
 		{
 			["break"] = function(nodes)
-				-- print('===== ===== start ===== =====')
-				-- print( luci.util.dumptable(nodes) )
-				-- print( nodes.ping_status.value )
-				-- print('===== =====  end  ===== =====')
-
 				return (nodes.ping_status.value == "1")
-				-- return false -- for test
 			end
 		},
-	}, -- ping_status	
+
+	},
+
 	-- Сохраняем состояние пинга для опционального логирования 
 	ping_before = {
 		note = [[ Сохраняем значение прошлого пинга ]],
@@ -155,11 +141,10 @@ local rule_setting = {
 				return(nodes.ping_status)
 			end
 		},
-	},-- ping_before	
+	},
 
 	timeout = {
 		note = [[ Таймаут отсутствия пинга.  ]],
-		["default"] = 15,
 		{
 			["load-ubus"] = function(nodes)
 				return {
@@ -167,7 +152,7 @@ local rule_setting = {
 					method = "get",
 					params = {
 						config = "tsmodem",
-						section = "sim_" .. tostring(nodes.slotinfo.slot),	--  welllll -> string sim_(slotinfo.slot)
+						section = "sim_" .. tostring(nodes.slotinfo.slot),
 						option = "timeout_ping"
 					},
 				}
@@ -180,31 +165,21 @@ local rule_setting = {
 		},
 		{
 			["websocket"] = function (nodes)
-				-- nodes.ping_status.value
-
-				-- print('===== ===== start ===== =====')
-				-- print(  luci.util.dumptable(nodes.slotinfo)  )
-				-- print('===== =====  end  ===== =====')
-
-				-- print('>')
-				-- print(luci.util.dumptable(nodes.timeout) )
-
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
 					ping_status = tostring(nodes.ping_status.value),
-					-- ping_status = "",
 					timeout = tostring(nodes.timeout.inited),
 					wait_timer = tostring(nodes.timeout.value),
 				})
 			end
 		},
-	},-- timeout
+	},
 
 	switch = {
 		note = [[ Переключить слот Сим-карт  ]],
 		{
 			["skip"] = function (nodes)
-				local stil_wait = (nodes.timeout.value > 0)
+				local stil_wait = (nodes.timeout.value > 5)
 				return stil_wait
 			end
 		},
@@ -257,41 +232,18 @@ function rule:make()
 	-- Green is for timers and some passive variables,
 	-- Yellow is for that nodes which switches logic - affects to normal application behavior
 	-- Red is for some extraordinal application ehavior, like watchdog, etc.
-	local overview = {	-- эт что?
-		["lastping_timer"] = { ["yellow"] = [[ return (tonumber($lastping_timer) and tonumber($lastping_timer) > 0) ]] },
-		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
-	}
+	-- local overview = function()
+	-- 	local nodes = rule.rule_setting
+	-- 	return {
+	-- 		["timeout"] = { ["yellow"] = [[ return (nodes.timeout.value > 0) ]] },
+	-- 		["switch"] = { ["red"] = [[ return (nodes.timeout.value < 5) ]] },
+	-- 	}
+	-- end
 
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
 	local all_rules = rule.parent.setting.rules_list.target
-
-	-- Подумать про это:
---[[
-
-	-- Пропускаем выполнения правила, если СИМ-карты нет в слоте
-	local r01_wait_timer = tonumber(all_rules["01_rule"].setting.wait_timer.output)
-	if (r01_wait_timer and r01_wait_timer > 0) then 
-		if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r01_wait_timer > 0 -----") end
-		return
-	end
-
-	-- Пропускаем выполнения правила, если СИМ не зарегистрирована в сети
-	local r02_lastreg_timer = tonumber(all_rules["02_rule"].setting.lastreg_timer.output)
-	if (r02_lastreg_timer and r02_lastreg_timer > 0) then 
-		if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r02_lastreg_timer > 0 -----") end
-		return
-	end
-
-	-- Пропускаем выполнения правила, если отрицательный баланс на счету Sim-карты
-	local r03_sim_balance = tonumber(all_rules["03_rule"].setting.sim_balance.output)
-	if (r03_sim_balance and r03_sim_balance <= 0) then
-		--if rule.debug_mode.enabled then print("------ 04_rule SKIPPED as r03_sim_balance < 0 -----") end
-		return
-	end
-
-]]--
 
 	self:follow("title"):debug() -- Use debug(ONLY) to check the var only
 
@@ -303,9 +255,9 @@ function rule:make()
     self:follow("ping_status"):debug()
     self:follow("ping_before"):debug()
 
-	self:follow("timeout"):debug(overview)
+	self:follow("timeout"):debug()
 
-	self:follow("switch"):debug(overview)
+	self:follow("switch"):debug()
 
 end
 
