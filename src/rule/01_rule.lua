@@ -105,24 +105,13 @@ local rule_setting = {
 			end
 		},
 		{
-			["journal"] = function (nodes)
-				return({
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = 'Сброс питания Sim-слота',
-					source = "Network (01_rule)",
-					command = "ubus call tsmslot reset",
-					response = "started"
-				})
-			end
-		},
-		{
 			["frozen"] = function (nodes)
 				return 30
 			end
 		},
 		{
 			["break"] = function (nodes)
-				if nodes.timeout.value > 0 then
+				if nodes.timeout.value > 5 then
 					return true
 				else
 					return false
@@ -189,13 +178,13 @@ function rule:make()
 	-- Green is for timers and some passive variables,
 	-- Yellow is for that vars which switches logic - affects to normal application behavior
 	-- Red is for some extraordinal application behavior, like watchdog, etc.
-	local overview = {
-		["reset_modem"] = { ["yellow"] = [[ return ($reset_modem == "true") ]] },
-		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
-		["sim_found"] = { ["yellow"] = [[ return ($sim_found == "false" or $sim_found == "*") ]] },
-		["reset_timer"] = { ["yellow"] = [[ return (tonumber($reset_timer) and tonumber($reset_timer) > 0) ]] },
-		["wait_timer"] = { ["yellow"] = [[ return (tonumber($wait_timer) and tonumber($wait_timer) > 0) ]] },
-	}
+	-- local overview = function()
+	-- 	local nodes = rule.rule_setting
+	-- 	return {
+	-- 		["timeout"] = { ["yellow"] = [[ return (nodes.timeout.value > 0) ]] },
+	-- 		["switch"] = { ["red"] = [[ return (nodes.timeout.value < 5) ]] },
+	-- 	}
+	-- end
 
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end

@@ -45,6 +45,27 @@ local rule_setting = {
 		}
 	},
 
+	-- Нет смысла проверять Ping, если симка ещё не зарегистрировалась в сети
+	-- поэтому сюда добавлен узел для [break] - т.е. прерывания дальнейшей обработки правила
+	-- если симка ещё не зарегистрирована.
+	network_registration = {
+		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
+		{
+			["load-ubus"] = function(nodes)
+				return {
+					object = "tsmodem.driver",
+					method = "reg",
+					params = {},
+				}
+			end
+		},
+		{
+			["break"] = function(nodes)
+				return (nodes.network_registration.value ~= "1")
+			end
+		},
+	},
+
 	host = {
 		note = [[ Пробный хост для тестирования (обычно Google-сервер) ]],
 		{
@@ -247,8 +268,10 @@ function rule:make()
 
 	self:follow("title"):debug() -- Use debug(ONLY) to check the var only
 
-	self:follow("sim_found"):debug()
 	self:follow("slotinfo"):debug()
+	self:follow("sim_found"):debug()
+	self:follow("network_registration"):debug()
+	
 
 	self:follow("host"):debug()
 
