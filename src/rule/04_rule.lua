@@ -208,8 +208,8 @@ local rule_setting = {
 			["load-ubus"] = function (nodes)
 				local new_slotid = nil
 				local current_slotid = nodes.slotinfo.slot
-				if(current_slotid == 0) then new_slotid = "1" else new_slotid = "0" end
-
+				if(current_slotid == "0") then new_slotid = "1" end
+				if(current_slotid == "1") then new_slotid = "0" end
 				return {
 					object = "tsmslot",
 					method = "switch",
