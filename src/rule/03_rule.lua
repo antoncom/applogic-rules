@@ -164,6 +164,41 @@ local rule_setting = {
 		},
 	},
 
+	check_balance_after_switch = {
+	    note = [[ Запрашиваем баланс после переключения Sim-слота ]],
+		{
+			["skip"] = function (nodes)
+				local last_switch_time = nodes.slotinfo.last_switch_time or 0
+				if last_switch_time == 0 then return true end
+
+				local saved_switch_time = tonumber(nodes.check_balance_after_switch) or 0
+				return (saved_switch_time == last_switch_time)
+			end
+		},
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmodem.sms",
+		        	method = "send_sms",
+		        	params = {
+		        		phone = nodes.uci_provider_config.values.balance_sms_phone,
+		        		text = nodes.uci_provider_config.values.balance_sms_text
+		        	},
+		        }
+	    	end
+		},
+		{
+			["save"] = function (nodes)
+				return nodes.slotinfo.last_switch_time
+			end
+		},
+		{
+			["frozen"] = function (nodes)
+				return 5
+			end
+		},
+	},
+
 	actual_balance = {
 	    note = [[ Текущий статус баланса (число, * (значит в процессе), либо "" - если последний запрос был неудачен) ]],
 		{
@@ -224,7 +259,8 @@ local rule_setting = {
 			["func"] = function (nodes)
 				local new_slotid = nil
 				local current_slotid = nodes.slotinfo.slot
-				if(current_slotid == 0) then new_slotid = "1" else new_slotid = "0" end
+				if(current_slotid == "0") then new_slotid = "1" end
+				if(current_slotid == "1") then new_slotid = "0" end
 				return new_slotid
 			end
 		},
@@ -292,6 +328,7 @@ function rule:make()
 	self:follow("uci_slot_config"):debug()	-- Получаем минимальный уровень баланса на Сим-карте
 	self:follow("check_balance_on_sim_registered"):debug()-- Посылаем SMS-команду получения баланса как только симка зарегистрировалась
 	self:follow("check_balance_daily"):debug()-- Посылаем SMS-команду получения баланса 1 раз в день
+	self:follow("check_balance_after_switch"):debug()-- Посылаем SMS-команду получения баланса после переключения слота
 	self:follow("actual_balance"):debug()		-- Текущее значение баланса
 	self:follow("timeout"):debug()
 	self:follow("switch"):debug()
