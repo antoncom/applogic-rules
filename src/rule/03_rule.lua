@@ -270,7 +270,8 @@ local rule_setting = {
 		},
 		{
 			["break"] = function (nodes)
-				return nodes.is_balance_ok
+				local bal_undefined = (tonumber(nodes.actual_balance.value) == nil)
+				return nodes.is_balance_ok or bal_undefined
 			end
 		},
 	},
