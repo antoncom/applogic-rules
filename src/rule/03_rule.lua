@@ -210,12 +210,16 @@ local rule_setting = {
 		        }
 	    	end
 		},
+	},
+
+	is_balance_ok = {
+		note = [[ Проверка соответствия баланса минимальному лимиту ]],
 		{
-			["websocket"] = function (nodes)
-				return {
-					sim_id = tostring(nodes.slotinfo.slot),
-					sim_balance = nodes.actual_balance
-				}
+			["func"] = function (nodes)
+				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value)
+				if BALANCE_ACTUAL == nil then return false end
+				local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
+				return (BALANCE_ACTUAL >= BALANCE_MIN)
 			end
 		},
 	},
@@ -252,14 +256,21 @@ local rule_setting = {
 		},
 	},
 
-	is_balance_enough = {
-	    note = [[ Проверка, является ли баланс выше минимального значения ]],
+	actual_balance_ui_update = {
+		note = [[ Отправляет баланс в веб-интерфейс ]],
+
+		{
+			["websocket"] = function (nodes)
+				return({
+					sim_id = tostring(nodes.slotinfo.slot),
+					sim_balance = nodes.actual_balance,
+					is_balance_ok = tostring(nodes.is_balance_ok),
+				})
+			end
+		},
 		{
 			["break"] = function (nodes)
-				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value)
-				if BALANCE_ACTUAL == nil then return false end
-				local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
-				return (BALANCE_ACTUAL >= BALANCE_MIN)
+				return nodes.is_balance_ok
 			end
 		},
 	},
@@ -275,9 +286,11 @@ local rule_setting = {
 			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
+					sim_balance = nodes.actual_balance,
+					is_balance_ok = tostring(nodes.is_balance_ok),
+
 					timeout = nodes.timeout and nodes.timeout.inited or "60",
 					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "60",
-					sim_balance = nodes.actual_balance
 				})
 			end
 		},
@@ -357,31 +370,21 @@ function rule:make()
 	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
 	if rule.parent.state.mode == "stop" then return end
 
-
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже, если прошло не более 20 сек после начала переключения слотов
 	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симка найдена в слоте
-	self:follow("provider_detected"):debug()-- Определяем какой провайдер определился на Сим-карте
-	self:follow("uci_provider_config"):debug()-- Получаем кортокий тел.номер оператора для получения баланса через СМС
-	self:follow("uci_slot_config"):debug()	-- Получаем минимальный уровень баланса на Сим-карте
-	self:follow("check_balance_on_sim_registered"):debug()-- Посылаем SMS-команду получения баланса как только симка зарегистрировалась
-	self:follow("check_balance_daily"):debug()-- Посылаем SMS-команду получения баланса 1 раз в день
-	self:follow("check_balance_after_switch"):debug()-- Посылаем SMS-команду получения баланса после переключения слота
+	self:follow("provider_detected"):debug() -- Определяем какой провайдер определился на Сим-карте
+	self:follow("uci_provider_config"):debug() -- Получаем кортокий тел.номер оператора для получения баланса через СМС
+	self:follow("uci_slot_config"):debug() -- Получаем минимальный уровень баланса на Сим-карте
+	self:follow("check_balance_on_sim_registered"):debug() -- Посылаем SMS-команду получения баланса как только симка зарегистрировалась
+	self:follow("check_balance_daily"):debug() -- Посылаем SMS-команду получения баланса 1 раз в день
+	self:follow("check_balance_after_switch"):debug() -- Посылаем SMS-команду получения баланса после переключения слота
 	self:follow("actual_balance"):debug()		-- Текущее значение баланса
+	self:follow("is_balance_ok"):debug()		-- Проверка соответствия баланса минимальному лимиту
 	self:follow("retry_balance"):debug()		-- Повторный запрос баланса через смс, если баланс не был получен
-	self:follow("is_balance_enough"):debug()	-- Пропускаем все узлы ниже, если баланс известен и выше минимума
-	self:follow("timeout"):debug()
-	self:follow("switch"):debug()
-											
-
-	
-											-- Пропускаем узлы ниже, если баланс известен и выше минимума
-											
-											-- Если баланс низкий или неизвестен — ждём таймаут и переключаем слот
-
-
-
-	
+	self:follow("actual_balance_ui_update"):debug()	-- Отправляем значение баланса в веб-интерфейс
+	self:follow("timeout"):debug() -- Таймаут ожидания при низком балансе
+	self:follow("switch"):debug() -- Переключаем слот, после окончания таймаута
 end
 
 local metatable = {
