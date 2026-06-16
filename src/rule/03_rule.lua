@@ -218,14 +218,52 @@ local rule_setting = {
 				}
 			end
 		},
+	},
+
+	retry_balance = {
+	    note = [[ Повторный SMS-запрос баланса, если значение баланса отсутствует в tsmodem ]],
+		{
+			["timeout"] = function(nodes)
+				return 20
+			end
+		},
+		{
+			["skip"] = function (nodes)
+				if nodes.actual_balance.value ~= "" then return true end
+				return (nodes.retry_balance.value > 0)
+			end
+		},
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmodem.sms",
+		        	method = "send_sms",
+		        	params = {
+		        		phone = nodes.uci_provider_config.values.balance_sms_phone,
+		        		text = nodes.uci_provider_config.values.balance_sms_text
+		        	},
+		        }
+	    	end
+		},
+		{
+			["frozen"] = function (nodes)
+				return 5
+			end
+		},
+	},
+
+	is_balance_enough = {
+	    note = [[ Проверка, является ли баланс выше минимального значения ]],
 		{
 			["break"] = function (nodes)
+				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value)
+				if BALANCE_ACTUAL == nil then return false end
 				local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
-				local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value) or 0
 				return (BALANCE_ACTUAL >= BALANCE_MIN)
 			end
-		}
+		},
 	},
+
 	timeout = {
 		note = [[ Таймер ожидания при низком балансе  ]],
 		{   -- Запускаем таймер
@@ -330,14 +368,16 @@ function rule:make()
 	self:follow("check_balance_daily"):debug()-- Посылаем SMS-команду получения баланса 1 раз в день
 	self:follow("check_balance_after_switch"):debug()-- Посылаем SMS-команду получения баланса после переключения слота
 	self:follow("actual_balance"):debug()		-- Текущее значение баланса
+	self:follow("retry_balance"):debug()		-- Повторный запрос баланса через смс, если баланс не был получен
+	self:follow("is_balance_enough"):debug()	-- Пропускаем все узлы ниже, если баланс известен и выше минимума
 	self:follow("timeout"):debug()
 	self:follow("switch"):debug()
 											
 
 	
-											-- Пропускаем все узлы ниже, если баланс на сике выше минимума
+											-- Пропускаем узлы ниже, если баланс известен и выше минимума
 											
-											-- Если таймаут вышел - переключаем слот
+											-- Если баланс низкий или неизвестен — ждём таймаут и переключаем слот
 
 
 
