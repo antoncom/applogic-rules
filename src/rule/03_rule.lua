@@ -46,8 +46,25 @@ local rule_setting = {
 		}
 	},
 
+	uci_slot_config = {
+		note = [[ Настройки активного слота SIM-карты ]],
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "uci",
+					method = "get",
+					params = {
+						config = "tsmodem",
+						section = "sim_" .. tostring(nodes.slotinfo.slot),
+						option = nil
+					},
+				}
+			end
+		},
+	},
+
 	provider_detected = {
-		note = [[ Идентификатор провайдера после автоопределения ]],
+		note = [[ Идентификатор провайдера после автоопределения или указанный вручную в tsmodem конфиге ]],
 		{
 			["load-ubus"] = function (nodes)
 				return {
@@ -58,14 +75,37 @@ local rule_setting = {
 			end
 		},
 		{
-			["break"] = function (nodes)
-				-- Перываем обработку правила если не получено имя провайдера и его код
-				local provider_name = nodes.provider_detected.value
-				local provider_id = nodes.provider_detected.comment
-				return not (tonumber(provider_id) and provider_id ~= "0" and nodes.provider_detected.value ~= "")
+			["func"] = function (nodes)
+				local autodetect_provider = nodes.uci_slot_config.values.autodetect_provider
+				if autodetect_provider == "1" then
+					-- Провайдер определен автоматически
+					return {
+						value = nodes.provider_detected.value,		-- имя оператора
+						comment = nodes.provider_detected.comment,	-- id оператора
+					}
+				elseif autodetect_provider == "0" then
+					-- Провайдер указан вручную в tsmodem конфиге
+					return {
+						value = "",
+						comment = nodes.uci_slot_config.values.provider, -- id оператора
+					}
+				end
 			end
 		},
+		{
+			["break"] = function (nodes)
+				local autodetect_provider = nodes.uci_slot_config.values.autodetect_provider
+				local provider_id = nodes.provider_detected.comment
+				-- print('provider_id: ' .. provider_id)
 
+				if autodetect_provider == "1" then
+					local provider_name = nodes.provider_detected.value
+					return not (tonumber(provider_id) and provider_id ~= "0" and provider_name ~= "")
+				elseif autodetect_provider == "0" then
+					return not (tonumber(provider_id) and provider_id ~= "0")
+				end
+			end
+		},
 	},
 
 	uci_provider_config = {
@@ -85,24 +125,6 @@ local rule_setting = {
 			end
 		},
     },
-
-	uci_slot_config = {
-		note = [[ Настройки активного слота SIM-карты ]],
-		{
-			["load-ubus"] = function (nodes)
-				return {
-					object = "uci",
-					method = "get",
-					params = {
-						config = "tsmodem",
-						section = "sim_" .. tostring(nodes.slotinfo.slot),
-						option = nil
-					},
-				}
-			end
-		},
-	},
-
 
 	check_balance_on_sim_registered = {
 	    note = [[ Отправляем SMS-запрос о балансе кактолько симка зарегистрировалась ]],
@@ -374,9 +396,9 @@ function rule:make()
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже, если прошло не более 20 сек после начала переключения слотов
 	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симка найдена в слоте
+	self:follow("uci_slot_config"):debug() -- Получаем настройки активного слота Сим-карты
 	self:follow("provider_detected"):debug() -- Определяем какой провайдер определился на Сим-карте
 	self:follow("uci_provider_config"):debug() -- Получаем кортокий тел.номер оператора для получения баланса через СМС
-	self:follow("uci_slot_config"):debug() -- Получаем минимальный уровень баланса на Сим-карте
 	self:follow("check_balance_on_sim_registered"):debug() -- Посылаем SMS-команду получения баланса как только симка зарегистрировалась
 	self:follow("check_balance_daily"):debug() -- Посылаем SMS-команду получения баланса 1 раз в день
 	self:follow("check_balance_after_switch"):debug() -- Посылаем SMS-команду получения баланса после переключения слота
