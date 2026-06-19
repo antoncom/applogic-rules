@@ -94,7 +94,8 @@ local rule_setting = {
 			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
-					provider_name = nodes.provider_detected.value
+					provider_name = nodes.provider_detected.value,
+					provider_code = nodes.provider_detected.comment,
 				})
 			end
 		},
