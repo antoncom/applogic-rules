@@ -41,6 +41,8 @@
 
 | Оператор | Назначение |
 |----------|------------| 
+| `[note]` | Добавляет к логическому узлу название или краткую аннотацию <a href="https://demo.roszedocs.ru/home/Applogic%20%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/[note]%20%E2%80%94%20%D0%BE%D0%BF%D0%B5%D1%80%D0%B0%D1%82%D0%BE%D1%80" target="_blank">Подробнее</a> | 
+| `[default]` | Устанавливает значение логического узла по умолчанию <a href="https://demo.roszedocs.ru/home/Applogic%20%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/[default]%20%E2%80%94%20%D0%BE%D0%BF%D0%B5%D1%80%D0%B0%D1%82%D0%BE%D1%80" target="_blank">Подробнее</a> | 
 | `[load-ubus]` | Получает данные по системной шине UBUS <a href="https://demo.roszedocs.ru/home/Applogic%20%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/[load-ubus]%20%E2%80%94%20%D0%BE%D0%BF%D0%B5%D1%80%D0%B0%D1%82%D0%BE%D1%80" target="_blank">Подробнее</a> | 
 | `[subscribe]` | Подписывает логический узел на событие системной шины <a href="https://demo.roszedocs.ru/home/Applogic%20%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/[subscribe]%20%E2%80%94%20%D0%BE%D0%BF%D0%B5%D1%80%D0%B0%D1%82%D0%BE%D1%80" target="_blank">Подробнее</a> | 
 | `[skip]` | Пропускает обработку следующих за ним операторов узла <a href="https://demo.roszedocs.ru/home/Applogic%20%D1%81%D0%B5%D1%80%D0%B2%D0%B8%D1%81/[skip]%20%E2%80%94%20%D0%BE%D0%BF%D0%B5%D1%80%D0%B0%D1%82%D0%BE%D1%80" target="_blank">Подробнее</a> | 
