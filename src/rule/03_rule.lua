@@ -126,6 +126,46 @@ local rule_setting = {
 		},
     },
 
+	balance_request_params = {
+		note = [[ Данные для запроса баланса через UBUS ]],
+		{
+			["func"] = function (nodes)
+				local phone = nodes.uci_provider_config.values.balance_sms_phone
+				local text = nodes.uci_provider_config.values.balance_sms_text
+				local balance_command = nodes.uci_provider_config.values.balance_ussd
+
+				if
+					phone == nil or
+					text == nil or
+					phone == "" or
+					text == "" or
+					phone == "undefined" or
+					text == "undefined"
+				then
+					local ussd_command = "AT+CUSD=1," .. tostring(balance_command) .. ",15"
+
+					return {
+						object = "tsmodem.driver",
+						method = "send_at",
+						params = {
+							command = ussd_command,
+							module_name = "",
+						},
+					}
+				else
+					return {
+						object = "tsmodem.sms",
+						method = "send_sms",
+						params = {
+							phone = phone,
+							text = text,
+						},
+					}
+				end
+			end
+		},
+	},
+
 	check_balance_on_sim_registered = {
 	    note = [[ Отправляем SMS-запрос о балансе кактолько симка зарегистрировалась ]],
 		{
@@ -136,15 +176,8 @@ local rule_setting = {
 		},
 		{
 			["load-ubus"] = function (nodes)
-				return {
-					object = "tsmodem.sms",
-		        	method = "send_sms",
-		        	params = {
-		        		phone = nodes.uci_provider_config.values.balance_sms_phone, 
-		        		text = nodes.uci_provider_config.values.balance_sms_text
-		        	},
-		        }
-	    	end
+				return nodes.balance_request_params
+			end
 		},
 		{
 			-- Запросив баланс сразу после регистации Симки, замораживаем, чтобы не было повторов ubus-запроса в эти 10 сек.
@@ -169,14 +202,7 @@ local rule_setting = {
 		},
 		{
 			["load-ubus"] = function (nodes)
-				return {
-					object = "tsmodem.sms",
-		        	method = "send_sms",
-		        	params = {
-		        		phone = nodes.uci_provider_config.values.balance_sms_phone, 
-		        		text = nodes.uci_provider_config.values.balance_sms_text
-		        	},
-		        }
+				return nodes.balance_request_params
 	    	end
 		},
 		{
@@ -199,14 +225,7 @@ local rule_setting = {
 		},
 		{
 			["load-ubus"] = function (nodes)
-				return {
-					object = "tsmodem.sms",
-		        	method = "send_sms",
-		        	params = {
-		        		phone = nodes.uci_provider_config.values.balance_sms_phone,
-		        		text = nodes.uci_provider_config.values.balance_sms_text
-		        	},
-		        }
+				return nodes.balance_request_params
 	    	end
 		},
 		{
@@ -261,15 +280,8 @@ local rule_setting = {
 		},
 		{
 			["load-ubus"] = function (nodes)
-				return {
-					object = "tsmodem.sms",
-		        	method = "send_sms",
-		        	params = {
-		        		phone = nodes.uci_provider_config.values.balance_sms_phone,
-		        		text = nodes.uci_provider_config.values.balance_sms_text
-		        	},
-		        }
-	    	end
+				return nodes.balance_request_params
+			end
 		},
 		{
 			["frozen"] = function (nodes)
@@ -399,6 +411,7 @@ function rule:make()
 	self:follow("uci_slot_config"):debug() -- Получаем настройки активного слота Сим-карты
 	self:follow("provider_detected"):debug() -- Определяем какой провайдер определился на Сим-карте
 	self:follow("uci_provider_config"):debug() -- Получаем кортокий тел.номер оператора для получения баланса через СМС
+	self:follow("balance_request_params"):debug() -- Данные для запроса баланса через UBUS
 	self:follow("check_balance_on_sim_registered"):debug() -- Посылаем SMS-команду получения баланса как только симка зарегистрировалась
 	self:follow("check_balance_daily"):debug() -- Посылаем SMS-команду получения баланса 1 раз в день
 	self:follow("check_balance_after_switch"):debug() -- Посылаем SMS-команду получения баланса после переключения слота
