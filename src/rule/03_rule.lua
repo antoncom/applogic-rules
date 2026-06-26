@@ -142,14 +142,16 @@ local rule_setting = {
 					phone == "undefined" or
 					text == "undefined"
 				then
-					local ussd_command = "AT+CUSD=1," .. tostring(balance_command) .. ",15"
+					local ussd_command = "AT+CUSD=1," .. tostring(balance_command) .. ",15\r"
+					-- local ussd_command = 'AT+CUSD=2;+CSCS="GSM";+CUSD=1,"' .. tostring(balance_command) .. '",15\r'
+					-- local ussd_command = 'AT+CUSD=2;+CSCS="GSM";+CUSD=1,"*102#",15\r'
 
 					return {
 						object = "tsmodem.driver",
 						method = "send_at",
 						params = {
 							command = ussd_command,
-							module_name = "",
+							module_name = "ussd_balance",
 						},
 					}
 				else
