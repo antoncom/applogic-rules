@@ -6,6 +6,7 @@ local rule_setting = {
 	title = {
 		input = "Мигание светодиода LED1 - уровень сигнала",
 	},
+
 	slotinfo = {
 		note = [[ Данные о слотах Сим ]],
 		{
@@ -79,44 +80,64 @@ local rule_setting = {
 		},
 	},
 
-
-    LED1_mode = {
+	LED1_mode = {
         note = [[ Режим мигания светодиода LED1 ]],
 
-		-- {
-        --     ["func"] = function (nodes)
-        --         local no_blinking = "v0"
-        --         local mode_1 = { scale = 25, blinking = "f200,800" }
-        --         local mode_2 = { scale = 50, blinking = "f200,200,200,800" }
-        --         local mode_3 = { scale = 75, blinking = "f200,200,200,200,200,800" }
-        --         local mode_4 = { scale = 100, blinking = "f200,200,200,200,200,200,200,800" }
-		-- 		local signal = tonumber(nodes.signal.value) or 0
-		-- 		if (nodes.sim_found.value ~= "true") then return no_blinking
-		-- 			elseif (signal == 0) then return no_blinking
-		-- 			elseif (signal <= mode_1.scale) then return mode_1.blinking
-	    --             elseif (signal > mode_1.scale and signal <= mode_2.scale) then return mode_2.blinking
-	    --             elseif (signal > mode_2.scale and signal <= mode_3.scale) then return mode_3.blinking
-	    --             elseif (signal > mode_3.scale and signal <= mode_4.scale) then return mode_4.blinking
-		-- 			else return no_blinking
-        --         end
-        --     end
-        -- },
+		{
+            ["func"] = function (nodes)
+                local no_blinking_mode = "mode0"
+
+				local mode_1 = { scale = 25, blinking_mode = "mode1" }
+                local mode_2 = { scale = 50, blinking_mode = "mode2" }
+                local mode_3 = { scale = 75, blinking_mode = "mode3" }
+                local mode_4 = { scale = 100, blinking_mode = "mode4" }
+				local signal = tonumber(nodes.signal.value) or 0
+
+				if (nodes.sim_found.value ~= "true") then return no_blinking_mode
+					elseif (signal == 0) then return no_blinking_mode
+					elseif (signal <= mode_1.scale) then return mode_1.blinking_mode
+	                elseif (signal > mode_1.scale and signal <= mode_2.scale) then return mode_2.blinking_mode
+	                elseif (signal > mode_2.scale and signal <= mode_3.scale) then return mode_3.blinking_mode
+	                elseif (signal > mode_3.scale and signal <= mode_4.scale) then return mode_4.blinking_mode
+					else return no_blinking_mode
+                end
+            end
+        },
     },
 
+	LED1_mode_save = {
+		note = [[ Режим мигания светодиода LED1 (сохранение режима в текущей и прошлой итерациях) ]],
 
-	previous = {
-		note = [[ Режим мигания светодиода LED1 (на предыдущей итерации). ]],
+		{
+			["save"] = function(nodes)
+				local prev = nil
+				if nodes.LED1_mode_save and nodes.LED1_mode_save.current then
+					prev = nodes.LED1_mode_save.current
+				end
+				return { current = nodes.LED1_mode, prev = prev }
+			end
+		}
+	},
 
-		-- {
-		-- 	["func"] = function (nodes)
-		-- 		return nodes.LED1_mode
-		-- 	end,
-		-- },
-		-- {
-		-- 	["save"] = function(nodes)
-		-- 		return nodes.previous
-		-- 	end
-		-- }
+	update_led_signal_mode = {
+		note = [[ Обновление режима мигания SIGNAL светодиода ]],
+
+		{
+			["skip"] = function (nodes)
+				local current_mode = nodes.LED1_mode_save.current
+				local prev_mode = nodes.LED1_mode_save.prev
+				return prev_mode == current_mode
+			end
+		},
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmsignal",
+					method = "set_signal_mode",
+					params = { mode = nodes.LED1_mode }
+				}
+			end
+		}
 	}
 }
 
@@ -142,13 +163,15 @@ function rule:make()
 		return
 	end
 ]]--
+
 	self:follow("title"):debug()
-	self:follow("slotinfo"):debug()		
-	self:follow("sim_found"):debug()			
-    self:follow("signal"):debug()
-    self:follow("netmode"):debug()
+	self:follow("slotinfo"):debug()
+	self:follow("sim_found"):debug()
+	self:follow("signal"):debug()
+	self:follow("netmode"):debug()
 	self:follow("LED1_mode"):debug()
-	self:follow("previous"):debug()
+	self:follow("LED1_mode_save"):debug()
+	self:follow("update_led_signal_mode"):debug()
 end
 
 
