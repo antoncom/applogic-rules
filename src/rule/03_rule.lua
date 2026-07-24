@@ -270,14 +270,14 @@ local rule_setting = {
 	retry_balance = {
 	    note = [[ Повторный SMS-запрос баланса, если значение баланса отсутствует в tsmodem ]],
 		{
-			["timeout"] = function(nodes)
-				return 20
-			end
-		},
-		{
 			["skip"] = function (nodes)
 				if nodes.actual_balance.value ~= "" then return true end
 				return (nodes.retry_balance.value > 0)
+			end
+		},
+		{
+			["timeout"] = function(nodes)
+				return 900 -- 15 минут
 			end
 		},
 		{
