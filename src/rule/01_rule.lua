@@ -106,7 +106,7 @@ local rule_setting = {
 		},
 		{
 			["frozen"] = function (nodes)
-				return 30
+				return 5
 			end
 		},
 		{

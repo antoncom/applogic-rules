@@ -22,7 +22,7 @@ local function load_ubus(rule, nodename, op_name, op_body)
     local debug
     local cache_key = ""
     local cached = ""
-    local result
+    local result = {}
     local noerror = true
     local err = ""
     local nodes = func_nodes_builder:make_nodes(rule)
@@ -50,17 +50,19 @@ local function load_ubus(rule, nodename, op_name, op_body)
         obj = string.format("%s", (tmp_res.object or ""))
         method = string.format("%s", (tmp_res.method or ""))
         params = util.clone((tmp_res.params or {}))
+        
         noerror, err = checkubus(rule.conn, obj, method)
-
         if (noerror) then
             cache_key = md5.sumhexa(obj..method..util.serialize_json(params))
 
             if ((not rule.cache_ubus[cache_key]) or cached == "no") then
                 local node = rule.conn:call(obj, method, params)
-                rule.cache_ubus[cache_key] = node or ""
+                rule.cache_ubus[cache_key] = node or { error = "ubus call for [" .. obj .."][".. method .."] failed"}
             end
 
-            result = rule.cache_ubus[cache_key] or ""
+            result = rule.cache_ubus[cache_key] or { error = "ubus data not found in cache: [" .. obj .."][".. method .."] failed"}
+        else
+            result = { error = "ubus object or method not found: [" .. obj .."][".. method .."] failed"}
         end
     end
 

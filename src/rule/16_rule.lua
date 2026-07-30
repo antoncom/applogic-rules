@@ -237,16 +237,16 @@ function rule:make()
 
 -- TODO: testing and setting after other SMS options (SIM balance, SMS-console)
 --
---    self:follow("max_text_size"):debug()
---    self:follow("received_sms"):debug()
---    self:follow("received_sms_check"):debug()
+    self:follow("max_text_size"):debug()
+    self:follow("received_sms"):debug()
+    self:follow("received_sms_check"):debug()
 
---    self:follow("call_tsmsmscomm_run"):debug()
---    self:follow("tsmsmscomm_run_result"):debug()
---    self:follow("tsmsmscomm_run_result_check"):debug()
---    self:follow("sms_answer"):debug()
---    self:follow("email_answer"):debug()
---    self:follow("journal"):debug()
+    self:follow("call_tsmsmscomm_run"):debug()
+    self:follow("tsmsmscomm_run_result"):debug()
+    self:follow("tsmsmscomm_run_result_check"):debug()
+    self:follow("sms_answer"):debug()
+    self:follow("email_answer"):debug()
+    self:follow("journal"):debug()
 end
 
 local metatable = {

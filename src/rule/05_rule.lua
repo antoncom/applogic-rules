@@ -55,14 +55,14 @@ local rule_setting = {
 					method = "get",
 					params = {
 						config = "tsmodem",
-						section = "sim_" .. nodes.slotinfo.slot,
+						section = "sim_" .. tostring(nodes.slotinfo.slot),
 					}
 				})
 			end
 		},
 		{
 			["func"] = function (nodes)
-				return nodes.signal_min_conf.values
+				return nodes.signal_min_conf.values or {}
 			end
 		},
 	},
@@ -88,7 +88,7 @@ local rule_setting = {
 		},
 				{
 		["break"] = function(nodes)
-				local min = tonumber(nodes.signal_min_conf.signal_min) or 0
+				local min = nodes.signal_min_conf.signal_min and tonumber(nodes.signal_min_conf.signal_min) or 0
 				local current = tonumber(nodes.signal.value) or 0
 				return current >= min
 			end
@@ -109,7 +109,7 @@ local rule_setting = {
 					signal = tostring(nodes.signal.value),
 					timeout = nodes.timeout and tostring(nodes.timeout.inited),
 					wait_timer = tostring(nodes.timeout.value),
-					min_level = tostring(nodes.signal_min_conf.signal_min)
+					min_level = tostring(nodes.signal_min_conf.signal_min) or 0
 				})
 			end
 		},

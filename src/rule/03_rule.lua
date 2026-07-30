@@ -61,6 +61,11 @@ local rule_setting = {
 				}
 			end
 		},
+		{
+			["func"] = function (nodes)
+				return nodes.uci_slot_config.values or {}
+			end
+		}
 	},
 
 	provider_detected = {
@@ -76,26 +81,28 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (nodes)
-				local autodetect_provider = nodes.uci_slot_config.values.autodetect_provider
+				local autodetect_provider = nodes.uci_slot_config.autodetect_provider or ""
 				if autodetect_provider == "1" then
 					-- Провайдер определен автоматически
 					return {
-						value = nodes.provider_detected.value,		-- имя оператора
-						comment = nodes.provider_detected.comment,	-- id оператора
+						value = nodes.provider_detected.value or "",		-- имя оператора
+						comment = nodes.provider_detected.comment or "",	-- id оператора
 					}
 				elseif autodetect_provider == "0" then
 					-- Провайдер указан вручную в tsmodem конфиге
 					return {
 						value = "",
-						comment = nodes.uci_slot_config.values.provider, -- id оператора
+						comment = nodes.uci_slot_config.provider or "", -- id оператора
 					}
+				else
+					return {}
 				end
 			end
 		},
 		{
 			["break"] = function (nodes)
-				local autodetect_provider = nodes.uci_slot_config.values.autodetect_provider
-				local provider_id = nodes.provider_detected.comment
+				local autodetect_provider = nodes.uci_slot_config.autodetect_provider or ""
+				local provider_id = nodes.provider_detected.comment or ""
 				-- print('provider_id: ' .. provider_id)
 
 				if autodetect_provider == "1" then
@@ -255,18 +262,6 @@ local rule_setting = {
 		},
 	},
 
-	-- is_balance_ok = {
-	-- 	note = [[ Проверка соответствия баланса минимальному лимиту ]],
-	-- 	{
-	-- 		["func"] = function (nodes)
-	-- 			local BALANCE_ACTUAL = tonumber(nodes.actual_balance.value)
-	-- 			if BALANCE_ACTUAL == nil then return false end
-	-- 			local BALANCE_MIN = tonumber(nodes.uci_slot_config.values.balance_min) or 0
-	-- 			return (BALANCE_ACTUAL >= BALANCE_MIN)
-	-- 		end
-	-- 	},
-	-- },
-
 	retry_balance = {
 	    note = [[ Повторный SMS-запрос баланса, если значение баланса отсутствует в tsmodem ]],
 		{
@@ -305,81 +300,7 @@ local rule_setting = {
 				})
 			end
 		},
-		-- {
-		-- 	["break"] = function (nodes)
-		-- 		local bal_undefined = (tonumber(nodes.actual_balance.value) == nil)
-		-- 		return nodes.is_balance_ok or bal_undefined
-		-- 	end
-		-- },
 	},
-
-	-- timeout = {
-	-- 	note = [[ Таймер ожидания при низком балансе  ]],
-	-- 	{   -- Запускаем таймер
-	-- 		["timeout"] = function(nodes)
-	-- 			return tonumber(nodes.uci_slot_config.values.timeout_bal)
-	-- 		end
-	-- 	},
-	-- 	{
-	-- 		["websocket"] = function(nodes)
-	-- 			return({
-	-- 				sim_id = tostring(nodes.slotinfo.slot),
-	-- 				sim_balance = nodes.actual_balance,
-	-- 				is_balance_ok = tostring(nodes.is_balance_ok),
-
-	-- 				timeout = nodes.timeout and nodes.timeout.inited or "60",
-	-- 				wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "60",
-	-- 			})
-	-- 		end
-	-- 	},
-	-- },
-	-- switch = {
-	-- 	note = [[ Переключить слот Сим-карт  ]],
-	-- 	{
-	-- 		["break"] = function (nodes)
-	-- 			if nodes.timeout.value > 0 then
-	-- 				return true
-	-- 			else
-	-- 				return false
-	-- 			end
-	-- 		end
-	-- 	},
-	-- 	{
-	-- 		["func"] = function (nodes)
-	-- 			local new_slotid = nil
-	-- 			local current_slotid = nodes.slotinfo.slot
-	-- 			if(current_slotid == "0") then new_slotid = "1" end
-	-- 			if(current_slotid == "1") then new_slotid = "0" end
-	-- 			return new_slotid
-	-- 		end
-	-- 	},
-	-- 	{
-	-- 		["load-ubus"] = function (nodes)
-	-- 			return {
-	-- 				object = "tsmslot",
-	-- 				method = "switch",
-	-- 				params = { slotid = nodes.switch },
-	-- 				cached = "no",
-	-- 			}
-	-- 		end
-	-- 	},
-	-- 	{
-	-- 		["journal"] = function (nodes)
-	-- 			return({
-	-- 				datetime = os.date("%Y-%m-%d %H:%M:%S"),
-	-- 				name = 'Переключение Sim-слота (баланс ниже минимума)',
-	-- 				source = "STM32 (03_rule)",
-	-- 				command = "ubus call tsmslot switch",
-	-- 				response = "started"
-	-- 			})
-	-- 		end
-	-- 	},
-	-- 	{
-	-- 		["frozen"] = function (nodes)
-	-- 			return 30
-	-- 		end
-	-- 	},
-	-- },
 
 }
 
@@ -419,11 +340,8 @@ function rule:make()
 	self:follow("check_balance_daily"):debug() -- Посылаем SMS-команду получения баланса 1 раз в день
 	self:follow("check_balance_after_switch"):debug() -- Посылаем SMS-команду получения баланса после переключения слота
 	self:follow("actual_balance"):debug()		-- Текущее значение баланса
-	-- self:follow("is_balance_ok"):debug()		-- Проверка соответствия баланса минимальному лимиту
 	self:follow("retry_balance"):debug()		-- Повторный запрос баланса через смс, если баланс не был получен
 	self:follow("actual_balance_ui_update"):debug()	-- Отправляем значение баланса в веб-интерфейс
-	-- self:follow("timeout"):debug() -- Таймаут ожидания при низком балансе
-	-- self:follow("switch"):debug() -- Переключаем слот, после окончания таймаута
 end
 
 local metatable = {
