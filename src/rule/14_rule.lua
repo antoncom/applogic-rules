@@ -56,6 +56,27 @@ local rule_setting = {
 		}
 	},
 
+	-- Нет смысла проверять уровень сигнала, если симка ещё не зарегистрировалась в сети
+	-- поэтому сюда добавлен узел для [break] - т.е. прерывания дальнейшей обработки правила
+	-- если симка ещё не зарегистрирована.
+	network_registration = {
+		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
+		{
+			["load-ubus"] = function(nodes)
+				return {
+					object = "tsmodem.driver",
+					method = "reg",
+					params = {},
+				}
+			end
+		},
+		{
+			["break"] = function(nodes)
+				return (nodes.network_registration.value ~= "1")
+			end
+		},
+	},
+
 	provider_setting = {
 		note = [[ Определить текущую настройку - идентификатор провайдера ]],
 
@@ -157,6 +178,7 @@ function rule:make()
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже, если прошло не более 20 сек после начала переключения слотов
 	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симка найдена в слоте
+	self:follow("network_registration"):debug()		-- Пропускаем все узлы ниже, если не было ещё регистрации в сети
 	self:follow("provider_setting"):debug()	-- Получаем текущие настройки провайдера из конфига
 	self:follow("provider_detected"):debug()-- Определяем какй провайдер определился на Сим-карте
 	self:follow("provider_detected_before"):debug()-- Сохраняем значение провайдера для сравнения на след.итерации

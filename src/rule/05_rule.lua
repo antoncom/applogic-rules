@@ -45,6 +45,27 @@ local rule_setting = {
 		}
 	},
 
+	-- Нет смысла проверять уровень сигнала, если симка ещё не зарегистрировалась в сети
+	-- поэтому сюда добавлен узел для [break] - т.е. прерывания дальнейшей обработки правила
+	-- если симка ещё не зарегистрирована.
+	network_registration = {
+		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
+		{
+			["load-ubus"] = function(nodes)
+				return {
+					object = "tsmodem.driver",
+					method = "reg",
+					params = {},
+				}
+			end
+		},
+		{
+			["break"] = function(nodes)
+				return (nodes.network_registration.value ~= "1")
+			end
+		},
+	},
+
 	signal_min_conf = {
 		note = [[ Минимальный уровень сигнала, заданный в конфиге для данной Сим, %. ]],
 
@@ -78,6 +99,16 @@ local rule_setting = {
 				})
 			end
 		},
+
+		{
+			["skip"] = function(nodes)
+				local min = nodes.signal_min_conf.signal_min and tonumber(nodes.signal_min_conf.signal_min) or 0
+				local current = tonumber(nodes.signal.value) or 0
+				return current < min
+			end
+		},
+
+
 		{
 			["websocket"] = function(nodes)
 				return({
@@ -86,8 +117,9 @@ local rule_setting = {
 				})
 			end
 		},
-				{
-		["break"] = function(nodes)
+
+		{
+			["break"] = function(nodes)
 				local min = nodes.signal_min_conf.signal_min and tonumber(nodes.signal_min_conf.signal_min) or 0
 				local current = tonumber(nodes.signal.value) or 0
 				return current >= min
@@ -178,6 +210,7 @@ function rule:make()
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()
 	self:follow("sim_found"):debug()
+	self:follow("network_registration"):debug()
 	self:follow("signal_min_conf"):debug()
 	self:follow("signal"):debug()
 	self:follow("timeout"):debug()

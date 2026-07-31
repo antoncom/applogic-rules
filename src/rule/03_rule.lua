@@ -46,6 +46,31 @@ local rule_setting = {
 		}
 	},
 
+	network_registration = {
+		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
+		{
+			["load-ubus"] = function(nodes)
+				return {
+					object = "tsmodem.driver",
+					method = "reg",
+					params = {},
+				}
+			end
+		},
+		{
+			["func"] = function (nodes)
+				if (nodes.iface_up) then return nodes.network_registration.value end
+				if not (nodes.iface_up) then return "8" end
+			end
+		},
+
+		{
+			["break"] = function(nodes)
+				return (nodes.network_registration ~= "1")
+			end
+		},
+	},
+
 	uci_slot_config = {
 		note = [[ Настройки активного слота SIM-карты ]],
 		{
@@ -332,6 +357,7 @@ function rule:make()
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже, если прошло не более 20 сек после начала переключения слотов
 	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симка найдена в слоте
+	self:follow("network_registration"):debug()		-- Пропускаем все узлы ниже, если не было ещё регисрации
 	self:follow("uci_slot_config"):debug() -- Получаем настройки активного слота Сим-карты
 	self:follow("provider_detected"):debug() -- Определяем какой провайдер определился на Сим-карте
 	self:follow("uci_provider_config"):debug() -- Получаем кортокий тел.номер оператора для получения баланса через СМС

@@ -21,7 +21,7 @@ local rule_setting = {
 		},
 		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
 			["break"] = function (nodes)
-				local last_switch_time = nodes.slotinfo.last_switch_time
+				local last_switch_time = nodes.slotinfo.last_switch_time and nodes.slotinfo.last_switch_time or 0
 				if ((os.time() - last_switch_time) < 30) then return true end
 			end
 		},
@@ -45,26 +45,26 @@ local rule_setting = {
 		}
 	},
 
-	-- Нет смысла проверять Ping, если симка ещё не зарегистрировалась в сети
+	-- Нет смысла проверять Ping, если сеть не установилась
 	-- поэтому сюда добавлен узел для [break] - т.е. прерывания дальнейшей обработки правила
 	-- если симка ещё не зарегистрирована.
-	network_registration = {
-		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
+	iface_up = {
+		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
 		{
 			["load-ubus"] = function(nodes)
 				return {
-					object = "tsmodem.driver",
-					method = "reg",
+					object = "network.interface.modem",
+					method = "status",
 					params = {},
 				}
 			end
 		},
 		{
-			["break"] = function(nodes)
-				return (nodes.network_registration.value ~= "1")
-			end
-		},
-	},
+		 	["func"] = function (nodes)
+		 		return nodes.iface_up.up
+		 	end
+		}
+    },
 
 	host = {
 		note = [[ Пробный хост для тестирования (обычно Google-сервер) ]],
@@ -270,7 +270,7 @@ function rule:make()
 
 	self:follow("slotinfo"):debug()
 	self:follow("sim_found"):debug()
-	self:follow("network_registration"):debug()
+	self:follow("iface_up"):debug()
 	
 
 	self:follow("host"):debug()
