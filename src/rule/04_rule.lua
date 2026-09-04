@@ -22,7 +22,7 @@ local rule_setting = {
 		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
 			["break"] = function (nodes)
 				local last_switch_time = nodes.slotinfo.last_switch_time and nodes.slotinfo.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 30) then return true end
+				if ((os.time() - last_switch_time) < 15) then return true end
 			end
 		},
 	},
@@ -60,8 +60,8 @@ local rule_setting = {
 			end
 		},
 		{
-		 	["func"] = function (nodes)
-		 		return nodes.iface_up.up
+		 	["break"] = function (nodes)
+		 		return nodes.iface_up.up ~= true
 		 	end
 		}
     },

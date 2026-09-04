@@ -5,7 +5,7 @@ local rule_init = require "applogic.util.rule_init"
 local rule = {}
 local rule_setting = {
 	title = {
-		input = "Журналирование событий GPIO (ToDO: доработать под БР-02)",
+		input = "Журналирование событий GPIO",
 	},
 
 	SIM_SEL = {
@@ -22,8 +22,6 @@ local rule_setting = {
 			["skip"] = function (nodes)
 				if not nodes.SIM_SEL.command then 
 					return true 
-				elseif (nodes.SIM_SEL.command == "SIM_SEL") then
-					return true
 				else
 					return false 
 				end
@@ -31,9 +29,11 @@ local rule_setting = {
 		},
 		{
 			["journal"] = function (nodes)
+
+			if (type(nodes.SIM_SEL) == "table") then luci.util.dumptable(nodes.SIM_SEL) end
 				return({
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = nodes.SIM_SEL.note,
+					name = "Смена SIM-слота",
 					source = "GPIO (19_rule)",
 					command = nodes.SIM_SEL.command or "",
 					response = nodes.SIM_SEL.result or ""
