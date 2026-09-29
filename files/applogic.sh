@@ -28,7 +28,7 @@ callinit() {
 }
 
 run() {
-    uci set applogic.debug_mode.enable='1'
+    uci set applogic.debug_mode.enable='0'
     uci commit applogic
 
     "$APP_LUA_BIN" "$APP_LUA" &
