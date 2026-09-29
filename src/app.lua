@@ -58,6 +58,7 @@ local flist = require "applogic.util.filelist"
 local report = require "applogic.util.report"
 local md5 = require "md5"
 local subscript = require "applogic.util.subscriptions"
+require "applogic.util.if_debug"
 
 --[[ Restore UCI config of Applogic once the debug stopped by Ctrl-C ]]
 local signal = require("posix.signal")
@@ -187,6 +188,8 @@ function rules:make_ubus()
 	}
 	self.conn:add( ubus_object )
 	self.ubus_object = ubus_object
+	self:watch_dependencies()
+
 
 end
 
@@ -261,6 +264,32 @@ function rules:overview(rules_list, iteration)
 	report:overview(rules_list, iteration)
 end
 
+-- Services Applogic depends on. When one of them (re)registers its ubus objects,
+-- it has been restarted and our subscriptions/caches are stale: exit and let
+-- procd respawn Applogic.
+local WATCHED_SERVICES = { "tsmodem", "tsmsms" }
+
+local function is_watched(path)
+	for _, name in ipairs(WATCHED_SERVICES) do
+		if path == name or path:sub(1, #name + 1) == name .. "." then
+			return true
+		end
+	end
+	return false
+end
+
+function rules:watch_dependencies()
+	self.conn:listen({
+		["ubus.object.add"] = function(msg)
+			local path = msg and msg["path"]
+			if path and is_watched(path) then
+				io.stderr:write("applogic: " .. path .. " appeared on ubus, restarting\n")
+				if_debug("RESTART", path .. " appeared on ubus, restarting", "red")
+				uloop.cancel()   -- run() below returns, the process exits, procd respawns it
+			end
+		end
+	})
+end
 
 local metatable = {
 	__call = function(table)
