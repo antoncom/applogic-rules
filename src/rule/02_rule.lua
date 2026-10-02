@@ -18,12 +18,6 @@ local rule_setting = {
 				}
 			end
 		},
-		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
-			["break"] = function (nodes)
-				local last_switch_time = nodes.slotinfo.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 15) then return true end
-			end
-		},
 	},
 
 	sim_found = {
@@ -37,30 +31,25 @@ local rule_setting = {
 				}
 			end
 		},
-		{	-- Если симка не в слоте, то пропускаем дальнейшую обработку правила
-			["break"] = function (nodes)
-				return (nodes.sim_found.value ~= "true")
-			end
-		}
 	},
 
-	iface_up = {
-		note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
-		{
-			["load-ubus"] = function(nodes)
-				return {
-					object = "network.interface.modem",
-					method = "status",
-					params = {},
-				}
-			end
-		},
-		{
-		 	["func"] = function (nodes)
-		 		return nodes.iface_up.up
-		 	end
-		}
-    },
+	-- iface_up = {
+	-- 	note = [[ Поднялся ли интерфейс TSMODEM - Link до интернет-провайдера ]],
+	-- 	{
+	-- 		["load-ubus"] = function(nodes)
+	-- 			return {
+	-- 				object = "network.interface.modem",
+	-- 				method = "status",
+	-- 				params = {},
+	-- 			}
+	-- 		end
+	-- 	},
+	-- 	{
+	-- 	 	["func"] = function (nodes)
+	-- 	 		return nodes.iface_up.up
+	-- 	 	end
+	-- 	}
+    -- },
 
 	network_registration = {
 		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
@@ -75,14 +64,15 @@ local rule_setting = {
 		},
 		{
 			["func"] = function (nodes)
-				if (nodes.iface_up) then return nodes.network_registration.value end
-				if not (nodes.iface_up) then return "8" end
+				return nodes.network_registration.value
 			end
 		},
 		{
 			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
+					timeout = nodes.timeout and nodes.timeout.inited or "60",
+					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "60",
 					network_registration = tostring(nodes.network_registration)
 				})
 			end
@@ -112,16 +102,6 @@ local rule_setting = {
 		{   -- Запускаем таймер
 			["timeout"] = function(nodes)
 				return tonumber(nodes.timeout.value)
-			end
-		},
-		{
-			["websocket"] = function(nodes)
-				return({
-					sim_id = tostring(nodes.slotinfo.slot),
-					timeout = nodes.timeout and nodes.timeout.inited or "60",
-					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "60",
-					network_registration = tostring(nodes.network_registration)
-				})
 			end
 		},
 	},
@@ -187,7 +167,7 @@ function rule:make()
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже, если прошло не более 20 сек после начала переключения слотов
 	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симка найдена в слоте
-	self:follow("iface_up"):debug()
+	--self:follow("iface_up"):debug()
 	self:follow("network_registration"):debug()
 	self:follow("timeout"):debug()			-- Сколько ждать регистрации
 	self:follow("switch"):debug()			-- Переключаем слот, если вышел таймаут

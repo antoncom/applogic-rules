@@ -57,7 +57,7 @@ local function load_ubus(rule, nodename, op_name, op_body)
 
             if ((not rule.cache_ubus[cache_key]) or cached == "no") then
                 local node = rule.conn:call(obj, method, params)
-                rule.cache_ubus[cache_key] = node or { error = "ubus call for [" .. obj .."][".. method .."] failed"}
+                rule.cache_ubus[cache_key] = node or { info = "ubus call for [" .. obj .."][".. method .."] returned empty or nil."}
             end
 
             result = rule.cache_ubus[cache_key] or { error = "ubus data not found in cache: [" .. obj .."][".. method .."] failed"}

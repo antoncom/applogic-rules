@@ -45,26 +45,6 @@ local rule_setting = {
 		}
 	},
 
-	-- Нет смысла проверять уровень сигнала, если симка ещё не зарегистрировалась в сети
-	-- поэтому сюда добавлен узел для [break] - т.е. прерывания дальнейшей обработки правила
-	-- если симка ещё не зарегистрирована.
-	network_registration = {
-		note = [[ Статус регистрации Сим-карты в сети -1..9. ]],
-		{
-			["load-ubus"] = function(nodes)
-				return {
-					object = "tsmodem.driver",
-					method = "reg",
-					params = {},
-				}
-			end
-		},
-		{
-			["break"] = function(nodes)
-				return (nodes.network_registration.value ~= "1")
-			end
-		},
-	},
 
 	signal_min_conf = {
 		note = [[ Минимальный уровень сигнала, заданный в конфиге для данной Сим, %. ]],
@@ -99,21 +79,14 @@ local rule_setting = {
 				})
 			end
 		},
-
-		{
-			["skip"] = function(nodes)
-				local min = nodes.signal_min_conf.signal_min and tonumber(nodes.signal_min_conf.signal_min) or 0
-				local current = tonumber(nodes.signal.value) or 0
-				return current < min
-			end
-		},
-
-
 		{
 			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
 					signal = tostring(nodes.signal.value),
+					timeout = nodes.timeout and nodes.timeout.inited or "60",
+					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "60",
+					min_level = tostring(nodes.signal_min_conf.signal_min) or 0
 				})
 			end
 		},
@@ -134,17 +107,7 @@ local rule_setting = {
 				return tonumber(nodes.signal_min_conf.timeout_signal) or 60
 			end
 		},
-		{
-			["websocket"] = function (nodes)
-				return({
-					sim_id = tostring(nodes.slotinfo.slot),
-					signal = tostring(nodes.signal.value),
-					timeout = nodes.timeout and tostring(nodes.timeout.inited),
-					wait_timer = tostring(nodes.timeout.value),
-					min_level = tostring(nodes.signal_min_conf.signal_min) or 0
-				})
-			end
-		},
+
 	},
 
 	switch = {
@@ -153,6 +116,17 @@ local rule_setting = {
 			["skip"] = function (nodes)
 				local stil_wait = (nodes.timeout.value > 5)
 				return stil_wait
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				return({
+					name = '"Переключение слота при слабом сигнале",',
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					source = "Modem (05-rule)",
+					command = "",
+					response = "started"
+				})
 			end
 		},
 		{
@@ -169,17 +143,7 @@ local rule_setting = {
 				}
 			end
 		},
-		{
-			["journal"] = function (nodes)
-				return({
-					name = '"Переключение слота при слабом сигнале",',
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					source = "Modem (05-rule)",
-					command = "",
-					response = "started"
-				})
-			end
-		},
+
 		{
 			["frozen"] = function (nodes)
 				return 30
@@ -210,7 +174,6 @@ function rule:make()
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()
 	self:follow("sim_found"):debug()
-	self:follow("network_registration"):debug()
 	self:follow("signal_min_conf"):debug()
 	self:follow("signal"):debug()
 	self:follow("timeout"):debug()

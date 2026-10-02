@@ -27,24 +27,6 @@ local rule_setting = {
 		},
 	},
 
-	sim_found = {
-		note = [[ Сим-карта в слоте? "true" / "false" ]],
-		{
-			["load-ubus"] = function (nodes)
-				return {
-					object = "tsmodem.driver",
-					method = "cpin",
-					params = {},
-				}
-			end
-		},
-		{	-- Если симка не в слоте, то пропускаем дальнейшую обработку правила
-			["break"] = function (nodes)
-				return (nodes.sim_found.value ~= "true")
-			end
-		}
-	},
-
 	-- Нет смысла проверять Ping, если сеть не установилась
 	-- поэтому сюда добавлен узел для [break] - т.е. прерывания дальнейшей обработки правила
 	-- если симка ещё не зарегистрирована.
@@ -60,8 +42,13 @@ local rule_setting = {
 			end
 		},
 		{
+			["func"] = function (nodes)
+			 	return nodes.iface_up.up
+			 end
+		},
+		{
 		 	["break"] = function (nodes)
-		 		return nodes.iface_up.up ~= true
+		 		return nodes.iface_up ~= true
 		 	end
 		}
     },
@@ -109,43 +96,45 @@ local rule_setting = {
 			["websocket"] = function(nodes)
 				return({
 					sim_id = tostring(nodes.slotinfo.slot),
-					ping_status = tostring(nodes.ping_status.value)
+					ping_status = tostring(nodes.ping_status.value),
+					timeout = nodes.timeout and nodes.timeout.inited or "60",
+					wait_timer = nodes.timeout and tostring(nodes.timeout.value) or "60",
 				})
 			end
 		},
-		{
-			["journal"] = function (nodes)
-				local current_val = tostring(nodes.ping_status.value) or "0"
-				local prev_val = tostring(nodes.ping_before) or "0"
+		-- {
+		-- 	["journal"] = function (nodes)
+		-- 		local current_val = tostring(nodes.ping_status.value) or "0"
+		-- 		local prev_val = tostring(nodes.ping_before) or "0"
 
-                if current_val == prev_val then
-                    return nil
-                end
+        --         if current_val == prev_val then
+        --             return nil
+        --         end
 
-                local event_name, command, response
-                local sim_num = tonumber(nodes.slotinfo.slot) + 1
+        --         local event_name, command, response
+        --         local sim_num = tonumber(nodes.slotinfo.slot) + 1
 
-				if current_val == "0" then
-					event_name = "Потеря связи (Ping Lost) SIM_" .. sim_num
-					command = "Ping FAILED"
-					response = "Host unreachable"
-				else
-					event_name = "Восстановление связи (Ping Restored) SIM_" .. sim_num
-					command = "Ping OK"
-					response = "Host reachable"
-				end
+		-- 		if current_val == "0" then
+		-- 			event_name = "Потеря связи (Ping Lost) SIM_" .. sim_num
+		-- 			command = "Ping FAILED"
+		-- 			response = "Host unreachable"
+		-- 		else
+		-- 			event_name = "Восстановление связи (Ping Restored) SIM_" .. sim_num
+		-- 			command = "Ping OK"
+		-- 			response = "Host reachable"
+		-- 		end
 
-                nodes.ping_status.prev_value = current_val
+        --         nodes.ping_status.prev_value = current_val
 
-				return({
-					name = event_name,
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					source = "GSM-модем [4_rule]",
-					command = command,
-					response = response
-				})
-			end
-		},
+		-- 		return({
+		-- 			name = event_name,
+		-- 			datetime = os.date("%Y-%m-%d %H:%M:%S"),
+		-- 			source = "GSM-модем [4_rule]",
+		-- 			command = command,
+		-- 			response = response
+		-- 		})
+		-- 	end
+		-- },
 		{
 			["break"] = function(nodes)
 				return (nodes.ping_status.value == "1")
@@ -155,14 +144,14 @@ local rule_setting = {
 	},
 
 	-- Сохраняем состояние пинга для опционального логирования 
-	ping_before = {
-		note = [[ Сохраняем значение прошлого пинга ]],
-		{
-			["save"] = function (nodes)
-				return(nodes.ping_status)
-			end
-		},
-	},
+	-- ping_before = {
+	-- 	note = [[ Сохраняем значение прошлого пинга ]],
+	-- 	{
+	-- 		["save"] = function (nodes)
+	-- 			return(nodes.ping_status)
+	-- 		end
+	-- 	},
+	-- },
 
 	timeout = {
 		note = [[ Таймаут отсутствия пинга.  ]],
@@ -184,16 +173,6 @@ local rule_setting = {
 				return tonumber(nodes.timeout.value)
 			end
 		},
-		{
-			["websocket"] = function (nodes)
-				return({
-					sim_id = tostring(nodes.slotinfo.slot),
-					ping_status = tostring(nodes.ping_status.value),
-					timeout = tostring(nodes.timeout.inited),
-					wait_timer = tostring(nodes.timeout.value),
-				})
-			end
-		},
 	},
 
 	switch = {
@@ -202,6 +181,21 @@ local rule_setting = {
 			["skip"] = function (nodes)
 				local stil_wait = (nodes.timeout.value > 5)
 				return stil_wait
+			end
+		},
+		{
+			["journal"] = function (nodes)
+				local new_slotid = nil
+				local current_slotid = nodes.slotinfo.slot
+				if(current_slotid == "0") then new_slotid = "1" end
+				if(current_slotid == "1") then new_slotid = "0" end
+				return({
+					name = string.format('Переключение на SLOT-%s из-за отсутствия Ping', tostring(tonumber(new_slotid)+1)),
+					datetime = os.date("%Y-%m-%d %H:%M:%S"),
+					source = "Modem (04-rule)",
+					command = "ping " .. tostring(luci.model.uci.cursor():get("tsmodem", "sim_" .. current_slotid, "ping_host")) or "",
+					response = ""
+				})
 			end
 		},
 		{
@@ -216,17 +210,6 @@ local rule_setting = {
 					params = { slotid = new_slotid },
 					cached = "no",
 				}
-			end
-		},
-		{
-			["journal"] = function (nodes)
-				return({
-					name = '"Изменилось состояние PING",',
-					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					source = "Modem (04-rule)",
-					command = "ping 8.8.8.8",				-- fix this
-					response = "started"
-				})
 			end
 		},
 		{
@@ -269,14 +252,14 @@ function rule:make()
 	self:follow("title"):debug() -- Use debug(ONLY) to check the var only
 
 	self:follow("slotinfo"):debug()
-	self:follow("sim_found"):debug()
+	--self:follow("sim_found"):debug()
 	self:follow("iface_up"):debug()
 	
 
-	self:follow("host"):debug()
+	--self:follow("host"):debug()
 
     self:follow("ping_status"):debug()
-    self:follow("ping_before"):debug()
+    --self:follow("ping_before"):debug()
 
 	self:follow("timeout"):debug()
 

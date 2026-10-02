@@ -20,16 +20,17 @@ local rule_setting = {
 				}
 			end
 		},
-		{	-- Если идёт процесс переключения, то пропускаем дальнейшую обработку правила
+		{	
 			["break"] = function (nodes)
 				local last_switch_time = nodes.slotinfo.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 10) then return true end
+				if ((os.time() - last_switch_time) < 5) then return true else return false end
 			end
 		},
 	},
 
 	sim_found = {
 		note = [[ Сим-карта в слоте? "true" / "false" ]],
+
 		{
 			["load-ubus"] = function (nodes)
 				return {
@@ -52,15 +53,16 @@ local rule_setting = {
 		{	-- Если симка в слоте, то пропускаем дальнейшую обработку правила
 			["break"] = function (nodes)
 				local last_switch_time = nodes.slotinfo.last_switch_time or 0
-				if ((os.time() - last_switch_time) < 10) then return true end
+				if ((os.time() - last_switch_time) < 5) then return true end
 				return (nodes.sim_found.value == "true")
 			end
-		}
+		},
 	},
 
 	timeout = {
 		note = [[ Таймер ожидания при поиске сим-карты  ]],
 		["default"] = 15,
+
 		{	-- Загружаем значение таймера из конфига
 			["load-ubus"] = function (nodes)
 				return {

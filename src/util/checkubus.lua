@@ -11,10 +11,12 @@ function check_ubus_object(conn, obj, method)
 			if obj == n then
 				obj_exist = true
 				local signatures = conn:signatures(n)
-				for p, s in pairs(signatures) do
-					if (method == p or method == nil) then
-						method_exist = true
-						break
+				if signatures and type(signatures) == "table" then
+					for p, s in pairs(signatures) do
+						if (method == p or method == nil) then
+							method_exist = true
+							break
+						end
 					end
 				end
 				break
