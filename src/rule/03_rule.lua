@@ -18,6 +18,33 @@ local rule_setting = {
 				}
 			end
 		},
+		{	-- Первые 5 сек после переключения слота правило не работает (как в 01_rule и 02_rule).
+			-- [break] стирает таймер узла timeout: отсчёт из старого слота в новый не переносится.
+			["break"] = function (nodes)
+				local last_switch_time = nodes.slotinfo.last_switch_time or 0
+				return ((os.time() - last_switch_time) < 5)
+			end
+		},
+	},
+
+	sim_found = {
+		note = [[ Сим-карта в слоте? "true" / "false" ]],
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmodem.driver",
+					method = "cpin",
+					params = {},
+				}
+			end
+		},
+		{	-- Без карты соединения быть не может: пустым слотом занимается 01_rule.
+			-- Нужно ещё и потому, что после извлечения карты значение reg остаётся "1"
+			-- до тех пор, пока модем сам не сообщит +CREG: 0 (около 10 сек).
+			["break"] = function (nodes)
+				return (nodes.sim_found.value ~= "true")
+			end
+		},
 	},
 
 	network_registration = {
@@ -31,7 +58,7 @@ local rule_setting = {
 				}
 			end
 		},
-		{
+		{	-- Нет регистрации: этим случаем занимается 02_rule
 			["break"] = function(nodes)
 				local sim_registered = (nodes.network_registration.value == "1") or (nodes.network_registration.value == "5")
 				return not sim_registered
@@ -98,7 +125,7 @@ local rule_setting = {
 		},
 		{
 		 	["frozen"] = function (nodes)
-		 		return 15
+		 		return 30
 		 	end
 		},
     },
@@ -163,8 +190,8 @@ local rule_setting = {
 			["journal"] = function (nodes)
 				return({
 					datetime = os.date("%Y-%m-%d %H:%M:%S"),
-					name = 'Переключение Sim-слота (нет регистрации)',
-					source = "Network (02_rule)",
+					name = 'Переключение Sim-слота (нет сетевого соединения)',
+					source = "Network (03_rule)",
 					command = "ubus call tsmslot switch",
 					response = "started"
 				})
@@ -195,12 +222,13 @@ function rule:make()
 	local all_rules = rule.parent.setting.rules_list.target
 
 	self:follow("title"):debug()
-	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже, если прошло не более 20 сек после начала переключения слотов
-	self:follow("network_registration"):debug()
-	self:follow("iface_up"):debug()
-	self:follow("ifup_modem"):debug()
-	self:follow("timeout"):debug()			-- Сколько ждать регистрации
-	self:follow("switch"):debug()			-- Переключаем слот, если вышел таймаут
+	self:follow("slotinfo"):debug()				-- Пропускаем все узлы ниже первые 5 сек после переключения слотов
+	self:follow("sim_found"):debug()			-- Пропускаем все узлы ниже, если симки в слоте нет (01_rule)
+	self:follow("network_registration"):debug()	-- Пропускаем все узлы ниже, если нет регистрации (02_rule)
+	self:follow("iface_up"):debug()				-- Пропускаем все узлы ниже, если соединение есть
+	self:follow("ifup_modem"):debug()			-- Пробуем поднять интерфейс, не чаще раза в 30 сек
+	self:follow("timeout"):debug()				-- Сколько ждать соединения
+	self:follow("switch"):debug()				-- Переключаем слот, если вышел таймаут
 
 end
 
