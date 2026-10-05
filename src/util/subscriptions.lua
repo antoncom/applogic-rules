@@ -52,16 +52,22 @@ function subs:make_subscription(rule)
 	end
 
 	-- Подписываемся на UBUS
+	-- Подписываемся на UBUS (на каждый объект только один раз)
+	subs.subscribed = subs.subscribed or {}
 	for ubusname,_ in util.kspairs(subs.ubus_subscribers) do
-	    local callback = {
-			notify = function(msg,name)
-				subs:broker(ubusname, name, msg)
-			end
-		}
-    	local success, err = pcall(do_subscribe, ubusname, callback)
-    	if not success then
-    		print("SKIP subscribing on [" .. ubusname .. "] as it's absent on the UBUS: " .. err)
-    	end
+		if not subs.subscribed[ubusname] then
+		    local callback = {
+				notify = function(msg,name)
+					subs:broker(ubusname, name, msg)
+				end
+			}
+	    	local success, err = pcall(do_subscribe, ubusname, callback)
+	    	if success then
+	    		subs.subscribed[ubusname] = true
+	    	else
+	    		print("SKIP subscribing on [" .. ubusname .. "] as it's absent on the UBUS: " .. err)
+	    	end
+		end
 	end
 end
 
