@@ -31,7 +31,7 @@ local function bash(rule, nodename, op_name, op_body)
         result = sys.process.exec({"/bin/sh", "-c", command_extra }, true, true, true)
 
         if result.stdout then
-            result.stdout = result.stdout:gsub("%c", "")
+            result.stdout = result.stdout:gsub("%c", " "):gsub("%s+$", "")
         end
     end
 
