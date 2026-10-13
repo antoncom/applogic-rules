@@ -1,6 +1,24 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.util.rule_init"
 
+-- Правило 03 замыкает путь установки GSM-соединения:
+--   02_rule (регистрация в сети) -> 14_rule (провайдер и APN) -> 03_rule (поднять интерфейс "modem").
+-- APN/логин/пароль в network.modem прописывает 14_rule. В режиме AUTO (Сеть: AUTO)
+-- 03_rule не поднимает интерфейс, пока провайдер не определён, чтобы соединение
+-- сразу устанавливалось с APN этого провайдера.
+
+-- Сколько секунд после переключения слота (или загрузки роутера) в режиме AUTO ждать
+-- автоопределения провайдера. Должно совпадать с APN_WAIT в 14_rule.
+local APN_WAIT = 60
+
+-- Сколько секунд прошло после переключения слота или загрузки роутера (что было позже)
+local function since_slot_change(last_switch_time)
+	local f = io.open("/proc/uptime", "r")
+	local uptime = f and tonumber(f:read("*n")) or 0
+	if f then f:close() end
+	return math.min(os.time() - (tonumber(last_switch_time) or 0), uptime)
+end
+
 local rule = {}
 local rule_setting = {
 	title = {
@@ -102,11 +120,63 @@ local rule_setting = {
 
     },
 
+	sim_setting = {
+		note = [[ Настройки Сим-карты активного слота: провайдер задан вручную или AUTO ]],
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "uci",
+					method = "get",
+					params = {
+						config = "tsmodem",
+						section = "sim_" .. tostring(nodes.slotinfo.slot),
+					},
+				}
+			end
+		},
+	},
+
+	provider_name = {
+		note = [[ Провайдер, определённый модемом (пусто - ещё не определён) ]],
+		{
+			["load-ubus"] = function (nodes)
+				return {
+					object = "tsmodem.driver",
+					method = "provider_name",
+					params = {},
+				}
+			end
+		},
+		{
+			["func"] = function (nodes)
+				return (type(nodes.provider_name) == "table" and nodes.provider_name.value) or ""
+			end
+		},
+	},
+
 	ifup_modem = {
 		note = [[ Установить сетевое соединение на интерфейсе "modem" ]],
 		{
 			["break"] = function(nodes)
 				return (nodes.iface_up == true)
+			end
+		},
+		{	-- Режим AUTO: не поднимаем интерфейс, пока не определён провайдер.
+			-- APN этого провайдера прописывает 14_rule. Оно выполняется после 03_rule на том же такте,
+			-- поэтому ждём, чтобы провайдер был известен и на предыдущей итерации (provider_name_before).
+			-- Таймер timeout_link (узел timeout) при этом идёт, так что переключение слота по таймауту работает.
+			["skip"] = function(nodes)
+				local s = (type(nodes.sim_setting) == "table" and nodes.sim_setting.values) or {}
+				local AUTO = (s.autodetect_provider == "1" or s.provider == "00000")
+				if not AUTO then return false end
+
+				if nodes.provider_name ~= "" and nodes.provider_name == nodes.provider_name_before then
+					return false
+				end
+
+				-- Провайдера может не оказаться в списке: ждём не дольше APN_WAIT,
+				-- потом 14_rule пропишет настройки адаптера AUTO, и интерфейс поднимется с ними.
+				return since_slot_change(nodes.slotinfo.last_switch_time) < APN_WAIT
 			end
 		},
 		{
@@ -129,6 +199,15 @@ local rule_setting = {
 		 	end
 		},
     },
+
+	provider_name_before = {
+		note = [[ Провайдер на предыдущей итерации (для узла ifup_modem) ]],
+		{
+			["save"] = function (nodes)
+				return nodes.provider_name
+			end
+		},
+	},
 
 
 	timeout = {
@@ -226,7 +305,10 @@ function rule:make()
 	self:follow("sim_found"):debug()			-- Пропускаем все узлы ниже, если симки в слоте нет (01_rule)
 	self:follow("network_registration"):debug()	-- Пропускаем все узлы ниже, если нет регистрации (02_rule)
 	self:follow("iface_up"):debug()				-- Пропускаем все узлы ниже, если соединение есть
-	self:follow("ifup_modem"):debug()			-- Пробуем поднять интерфейс, не чаще раза в 30 сек
+	self:follow("sim_setting"):debug()			-- Провайдер задан вручную или AUTO
+	self:follow("provider_name"):debug()		-- Какой провайдер определил модем
+	self:follow("ifup_modem"):debug()			-- Пробуем поднять интерфейс, не чаще раза в 30 сек (AUTO - после определения провайдера)
+	self:follow("provider_name_before"):debug()	-- Запоминаем провайдера для следующей итерации
 	self:follow("timeout"):debug()				-- Сколько ждать соединения
 	self:follow("switch"):debug()				-- Переключаем слот, если вышел таймаут
 

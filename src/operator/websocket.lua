@@ -1,7 +1,11 @@
 local util = require "luci.util"
+local nixio = require "nixio"
 local func_nodes_builder = require "applogic.util.func_nodes_builder"
-local sys  = require "luci.sys"
 local pretty = require "applogic.util.prettyjson"
+
+-- Открываем FIFO без блокировки: если Gwsocket не запущен (нет читателя),
+-- open() сразу вернёт ошибку ENXIO, и applogic не зависнет.
+local FIFO_FLAGS = nixio.open_flags("wronly", "nonblock")
 
 local function file_exists(name)
    local f=io.open(name,"r")
@@ -37,13 +41,21 @@ local function websocket(rule, nodename, op_name, op_body)
         params["ruleid"] = rule.ruleid
 
         local ui_data = util.serialize_json(params)
-        local command = string.format("echo '%s' > %s", ui_data, pipein_file)
-        result = sys.process.exec({"/bin/sh", "-c", command }, true, true, false)
-        if result.stdout then
-            result.stdout = result.stdout:gsub("%c", "") .. "\n"
-        end
 
-        noerror = (not result.stderr)
+        -- Пишем в FIFO напрямую, без запуска /bin/sh на каждое сообщение.
+        -- Раньше здесь был sys.process.exec({"/bin/sh", "-c", "echo '...' > fifo"}):
+        -- fork+exec shell-а ~10 раз за итерацию (каждые 0.8 сек) заметно грузил CPU.
+        -- Заодно больше не ломается JSON, содержащий одинарную кавычку.
+        local fifo, err_no, err_msg = nixio.open(pipein_file, FIFO_FLAGS)
+        if fifo then
+            local written = fifo:write(ui_data .. "\n")
+            fifo:close()
+            noerror = (written ~= nil)
+            result = { stdout = "", stderr = (written == nil) and "write to fifo failed" or nil }
+        else
+            noerror = false
+            result = { stdout = "", stderr = tostring(err_msg) }
+        end
         if rule.debug_mode.enabled then
             result.stdout = pretty(params):gsub("\t", "  ")
             debug(nodename, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result.stdout, noerror)
