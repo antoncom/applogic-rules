@@ -1,5 +1,4 @@
 local util = require "luci.util"
-local md5 = require "md5" -- https://github.com/keplerproject/md5/blob/master/tests/test.lua
 local checkubus = require "applogic.util.checkubus"
 local func_nodes_builder = require "applogic.util.func_nodes_builder"
 
@@ -53,7 +52,9 @@ local function load_ubus(rule, nodename, op_name, op_body)
         
         noerror, err = checkubus(rule.conn, obj, method)
         if (noerror) then
-            cache_key = md5.sumhexa(obj..method..util.serialize_json(params))
+            -- Ключ кэша - сама строка запроса. Раньше от неё брался md5: на роутере это
+            -- стоило ~11 мс CPU за итерацию, а уникальности строки и так достаточно.
+            cache_key = obj .. "\0" .. method .. "\0" .. util.serialize_json(params)
 
             if ((not rule.cache_ubus[cache_key]) or cached == "no") then
                 local node = rule.conn:call(obj, method, params)

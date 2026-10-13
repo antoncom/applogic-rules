@@ -9,6 +9,13 @@ local operator_handler = require "applogic.operator.main"
 local loadnode = {}
 local loadnode_metatable = {
     __call = function(loadnode_metatable, rule, nodename)
+        -- Вне режима отладки объект узла (op/dbg с замыканиями и метатаблицами) создаётся
+        -- один раз и берётся из кэша: раньше он создавался заново для каждого узла на каждой итерации.
+        if not rule.debug_mode.enabled then
+            local cache = rule.__loadnode_cache
+            if cache and cache[nodename] then return cache[nodename] end
+        end
+
         local debug
         -- Turn debug mode ON for this rule
         --rule.debug_mode.enabled = (debug_cli.rule and debug_cli.rule == rule.ruleid) or rule.debug_mode.enabled
@@ -57,11 +64,13 @@ local loadnode_metatable = {
         -- rule:load("title"):execute()
         ---------------------=========
         local op = {}
+        local dbg_cached
         function op:run_node()
             operator_handler:run_node(nodename, rule)
 
             -- rule:load("title"):execute():debug()
             ------------------------------========
+            if dbg_cached then return dbg_cached end
             local dbg = {}
             function dbg:debug(...)
                 local level = arg[1]
@@ -125,9 +134,15 @@ local loadnode_metatable = {
                 end
             end
             setmetatable(dbg, { __call = function(table) return table end })
+            dbg_cached = dbg
             return dbg
         end
         setmetatable(op, { __call = function(table) return table end })
+
+        if not rule.debug_mode.enabled then
+            rule.__loadnode_cache = rule.__loadnode_cache or {}
+            rule.__loadnode_cache[nodename] = op
+        end
         return op
     end
 }
