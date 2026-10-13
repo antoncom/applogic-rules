@@ -4,12 +4,14 @@ INITFILE=/etc/init.d/applogic
 SERVICE_PID_FILE=/var/run/applogic.pid
 APP=$0
 APP_LUA=/usr/lib/lua/applogic/app.lua
+APP_LUA_BIN=/usr/bin/lua
 RETVAL=0
 
 
 usage() {
     echo "Usage: $APP [ COMMAND [ OPTIONS ] ]"
-    echo "Without any command Applogic will be run in the foreground without debug mode"    echo
+    echo "Without any command Applogic will be run in the foreground without debug mode"
+    echo
     echo "Commands are:"
     echo "    start|stop|restart|reload     controlling the daemon"
     echo "    list                          show list of active rules"
@@ -27,9 +29,21 @@ callinit() {
     exec "$INITFILE" "$1"
 }
 
-run() {
+# Выключить режим отладки в конфиге.
+# Вызывается при обычном старте и при любом завершении отладочного сеанса,
+# чтобы прибор никогда не остался в тяжёлом режиме debug.
+stop_debug() {
     uci set applogic.debug_mode.enable='0'
+    uci set applogic.debug_mode.level='ERROR'
+    uci -q delete applogic.debug_mode.rule
+    uci -q delete applogic.debug_mode.showvar
+    uci -q delete applogic.debug_mode.shownode
     uci commit applogic
+}
+
+# Обычный запуск (так стартует сервис через procd): отладка всегда выключена
+run() {
+    stop_debug
 
     "$APP_LUA_BIN" "$APP_LUA" &
     PID=$!
@@ -44,6 +58,7 @@ list() {
     RETVAL=$?
 }
 
+# Отладочный запуск в терминале: applogic debug [RULE [VAR...]]
 debug() {
     RULE=${1:-overview}
     [ $# -gt 0 ] && shift
@@ -60,16 +75,23 @@ debug() {
     uci commit applogic
 
     sleep 1
-    exec "$APP_LUA_BIN" "$APP_LUA"
+
+    # Не exec: после завершения Lua-процесса (Ctrl+C, закрытие терминала,
+    # обрыв SSH, kill) конфиг возвращается в обычный режим.
+    trap 'kill $PID 2>/dev/null' INT TERM HUP
+    "$APP_LUA_BIN" "$APP_LUA" &
+    PID=$!
+    wait $PID
+    RETVAL=$?
+
+    stop_debug
+    echo
+    echo "Applogic debug finished, debug mode is OFF. Start the service: applogic start"
 }
 
 doexit() {
     exit $RETVAL
 }
-
-APP_LUA_BIN=/usr/bin/lua
-
-trap stop_debug SIGINT
 
 [ -n "$INCLUDE_ONLY" ] && return
 
@@ -87,6 +109,7 @@ case "$CMD" in
         ;;
     debug)
         debug "$@"
+        doexit
         ;;
     list)
         list
@@ -99,3 +122,5 @@ case "$CMD" in
         usage
         ;;
 esac
+
+doexit
