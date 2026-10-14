@@ -11,6 +11,7 @@ local journal = require "applogic.operator.journal"
 local websocket = require "applogic.operator.websocket"
 local break_op = require "applogic.operator.break"
 local timeout = require "applogic.operator.timeout"
+local perf = require "applogic.util.perf"
 
 -- Обрабатываем последовательно все операторы узла.
 -- Если встречается оператор [break]=true, прерываем обработку правила.
@@ -50,12 +51,19 @@ function main:run_node(nodename, rule)
             operator_body = value
         end
 
+        -- "applogic debug perf": замер оператора (только тех, что реально выполняются)
+        local c0, w0, m0
+        if perf.enabled and (not nodelink.frozen or operator_name == "frozen" or operator_name == "break") then
+            c0, w0, m0 = perf.start()
+        end
+        local stop_node = false
+
         if not (nodelink.frozen) then
             if "skip" == operator_name then
                 local is_skip = skip(rule, nodename, operator_name, operator_body)
 
                 if is_skip then
-                    break
+                    stop_node = true
                 end
             elseif "func" == operator_name then
                 nodelink.output = func(rule, nodename, operator_name, operator_body)
@@ -92,9 +100,12 @@ function main:run_node(nodename, rule)
         if "break" == operator_name then
             break_op(rule, nodename, operator_name, operator_body)
             if rule.break_in and rule.break_in == true then
-                break
+                stop_node = true
             end
         end
+
+        if c0 then perf.stop("op", operator_name, c0, w0, m0) end
+        if stop_node then break end
     end
 
     if rule.debug_mode.enabled then debug(nodename, rule):output(nodelink.output) end

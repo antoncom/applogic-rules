@@ -17,6 +17,7 @@ usage() {
     echo "    list                          show list of active rules"
     echo "    debug [RULE [VAR...]]         run RULE in debug mode (default: overview),"
     echo "                                  show up to 5 variables VAR"
+    echo "    debug perf                    CPU / time / memory per rule and operator"
     echo "    help                          show this and exit"
 }
 
@@ -66,6 +67,11 @@ debug() {
     applogic stop
     uci set applogic.debug_mode.enable='1'
     uci set applogic.debug_mode.rule="$RULE"
+
+    # perf: отладку узлов не включаем - сбор отладочных данных исказил бы замеры
+    case "$RULE" in
+        perf|cpu) uci set applogic.debug_mode.enable='0' ;;
+    esac
 
     # drop shownodes left over from the previous debug session
     # (Lua читает список узлов из applogic.debug_mode.shownode, см. src/node/debug_cli.lua)

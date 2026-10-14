@@ -44,6 +44,7 @@
 
 -- applogic debug 05_rule		- показать отладочную таблицу правила 05_rule;
 -- applogic debug overview		- показать отладочную таблицу всех правил по заданным узлам;
+-- applogic debug perf			- расход CPU/времени/памяти по правилам и операторам (см. util/perf.lua);
 
 
 require "os"
@@ -58,6 +59,7 @@ local flist = require "applogic.util.filelist"
 local report = require "applogic.util.report"
 local md5 = require "md5"
 local subscript = require "applogic.util.subscriptions"
+local perf = require "applogic.util.perf"
 require "applogic.util.if_debug"
 
 --[[ Restore UCI config of Applogic once the debug stopped by Ctrl-C ]]
@@ -230,6 +232,7 @@ function rules:run_all()
 	local rules_list = self.setting.rules_list.target
 	local state = ''
 	local overview_mode = (debug_cli.rule == "overview")
+	if perf.enabled then perf.iter_begin() end
 
 	-- Режим stop (ubus call applogic state '{"mode":"stop"}'): модем занят веб-консолью AT-команд
 	-- или tsmsms, и правила сами выходят из make(), не обрабатывая узлы.
@@ -244,7 +247,10 @@ function rules:run_all()
 	for name, rule in util.kspairs(rules_list) do
 
 		rule.__followed = false
+		local c0, w0, m0
+		if perf.enabled then c0, w0, m0 = perf.start() end
 		state = rule(self)
+		if c0 then perf.stop("rule", name, c0, w0, m0) end
 
 		-- Правило не обработало ни одного узла (вышло из make() раньше)
 		rule.__skipped = not rule.__followed
@@ -277,7 +283,12 @@ function rules:run_all()
 		report:queue(rules, iteration)
 	end
 
-	rules:clear_cache()
+	if perf.enabled then
+		perf.gc(function() rules:clear_cache() end)
+		perf.iter_end(rules.iteration)
+	else
+		rules:clear_cache()
+	end
 	rules.iteration = rules.iteration + 1
 end
 
