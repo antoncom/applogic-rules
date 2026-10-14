@@ -238,6 +238,21 @@ end
 -- В неё попадают узлы, для которых в правиле вызван :debug(overview) (см. applogic.util.overview).
 -- Узлы выводятся в порядке их обработки в правиле.
 
+-- Максимальная длина текста в колонке NOTES (в символах): примечание узла обрезается
+-- до одной строки, чтобы таблица оставалась компактной
+local OVERVIEW_NOTE_MAX = 40
+
+-- Обрезает строку до max символов UTF-8 в одну строку (без переносов), добавляя "…"
+local function one_line(str, max)
+	local s = tostring(str or ""):gsub("%s+", " "):gsub("^ ", ""):gsub(" $", "")
+	local chars = {}
+	for ch in s:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+		chars[#chars + 1] = ch
+	end
+	if #chars <= max then return s end
+	return (table.concat(chars, "", 1, max - 1):gsub(" $", "")) .. "…"
+end
+
 local OVERVIEW_COLORS = {
 	red = ft.COLOR_LIGHT_RED,
 	yellow = ft.COLOR_LIGHT_YELLOW,
@@ -312,7 +327,7 @@ function report:overview(rules, iteration)
 					end
 				end
 
-				local note = nodedata["note"] or ""
+				local note = one_line(nodedata["note"], OVERVIEW_NOTE_MAX)
 				if ov.error then
 					note = note .. "\noverview error:\n" .. wrap_text(ov.error)
 				end
