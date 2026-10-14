@@ -407,6 +407,9 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
+
 	-- Что изменилось в "отпечатке" apn_inputs по сравнению с прошлой итерацией.
 	-- Поля отпечатка (см. узел apn_inputs): слот | провайдер | код провайдера | истёк APN_WAIT | конфиги | минута.
 	-- Ежеминутная перепроверка (последнее поле) изменением не считается.

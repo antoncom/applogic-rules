@@ -143,6 +143,9 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
+
 	local overview = {
 		-- Жёлтый: симки в слоте нет - идёт отсчёт ожидания перед переключением слота.
 		-- RESULT: "true" / "false" / "failure"; "-" пока состояние неизвестно.

@@ -1,5 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.util.rule_init"
+local cjson = require "cjson.safe"
 
 
 local rule = {}

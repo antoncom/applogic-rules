@@ -156,6 +156,9 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
+	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
+	if rule.parent.state.mode == "stop" then return end
+
 	local overview = {
 		-- Жёлтый: нет регистрации ("1" - домашняя сеть, "5" - роуминг) - идёт отсчёт timeout_reg.
 		-- Условие то же, что в [break] узла network_registration.
