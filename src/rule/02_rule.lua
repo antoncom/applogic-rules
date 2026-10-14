@@ -156,17 +156,36 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
-	if rule.parent.state.mode == "stop" then return end
-
-	local all_rules = rule.parent.setting.rules_list.target
+	local overview = {
+		-- Жёлтый: нет регистрации ("1" - домашняя сеть, "5" - роуминг) - идёт отсчёт timeout_reg.
+		-- Условие то же, что в [break] узла network_registration.
+		-- RESULT: код регистрации -1..9; "-" если значения нет.
+		["network_registration"] = { ["yellow"] = function(nodes)
+				local r = nodes.network_registration
+				if type(r) ~= "string" and type(r) ~= "number" then r = nil end
+				local not_registered = not (r == "1" or r == "5")
+				return not_registered, ((r == nil or r == "") and "-" or tostring(r))
+			end
+		},
+		-- Красный: слот переключается. Пока [skip] ждёт таймаут, значение узла пустое,
+		-- после переключения [frozen] держит его 30 сек.
+		-- RESULT: "switched" или сколько секунд осталось ждать "wait 25s".
+		["switch"] = { ["red"] = function(nodes)
+				local switch = nodes.switch
+				local switched = (switch ~= nil and switch ~= "")
+				if switched then return true, "switched" end
+				local timer = type(nodes.timeout) == "table" and tonumber(nodes.timeout.value)
+				return false, (timer and ("wait " .. timer .. "s") or "-")
+			end
+		},
+	}
 
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже первые 5 сек после переключения слотов
 	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симки в слоте нет (этим занимается 01_rule)
-	self:follow("network_registration"):debug()	-- Пропускаем все узлы ниже, если регистрация есть
+	self:follow("network_registration"):debug(overview)	-- Пропускаем все узлы ниже, если регистрация есть
 	self:follow("timeout"):debug()			-- Сколько ждать регистрации
-	self:follow("switch"):debug()			-- Переключаем слот, если вышел таймаут
+	self:follow("switch"):debug(overview)			-- Переключаем слот, если вышел таймаут
 
 end
 

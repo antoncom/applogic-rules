@@ -213,9 +213,6 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
-	if rule.parent.state.mode == "stop" then return end
-
 	self:follow("title"):debug()
 	self:follow("incoming"):debug()		-- Очередное SMS из очереди подписки (по одному за итерацию)
 	self:follow("trusted"):debug()		-- Проверяем отправителя

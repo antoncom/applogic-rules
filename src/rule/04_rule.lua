@@ -230,40 +230,41 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-
-	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
-	-- Green, Yellow and Red are measure of importance for Application logic
-	-- Green is for timers and some passive variables,
-	-- Yellow is for that nodes which switches logic - affects to normal application behavior
-	-- Red is for some extraordinal application ehavior, like watchdog, etc.
-	-- local overview = function()
-	-- 	local nodes = rule.rule_setting
-	-- 	return {
-	-- 		["timeout"] = { ["yellow"] = [[ return (nodes.timeout.value > 0) ]] },
-	-- 		["switch"] = { ["red"] = [[ return (nodes.timeout.value < 5) ]] },
-	-- 	}
-	-- end
-
-	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
-	if rule.parent.state.mode == "stop" then return end
-
-	local all_rules = rule.parent.setting.rules_list.target
+	local overview = {
+		-- Жёлтый: правило не прервалось на ping_status - идёт отсчёт timeout_ping.
+		-- Так бывает, когда пинга нет (value ~= "1") или действует антидребезг [skip]
+		-- (статус менялся меньше 10 сек назад - тогда [break] не выполняется).
+		-- RESULT: "1" / "0"; "1 (debounce)" при антидребезге; "-" если статуса нет.
+		["ping_status"] = { ["yellow"] = function(nodes)
+				local ping = type(nodes.ping_status) == "table" and nodes.ping_status or {}
+				local v = ping.value
+				local diff = math.abs((tonumber(ping.changed) or 0) - (tonumber(ping.updated) or 0))
+				local debounce = (diff < 10)
+				local shown = (v == nil or v == "") and "-" or tostring(v)
+				if v == "1" and debounce then shown = shown .. " (debounce)" end
+				return (v ~= "1" or debounce), shown
+			end
+		},
+		-- Красный: слот переключается. Пока [skip] ждёт таймаут, значение узла пустое,
+		-- после переключения [frozen] держит его 30 сек.
+		-- RESULT: "switched" или сколько секунд осталось ждать "wait 25s".
+		["switch"] = { ["red"] = function(nodes)
+				local switch = nodes.switch
+				local switched = (switch ~= nil and switch ~= "")
+				if switched then return true, "switched" end
+				local timer = type(nodes.timeout) == "table" and tonumber(nodes.timeout.value)
+				return false, (timer and ("wait " .. timer .. "s") or "-")
+			end
+		},
+	}
 
 	self:follow("title"):debug() -- Use debug(ONLY) to check the var only
 
 	self:follow("slotinfo"):debug()
-	--self:follow("sim_found"):debug()
 	self:follow("iface_up"):debug()
-	
-
-	--self:follow("host"):debug()
-
-    self:follow("ping_status"):debug()
-    --self:follow("ping_before"):debug()
-
+    self:follow("ping_status"):debug(overview)
 	self:follow("timeout"):debug()
-
-	self:follow("switch"):debug()
+	self:follow("switch"):debug(overview)
 
 end
 

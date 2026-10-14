@@ -407,32 +407,67 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
-	-- Green, Yellow and Red are measure of importance for Application logic
-	-- Green is for timers and some passive variables,
-	-- Yellow is for that vars which switches logic - affects to normal application behavior
-	-- Red is for some extraordinal application behavior, like watchdog, etc.
-	local overview = {
-		["reset_modem"] = { ["yellow"] = [[ return ($reset_modem == "true") ]] },
-		["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
-		["sim_found"] = { ["yellow"] = [[ return ($sim_found == "false" or $sim_found == "*") ]] },
-		["reset_timer"] = { ["yellow"] = [[ return (tonumber($reset_timer) and tonumber($reset_timer) > 0) ]] },
-		["wait_timer"] = { ["yellow"] = [[ return (tonumber($wait_timer) and tonumber($wait_timer) > 0) ]] },
-	}
+	-- Что изменилось в "отпечатке" apn_inputs по сравнению с прошлой итерацией.
+	-- Поля отпечатка (см. узел apn_inputs): слот | провайдер | код провайдера | истёк APN_WAIT | конфиги | минута.
+	-- Ежеминутная перепроверка (последнее поле) изменением не считается.
+	-- Возвращает строку вида "slot,provider" или nil, если ничего не изменилось.
+	local function apn_inputs_changes(nodes)
+		local now, before = nodes.apn_inputs, nodes.apn_inputs_before
+		if type(now) ~= "string" then return nil end
+		if type(before) ~= "string" or before == "" then return "init" end
+		local function split(str)
+			local t = {}
+			for field in (str .. "|"):gmatch("(.-)|") do t[#t + 1] = field end
+			return t
+		end
+		local a, b = split(now), split(before)
+		local labels = { "slot", "provider", "provider", "apn_wait", "config" }
+		local changed, seen = {}, {}
+		for i, label in ipairs(labels) do
+			if a[i] ~= b[i] and not seen[label] then
+				changed[#changed + 1] = label
+				seen[label] = true
+			end
+		end
+		return (#changed > 0) and table.concat(changed, ",") or nil
+	end
 
-	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
-	if rule.parent.state.mode == "stop" then return end
+	local overview = {
+		["apn_inputs"] = { ["yellow"] = function(nodes)
+				local changes = apn_inputs_changes(nodes)
+				return (changes ~= nil), (changes or "-")
+			end
+		},
+		["apn_target"] = { ["yellow"] = function(nodes)
+				local t = nodes.apn_target
+				if type(t) == "table" then
+					return false, tostring(t.provider_name) .. ": " .. tostring(t.apn)
+				end
+				if nodes.apn_inputs == nodes.apn_inputs_before then return false, "-" end
+				return true, "not defined"
+			end
+		},
+		["apn_apply"] = { ["red"] = function(nodes)
+				local t = nodes.apn_target
+				if type(t) ~= "table" then return false, "-" end
+				local c = (type(nodes.apn_current) == "table") and nodes.apn_current or {}
+				local in_sync = (c.apn == t.apn) and (c.username == t.username) and (c.password == t.password)
+				if in_sync then return false, "in sync" end
+				return true, "apply " .. tostring(t.apn)
+			end
+		},
+	}
 
 
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже первые 5 сек после переключения слотов
 	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симки в слоте нет
 	self:follow("provider_setting"):debug()	-- Получаем текущие настройки провайдера из конфига
-	self:follow("apn_inputs"):debug()		-- Изменилось ли что-то, от чего зависит APN (без обращения к UCI)
+	self:follow("apn_inputs"):debug(overview)		-- Изменилось ли что-то, от чего зависит APN (без обращения к UCI)
 	self:follow("adapters"):debug()			-- Список провайдеров с их APN/логином/паролем
-	self:follow("apn_target"):debug()		-- Какие APN/логин/пароль нужны для Сим-карты в слоте (с учётом AUTO)
+	self:follow("apn_target"):debug(overview)		-- Какие APN/логин/пароль нужны для Сим-карты в слоте (с учётом AUTO)
 	self:follow("apn_current"):debug()		-- Какие APN/логин/пароль сейчас на интерфейсе "modem"
-	self:follow("apn_apply"):debug()		-- Если отличаются - прописываем и перезагружаем конфиг сети
+	self:follow("apn_apply"):debug(overview)		-- Если отличаются - прописываем и перезагружаем конфиг сети
 	self:follow("apn_inputs_before"):debug()-- Запоминаем "отпечаток" для следующей итерации
 	self:follow("provider_detected"):debug()-- Определяем какй провайдер определился на Сим-карте
 	self:follow("provider_detected_before"):debug()-- Сохраняем значение провайдера для сравнения на след.итерации

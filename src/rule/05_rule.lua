@@ -1,6 +1,5 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.util.rule_init"
-local cjson = require "cjson.safe"
 
 
 local rule = {}
@@ -162,33 +161,24 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	-- Если надо вывести отдельные узлы в отладочную таблицу режима "applogic debug overview",
-	-- то добавьте сюда Lua-таблицу для таких узлов и передайте её в :debug(overview).
-	-- Функция возвращает два значения: true/false и значение для колонки RESULT:
-	--     return true, nodes.signal.value
-	-- Цвет строки применяется, если первое значение true. Приоритет: red > yellow > green.
-	--   green  - таймеры и пассивные узлы
-	--   yellow - узлы, переключающие логику правила
-	--   red    - нештатное поведение (переключение слота и т.п.)
-	-- Если второе значение не вернуть, в RESULT выводится полное значение узла.
-	-- nodes - те же значения узлов, что получают операторы ([func], [skip] ...)
+	-- Если надо вывести отдельные узлы в отладочную тблицу режима "applogic debug overview",
+	-- то добавьте сюда Lua-таблицу для таких узлов:
 	local overview = {
 		["signal"] = { ["yellow"] = function(nodes)
-				local signal = type(nodes.signal) == "table" and nodes.signal or {}
-				local conf = type(nodes.signal_min_conf) == "table" and nodes.signal_min_conf or {}
-				local sig = tonumber(signal.value)
-				local sig_min = tonumber(conf.signal_min)
-				local is_low = (sig ~= nil and sig_min ~= nil and sig < sig_min)
-				return is_low, string.format("%s (min %s)", tostring(signal.value or "-"), tostring(conf.signal_min or "-"))
-			end
+		        local signal = type(nodes.signal) == "table" and nodes.signal or {}
+		        local conf = type(nodes.signal_min_conf) == "table" and nodes.signal_min_conf or {}
+		        local sig = tonumber(signal.value)
+		        local sig_min = tonumber(conf.signal_min)
+		        local is_low = (sig ~= nil and sig_min ~= nil and sig < sig_min)
+		        return is_low, string.format("%s (min %s)", tostring(signal.value or "-"), tostring(conf.signal_min or "-"))
+		    end
 		},
 		["switch"] = { ["red"] = function(nodes)
-				-- [frozen] хранит значение узла как JSON-строку, поэтому декодируем
-				local switch = nodes.switch
-				if type(switch) == "string" then switch = cjson.decode(switch) end
-				local status = type(switch) == "table" and switch["status"] or nil
-				return (status == "started"), (status or "-")
-			end
+		        local switch = nodes.switch
+		        if type(switch) == "string" then switch = cjson.decode(switch) end
+		        local status = type(switch) == "table" and switch["status"] or nil
+		        return (status == "started"), (status or "-")
+		    end
 		},
 	}
 

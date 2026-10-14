@@ -295,22 +295,40 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
-	if rule.parent.state.mode == "stop" then return end
-
-	local all_rules = rule.parent.setting.rules_list.target
+	local overview = {
+		-- Жёлтый: интерфейс "modem" не поднят - правило пытается его поднять и идёт отсчёт timeout_link.
+		-- Условие обратное [break] узла iface_up.
+		-- RESULT: "up" / "down"; "-" если статуса интерфейса нет.
+		["iface_up"] = { ["yellow"] = function(nodes)
+				local up = nodes.iface_up
+				if up == true then return false, "up" end
+				return true, ((up == false) and "down" or "-")
+			end
+		},
+		-- Красный: слот переключается. Пока [skip] ждёт таймаут, значение узла пустое,
+		-- после переключения [frozen] держит его 30 сек.
+		-- RESULT: "switched" или сколько секунд осталось ждать "wait 25s".
+		["switch"] = { ["red"] = function(nodes)
+				local switch = nodes.switch
+				local switched = (switch ~= nil and switch ~= "")
+				if switched then return true, "switched" end
+				local timer = type(nodes.timeout) == "table" and tonumber(nodes.timeout.value)
+				return false, (timer and ("wait " .. timer .. "s") or "-")
+			end
+		},
+	}
 
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()				-- Пропускаем все узлы ниже первые 5 сек после переключения слотов
 	self:follow("sim_found"):debug()			-- Пропускаем все узлы ниже, если симки в слоте нет (01_rule)
 	self:follow("network_registration"):debug()	-- Пропускаем все узлы ниже, если нет регистрации (02_rule)
-	self:follow("iface_up"):debug()				-- Пропускаем все узлы ниже, если соединение есть
+	self:follow("iface_up"):debug(overview)				-- Пропускаем все узлы ниже, если соединение есть
 	self:follow("sim_setting"):debug()			-- Провайдер задан вручную или AUTO
 	self:follow("provider_name"):debug()		-- Какой провайдер определил модем
 	self:follow("ifup_modem"):debug()			-- Пробуем поднять интерфейс, не чаще раза в 30 сек (AUTO - после определения провайдера)
 	self:follow("provider_name_before"):debug()	-- Запоминаем провайдера для следующей итерации
 	self:follow("timeout"):debug()				-- Сколько ждать соединения
-	self:follow("switch"):debug()				-- Переключаем слот, если вышел таймаут
+	self:follow("switch"):debug(overview)				-- Переключаем слот, если вышел таймаут
 
 end
 

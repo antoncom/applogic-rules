@@ -143,15 +143,32 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	-- Пропускаем выполнние правила, если tsmodem automation == "stop"
-	if rule.parent.state.mode == "stop" then return end
-
+	local overview = {
+		-- Жёлтый: симки в слоте нет - идёт отсчёт ожидания перед переключением слота.
+		-- RESULT: "true" / "false" / "failure"; "-" пока состояние неизвестно.
+		["sim_found"] = { ["yellow"] = function(nodes)
+				local sim = type(nodes.sim_found) == "table" and nodes.sim_found or {}
+				local v = sim.value
+				local is_absent = (v ~= nil and v ~= "" and v ~= "true")
+				return is_absent, ((v == nil or v == "") and "-" or tostring(v))
+			end
+		},
+		-- Красный: слот переключается. Узел switch получает значение только когда отработал
+		-- (при [break] выше по правилу его значение очищается), а [frozen] держит его 30 сек.
+		-- RESULT: "switched" / "-".
+		["switch"] = { ["red"] = function(nodes)
+				local switch = nodes.switch
+				local switched = (switch ~= nil and switch ~= "")
+				return switched, (switched and "switched" or "-")
+			end
+		},
+	}
 
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()			-- Пропускаем все узлы ниже, если слот переключили менее 5 сек назад
-	self:follow("sim_found"):debug()		-- Пропускаем все узлы ниже, если симка найдена или состояние неизвестно
+	self:follow("sim_found"):debug(overview)		-- Пропускаем все узлы ниже, если симка найдена или состояние неизвестно
 	self:follow("timeout"):debug()			-- Сколько ждать симку в пустом слоте (из конфига); пока ждём - прерываем правило
-	self:follow("switch"):debug()			-- Переключаем слот, если вышел таймаут
+	self:follow("switch"):debug(overview)			-- Переключаем слот, если вышел таймаут
 
 end
 
