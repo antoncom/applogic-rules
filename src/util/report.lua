@@ -234,6 +234,38 @@ function report:print_rule(level, iteration)
 	end
 end
 
+-- Текст предупреждения о режиме stop или nil, если правила выполняются.
+-- app_state = { mode = "run"/"stop", since = os.time() начала stop, skipped = { "01_rule", ... } }
+function report.stop_banner(app_state)
+	if not app_state or app_state.mode ~= "stop" then return nil end
+	local secs = app_state.since and (os.time() - app_state.since) or 0
+	local skipped = app_state.skipped or {}
+	return string.format("STOP %d s: модем занят (веб-консоль AT-команд или SMS), правила ждут режима run\n"
+		.. "не выполняются: %s", secs, (#skipped > 0) and table.concat(skipped, ", ") or "-")
+end
+
+-- "applogic debug <rule>": однократное сообщение, когда правило перестало выполняться
+-- (вышло из make(), не обработав ни одного узла) и когда снова начало.
+function report:skip_notice(rule, app_state, stop_since)
+	local yellow, green, reset = "\27[93m", "\27[92m", "\27[0m"
+	if rule.__skipped and not rule.__skip_notified then
+		rule.__skip_notified = true
+		local reason
+		if app_state and app_state.mode == "stop" then
+			reason = "Applogic в режиме stop - модем занят веб-консолью AT-команд или SMS (tsmsms).\n"
+				.. "  Правило продолжит работу после 'ubus call applogic state {\"mode\":\"run\"}'."
+		else
+			reason = "правило вышло из make(), не обработав ни одного узла."
+		end
+		print(string.format("%s[%s] %s - правило не выполняется: %s%s",
+			yellow, rule.ruleid or "?", os.date("%H:%M:%S"), reason, reset))
+	elseif not rule.__skipped and rule.__skip_notified then
+		rule.__skip_notified = nil
+		print(string.format("%s[%s] %s - правило снова выполняется (режим run).%s",
+			green, rule.ruleid or "?", os.date("%H:%M:%S"), reset))
+	end
+end
+
 -- Общая отладочная таблица "applogic debug overview".
 -- В неё попадают узлы, для которых в правиле вызван :debug(overview) (см. applogic.util.overview).
 -- Узлы выводятся в порядке их обработки в правиле.
@@ -263,9 +295,10 @@ local OVERVIEW_COLORS = {
 	yellow = ft.COLOR_LIGHT_YELLOW,
 }
 
-function report:overview(rules, iteration)
+function report:overview(rules, iteration, app_state)
 	local ftable = ft.new()
 	local current_row
+	app_state = app_state or {}
 
 	ftable:set_cell_prop(ft.ANY_ROW, 1, ft.CPROP_TEXT_ALIGN, ft.ALIGNED_LEFT)
 	ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_ROW_TYPE, ft.ROW_HEADER)
@@ -273,6 +306,17 @@ function report:overview(rules, iteration)
 	current_row = 1
 	ftable:write_ln("RULEID", "VARIABLE", "NOTES", "PASS LOGIC", "RESULT", "#"..tostring(iteration))
 	ftable:add_separator()
+
+	-- Режим stop: строка-предупреждение на всю ширину таблицы
+	local banner = report.stop_banner(app_state)
+	if banner then
+		current_row = current_row + 1
+		ftable:write_ln(banner, "", "", "", "", "")
+		ftable:set_cell_span(current_row, 1, 6)
+		ftable:set_cell_prop(current_row, 1, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
+		ftable:add_separator()
+	end
+	local first_rule_row = current_row + 1
 
 	local groups = 0
 	for ruleid, rule in util.kspairs(rules) do
@@ -296,9 +340,14 @@ function report:overview(rules, iteration)
 				local ov = nodedata.overview or {}
 				current_row = current_row + 1
 
-				-- Цвет строки: red / yellow / green (green - "пассивные" узлы, без акцента)
+				-- Цвет строки: red / yellow / green (green - "пассивные" узлы, без акцента).
+				-- Правило пропущено (режим stop) - значения устарели, строка серая.
 				local color = OVERVIEW_COLORS[ov.color]
-				if color then
+				if rule.__skipped then
+					for _, col in ipairs({1, 2, 3, 4, 5}) do
+						ftable:set_cell_prop(current_row, col, ft.CPROP_CONT_FG_COLOR, ft.COLOR_DARK_GRAY)
+					end
+				elseif color then
 					for _, col in ipairs({1, 2, 3, 5}) do
 						ftable:set_cell_prop(current_row, col, ft.CPROP_CONT_FG_COLOR, color)
 					end
@@ -313,7 +362,9 @@ function report:overview(rules, iteration)
 
 				-- Колонка PASS LOGIC
 				local passlogic = ""
-				if nodedata.reached == false then
+				if rule.__skipped then
+					passlogic = (app_state.mode == "stop") and "stopped" or "skipped"
+				elseif nodedata.reached == false then
 					passlogic = "not reached"
 					ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_DARK_GRAY)
 				elseif nodedata["operator"] then
@@ -349,7 +400,7 @@ function report:overview(rules, iteration)
 				else
 					result = (nodedata.output and nodedata.output.value) or "empty"
 				end
-				if nodedata.reached == false then result = "-" end  -- значение с прошлой итерации не показываем
+				if nodedata.reached == false or rule.__skipped then result = "-" end  -- значение с прошлой итерации не показываем
 				local noerror = (nodedata.noerror ~= false) and not ov.error
 				local check = noerror and "✔" or "✖"
 
@@ -361,7 +412,7 @@ function report:overview(rules, iteration)
 		end
 	end
 
-	if current_row == 1 then
+	if current_row < first_rule_row and not banner then
 		ftable:write_ln("-", "-", "Nothing to overview: add :debug(overview) to nodes in rule files", "-", "-", "")
 	end
 

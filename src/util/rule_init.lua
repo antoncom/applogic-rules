@@ -7,6 +7,9 @@ local util = require "luci.util"
 
 local function rule_init(table, rule_setting, parent)
     function table:follow(nodename)
+        -- Отметка для движка: правило на этой итерации обработало хотя бы один узел.
+        -- Если правило вышло из make() раньше (например, режим stop), app.lua покажет это в отладке.
+        table.__followed = true
         return loadnode(table, nodename):run_node()
     end
 

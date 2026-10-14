@@ -229,13 +229,33 @@ function rules:run_all()
 
 	local rules_list = self.setting.rules_list.target
 	local state = ''
+	local overview_mode = (debug_cli.rule == "overview")
+
+	-- Режим stop (ubus call applogic state '{"mode":"stop"}'): модем занят веб-консолью AT-команд
+	-- или tsmsms, и правила сами выходят из make(), не обрабатывая узлы.
+	-- Запоминаем, с какого момента действует stop и какие правила пропущены - для отладочных режимов.
+	if rules.state.mode == "stop" then
+		rules.stop_since = rules.stop_since or os.time()
+	else
+		rules.stop_since = nil
+	end
+	rules.skipped = {}
 
 	for name, rule in util.kspairs(rules_list) do
 
+		rule.__followed = false
 		state = rule(self)
 
+		-- Правило не обработало ни одного узла (вышло из make() раньше)
+		rule.__skipped = not rule.__followed
+		if rule.__skipped then rules.skipped[#rules.skipped + 1] = name end
+
+		-- "applogic debug 01_rule": один раз сообщаем, что правило перестало / снова начало выполняться
+		if rule.debug_mode.enabled and debug_cli.rule == name then
+			report:skip_notice(rule, rules.state, rules.stop_since)
+		end
+
 		-- В режиме overview таблицы отдельных правил не печатаем, иначе они перемешиваются с общей таблицей
-		local overview_mode = (debug_cli.rule == "overview")
 		if rule.debug_mode.enabled and not overview_mode then
 			local rule_has_error = rule.debug_mode.level == "ERROR" and (rule.debug and rule.debug.noerror and rule.debug.noerror == false)
 			local report_anyway_mode = rule.debug_mode.level == "INFO"
@@ -250,7 +270,7 @@ function rules:run_all()
 	end
 
 	if (debug_cli.rule and debug_cli.rule == "overview") then
-		rules:overview(rules_list,rules.iteration)
+		rules:overview(rules_list, rules.iteration)
 	end
 
 	if (debug_cli.rule and debug_cli.rule == "queue") then
@@ -264,7 +284,11 @@ end
 -- Выводим общую отладочную таблицу, которая показывается при выполнении консольной команды "applogic debug overview"
 
 function rules:overview(rules_list, iteration)
-	report:overview(rules_list, iteration)
+	report:overview(rules_list, iteration, {
+		mode = rules.state.mode,
+		since = rules.stop_since,
+		skipped = rules.skipped,
+	})
 end
 
 -- Services Applogic depends on. When one of them (re)registers its ubus objects,
