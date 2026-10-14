@@ -7,10 +7,10 @@ local pretty = require "applogic.util.prettyjson"
 -- open() сразу вернёт ошибку ENXIO, и applogic не зависнет.
 local FIFO_FLAGS = nixio.open_flags("wronly", "nonblock")
 
-local function file_exists(name)
-   local f=io.open(name,"r")
-   if f~=nil then io.close(f) return true else return false end
-end
+-- Раньше перед записью FIFO проверялся отдельным io.open() (file_exists) - это второе
+-- открытие файла на каждое сообщение. Теперь достаточно одного nixio.open():
+-- нет файла - ENOENT, нет читателя (Gwsocket не запущен) - ENXIO.
+local ENOENT = 2
 
 local function websocket(rule, nodename, op_name, op_body)
     local debug
@@ -36,35 +36,33 @@ local function websocket(rule, nodename, op_name, op_body)
         noerror = false
     end
 
-    if (file_exists(pipein_file)) then -- Check if pipein file exists
-        local params = tmp_res or {}
-        params["ruleid"] = rule.ruleid
+    local params = tmp_res or {}
+    params["ruleid"] = rule.ruleid
 
-        local ui_data = util.serialize_json(params)
-
-        -- Пишем в FIFO напрямую, без запуска /bin/sh на каждое сообщение.
-        -- Раньше здесь был sys.process.exec({"/bin/sh", "-c", "echo '...' > fifo"}):
-        -- fork+exec shell-а ~10 раз за итерацию (каждые 0.8 сек) заметно грузил CPU.
-        -- Заодно больше не ломается JSON, содержащий одинарную кавычку.
-        local fifo, err_no, err_msg = nixio.open(pipein_file, FIFO_FLAGS)
-        if fifo then
-            local written = fifo:write(ui_data .. "\n")
-            fifo:close()
-            noerror = (written ~= nil)
-            result = { stdout = "", stderr = (written == nil) and "write to fifo failed" or nil }
-        else
-            noerror = false
-            result = { stdout = "", stderr = tostring(err_msg) }
-        end
+    -- Пишем в FIFO напрямую, без запуска /bin/sh на каждое сообщение.
+    -- Раньше здесь был sys.process.exec({"/bin/sh", "-c", "echo '...' > fifo"}):
+    -- fork+exec shell-а ~10 раз за итерацию (каждые 0.8 сек) заметно грузил CPU.
+    -- Заодно больше не ломается JSON, содержащий одинарную кавычку.
+    local fifo, err_no, err_msg = nixio.open(pipein_file, FIFO_FLAGS)
+    if fifo then
+        local written = fifo:write(util.serialize_json(params) .. "\n")
+        fifo:close()
+        noerror = (written ~= nil)
+        result = { stdout = "", stderr = (written == nil) and "write to fifo failed" or nil }
         if rule.debug_mode.enabled then
             result.stdout = pretty(params):gsub("\t", "  ")
-            debug(nodename, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result.stdout, noerror)
+            debug(nodename, rule):operator(op_name, pretty(params):gsub("\t", "  "), result.stdout, noerror)
         end
-    else -- if no pipein file (or Gwsocket is not started)
+    else
         noerror = false
         if rule.debug_mode.enabled then
-            local result_str = "No pipe file existed: " .. pipein_file .. "\nCheck Gwsocket started properly."
-            debug(nodename, rule):operator(op_name, pretty(param_list):gsub("\t", "  "), result_str, noerror)
+            local result_str
+            if err_no == ENOENT then -- no pipein file (Gwsocket is not started)
+                result_str = "No pipe file existed: " .. pipein_file .. "\nCheck Gwsocket started properly."
+            else
+                result_str = "Can't open " .. pipein_file .. ": " .. tostring(err_msg)
+            end
+            debug(nodename, rule):operator(op_name, pretty(params):gsub("\t", "  "), result_str, noerror)
         end
     end
 end

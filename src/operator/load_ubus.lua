@@ -21,10 +21,10 @@ local perf = require "applogic.util.perf"
 local function load_ubus(rule, nodename, op_name, op_body)
     local debug
     local cache_key = ""
-    local cached = ""
     local result = {}
     local noerror = true
     local err = ""
+    local tmp_res, obj, method, params
     local nodes = func_nodes_builder:make_nodes(rule)
 
     if rule.debug_mode.enabled then debug = require "applogic.node.debug" end
@@ -41,38 +41,47 @@ local function load_ubus(rule, nodename, op_name, op_body)
         noerror = false
     end
 
+    if (noerror and type(tmp_res) ~= "table") then
+        noerror, err = false, "[load-ubus] must return a table { object, method, params }"
+    end
 
     if (noerror) then
 
-        cached = tmp_res["cached"] or "yes" -- Allow to user turn OFF caching the node
-        
-        --[[ LOAD FROM UBUS ]]
-        obj = string.format("%s", (tmp_res.object or ""))
-        method = string.format("%s", (tmp_res.method or ""))
-        params = util.clone((tmp_res.params or {}))
-        
-        -- "applogic debug perf": разбивка [load-ubus] на проверку объекта, ключ кэша и сам вызов
-        local c0, w0, m0
-        if perf.enabled then c0, w0, m0 = perf.start() end
-        noerror, err = checkubus(rule.conn, obj, method)
-        if c0 then perf.stop("ubus", "ubus.check", c0, w0, m0) end
-        if (noerror) then
-            -- Ключ кэша - сама строка запроса. Раньше от неё брался md5: на роутере это
-            -- стоило ~11 мс CPU за итерацию, а уникальности строки и так достаточно.
-            if c0 then c0, w0, m0 = perf.start() end
-            cache_key = obj .. "\0" .. method .. "\0" .. util.serialize_json(params)
-            if c0 then perf.stop("ubus", "ubus.key", c0, w0, m0) end
+        local cached = tmp_res["cached"] or "yes" -- Allow to user turn OFF caching the node
 
-            if ((not rule.cache_ubus[cache_key]) or cached == "no") then
+        --[[ LOAD FROM UBUS ]]
+        obj = tostring(tmp_res.object or "")
+        method = tostring(tmp_res.method or "")
+        params = tmp_res.params or {}
+
+        -- "applogic debug perf": разбивка [load-ubus] на ключ кэша, проверку объекта и сам вызов
+        local c0, w0, m0
+
+        -- Ключ кэша - сама строка запроса. Раньше от неё брался md5: на роутере это
+        -- стоило ~11 мс CPU за итерацию, а уникальности строки и так достаточно.
+        -- Пустые параметры (самый частый случай) не сериализуем.
+        if perf.enabled then c0, w0, m0 = perf.start() end
+        cache_key = obj .. "\0" .. method .. "\0" .. ((next(params) == nil) and "{}" or util.serialize_json(params))
+        if c0 then perf.stop("ubus", "ubus.key", c0, w0, m0) end
+
+        if (rule.cache_ubus[cache_key] and cached ~= "no") then
+            -- Такой же запрос уже был на этой итерации: берём ответ из кэша.
+            -- Проверка объекта на шине нужна только перед настоящим вызовом.
+            result = rule.cache_ubus[cache_key]
+        else
+            if c0 then c0, w0, m0 = perf.start() end
+            noerror, err = checkubus(rule.conn, obj, method)
+            if c0 then perf.stop("ubus", "ubus.check", c0, w0, m0) end
+
+            if (noerror) then
                 if c0 then c0, w0, m0 = perf.start() end
                 local node = rule.conn:call(obj, method, params)
                 if c0 then perf.stop("ubus", "ubus.call", c0, w0, m0) end
                 rule.cache_ubus[cache_key] = node or { info = "ubus call for [" .. obj .."][".. method .."] returned empty or nil."}
+                result = rule.cache_ubus[cache_key]
+            else
+                result = { error = "ubus object or method not found: [" .. obj .."][".. method .."] failed"}
             end
-
-            result = rule.cache_ubus[cache_key] or { error = "ubus data not found in cache: [" .. obj .."][".. method .."] failed"}
-        else
-            result = { error = "ubus object or method not found: [" .. obj .."][".. method .."] failed"}
         end
     end
 

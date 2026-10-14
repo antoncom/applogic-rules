@@ -119,9 +119,21 @@ end
 -- Вспомогательная функция для очистки кэшированных UBUS-запросов.
 -- Данный кэш очищается перед каждой новой итерацией обработки правил.
 
+-- Полная сборка мусора - раз в GC_FULL_EVERY итераций.
+-- Раньше collectgarbage() вызывался на каждой итерации. Полная сборка обходит всю кучу
+-- (~500 KB), а мусора за итерацию набирается всего ~30 KB, поэтому она съедала около
+-- четверти CPU applogic (applogic debug perf: gc ~11 мс из ~50 мс). Между полными сборками
+-- работает штатный инкрементальный сборщик Lua; куча колеблется примерно до 1 MB.
+local GC_FULL_EVERY = 10
+
+-- Возвращает true, если на этой итерации была полная сборка мусора
 function rules:clear_cache()
 	rules.cache_ubus, rules.cache_uci, rules.cache_bash = {}, {}, {}
-	collectgarbage()
+	if (rules.iteration % GC_FULL_EVERY) == 0 then
+		collectgarbage()
+		return true
+	end
+	return false
 
 end
 
@@ -284,7 +296,7 @@ function rules:run_all()
 	end
 
 	if perf.enabled then
-		perf.gc(function() rules:clear_cache() end)
+		perf.gc(function() return rules:clear_cache() end)
 		perf.iter_end(rules.iteration)
 	else
 		rules:clear_cache()

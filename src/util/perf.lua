@@ -32,7 +32,7 @@ local wall = (ok_socket and socket.gettime) or os.time
 local function mem() return collectgarbage("count") end
 
 local stats = {}            -- stats[group][name] = { cpu, wall, kb, n, max }
-local window = { iterations = 0, first = nil, last = nil, alloc = 0, live = 0 }
+local window = { iterations = 0, first = nil, last = nil, alloc = 0, alloc_iters = 0, live = 0, now = 0 }
 local iter_mark             -- начало текущей итерации: { c, w }
 local last_end              -- конец предыдущей итерации: { c, w }
 local prev_live             -- размер кучи Lua после GC на предыдущей итерации
@@ -72,18 +72,30 @@ function perf.iter_begin()
     iter_mark = { c = c, w = w }
 end
 
--- Сборка мусора в конце итерации (rules:clear_cache() вызывает collectgarbage())
+-- Сборка мусора в конце итерации: rules:clear_cache() раз в несколько итераций
+-- делает полную сборку (collectgarbage()) и возвращает true.
+-- Размер "живой" кучи и сколько выделяется за итерацию считаем только по полным сборкам:
+-- между ними мусор копится в куче, а инкрементальный сборщик до порога почти не работает.
+local iters_since_full = 0
 function perf.gc(fn)
     local before = mem()
     local c0, w0 = clock(), wall()
-    fn()
+    local full = fn()
     local live = mem()
+    iters_since_full = iters_since_full + 1
     if not warmup then
         acc("loop", "gc", clock() - c0, wall() - w0, 0)
-        if prev_live then window.alloc = window.alloc + math.max(0, before - prev_live) end
-        window.live = live
     end
-    prev_live = live
+    if full then
+        if not warmup then window.live = live end
+        if prev_live and not warmup then
+            window.alloc = window.alloc + math.max(0, before - prev_live)
+            window.alloc_iters = window.alloc_iters + iters_since_full
+        end
+        prev_live = live
+        iters_since_full = 0
+    end
+    window.now = live
 end
 
 local report  -- объявлена ниже
@@ -104,7 +116,7 @@ function perf.iter_end(iteration)
         if window.iterations >= PERF_WINDOW then
             report()
             stats = {}
-            window = { iterations = 0, first = nil, last = nil, alloc = 0, live = window.live }
+            window = { iterations = 0, first = nil, last = nil, alloc = 0, alloc_iters = 0, live = window.live, now = window.now }
         end
     end
     -- Время на вывод таблицы не попадает ни в итерацию, ни в "between"
@@ -182,7 +194,7 @@ report = function()
 
     -- Итерация
     section("ИТЕРАЦИЯ")
-    line("gc", stats.loop.gc, "-", "clear_cache() + collectgarbage()", true)
+    line("gc", stats.loop.gc, "-", "clear_cache(); полная сборка раз в 10 итераций - см. MAX", true)
     line("TOTAL", total, "-", "вся итерация", true)
     line("between", between, "-", "между итерациями: таймер uloop, события ubus", true)
     if between then
@@ -195,8 +207,9 @@ report = function()
         ftable:set_cell_prop(row, 2, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)
     end
     row = row + 1
-    ftable:write_ln("heap", string.format("%.0f KB", window.live), "", "", string.format("%.0f", window.alloc / n), "",
-        "куча Lua после GC; ALLOC - выделено за итерацию (≈)")
+    local alloc = (window.alloc_iters > 0) and string.format("%.0f", window.alloc / window.alloc_iters) or "-"
+    ftable:write_ln("heap", string.format("%.0f KB", window.live), "", "", alloc, "",
+        string.format("куча Lua после полной сборки (сейчас %.0f KB); ALLOC - выделено за итерацию", window.now))
 
     ftable:set_border_style(ft.BOLD_STYLE)
     print(tostring(ftable))
