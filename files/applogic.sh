@@ -17,7 +17,8 @@ usage() {
     echo "    list                          show list of active rules"
     echo "    debug [RULE [VAR...]]         run RULE in debug mode (default: overview),"
     echo "                                  show up to 5 variables VAR"
-    echo "    debug perf                    CPU / time / memory per rule and operator"
+    echo "    debug perf [legend]           CPU / time / memory per rule and operator,"
+    echo "                                  legend - explain the table columns"
     echo "    help                          show this and exit"
 }
 

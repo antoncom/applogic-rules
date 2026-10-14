@@ -1,6 +1,7 @@
 -- Режим "applogic debug perf": расход CPU, времени и памяти по правилам и операторам.
 --
--- Запуск:  applogic debug perf
+-- Запуск:  applogic debug perf            - таблица
+--          applogic debug perf legend     - таблица с пояснениями к колонкам ("КАК ЧИТАТЬ")
 --
 -- Каждые PERF_WINDOW итераций в консоль выводится таблица со средними значениями
 -- на одну итерацию за это окно:
@@ -19,7 +20,11 @@
 local debug_cli = require "applogic.node.debug_cli"
 
 local PERF_WINDOW = 10      -- итераций в одном окне усреднения (≈ 10 x (800 мс + итерация))
-local PERF_LEGEND = true    -- выводить под таблицей раздел "КАК ЧИТАТЬ" (пояснения для колонок)
+-- Раздел "КАК ЧИТАТЬ" (пояснения к колонкам) под таблицей: applogic debug perf legend
+local PERF_LEGEND = false
+for _, arg in ipairs(debug_cli.shownode or {}) do
+    if arg == "legend" then PERF_LEGEND = true end
+end
 
 local perf = {}
 perf.enabled = (debug_cli.rule == "perf" or debug_cli.rule == "cpu")
@@ -109,6 +114,9 @@ function perf.iter_end(iteration)
         warmup = false
         print(string.format("applogic perf: итерация #%d (инициализация) пропущена, таблица - через %d итераций",
             iteration, PERF_WINDOW))
+        if not PERF_LEGEND then
+            print("applogic perf: пояснения к колонкам - applogic debug perf legend")
+        end
     else
         acc("loop", "TOTAL", c - iter_mark.c, w - iter_mark.w, 0)
         window.iterations = window.iterations + 1
