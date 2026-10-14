@@ -6,6 +6,7 @@ local ft = require "applogic.util.fort"
 ft.ANY_ROW = 4294967295
 ft.ANY_COLUMN = 4294967295
 local style = "BOLD2_STYLE"
+require "applogic.util.wrap_text"
 
 local report = {
 	iteration = 0
@@ -233,9 +234,17 @@ function report:print_rule(level, iteration)
 	end
 end
 
+-- Общая отладочная таблица "applogic debug overview".
+-- В неё попадают узлы, для которых в правиле вызван :debug(overview) (см. applogic.util.overview).
+-- Узлы выводятся в порядке их обработки в правиле.
+
+local OVERVIEW_COLORS = {
+	red = ft.COLOR_LIGHT_RED,
+	yellow = ft.COLOR_LIGHT_YELLOW,
+}
+
 function report:overview(rules, iteration)
 	local ftable = ft.new()
-	local check = ""
 	local current_row
 
 	ftable:set_cell_prop(ft.ANY_ROW, 1, ft.CPROP_TEXT_ALIGN, ft.ALIGNED_LEFT)
@@ -245,83 +254,82 @@ function report:overview(rules, iteration)
 	ftable:write_ln("RULEID", "VARIABLE", "NOTES", "PASS LOGIC", "RESULT", "#"..tostring(iteration))
 	ftable:add_separator()
 
-	for ruleid, rule in  util.spairs(rules) do
-		if rule["default"].overviewed_nodes then
-			local nodes = rule.debug.nodes
-			local nodename = ""
-			local nodedata
+	for ruleid, rule in util.kspairs(rules) do
+		local dbg = rule.debug
+		if dbg and dbg.overviewed then
+			local nodes = dbg.nodes
+			local names = {}
+			for nodename in pairs(dbg.overviewed) do
+				if nodes[nodename] then names[#names + 1] = nodename end
+			end
+			table.sort(names, function(a, b)
+				return (nodes[a].order or 0) < (nodes[b].order or 0)
+			end)
 
-			for i = 1, #rule["default"].overviewed_nodes do
-				nodename = rule["default"].overviewed_nodes[i]
-				nodedata = nodes[nodename]
-
-				-- print("nodename",nodename)
-				-- log("nodedata",nodedata)
-
+			for _, nodename in ipairs(names) do
+				local nodedata = nodes[nodename]
+				local ov = nodedata.overview or {}
 				current_row = current_row + 1
 
-				-- Make colorizing overview level (green, yellow, red)
-				if(nodedata.overview and nodedata.overview["yellow"] and nodedata.overview["yellow"] == true) then
-					ftable:set_cell_prop(current_row, 1, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
-					ftable:set_cell_prop(current_row, 2, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
-					ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
-					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_YELLOW)
-				elseif(nodedata.overview and nodedata.overview["red"] and nodedata.overview["red"] == true) then
-					ftable:set_cell_prop(current_row, 1, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_RED)
-					ftable:set_cell_prop(current_row, 2, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_RED)
-					ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_RED)
-					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_RED)
-				elseif(nodedata.overview and nodedata.overview["green"] and nodedata.overview["green"] == true) then
+				-- Цвет строки: red / yellow / green (green - "пассивные" узлы, без акцента)
+				local color = OVERVIEW_COLORS[ov.color]
+				if color then
+					for _, col in ipairs({1, 2, 3, 5}) do
+						ftable:set_cell_prop(current_row, col, ft.CPROP_CONT_FG_COLOR, color)
+					end
+				elseif ov.color == "green" then
 					ftable:set_cell_prop(current_row, 2, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
 					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
 				else
-					ftable:set_cell_prop(current_row, 1, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
-					ftable:set_cell_prop(current_row, 2, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
-					ftable:set_cell_prop(current_row, 3, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
-					ftable:set_cell_prop(current_row, 5, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+					for _, col in ipairs({1, 2, 3, 5}) do
+						ftable:set_cell_prop(current_row, col, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+					end
 				end
 
-				-- Make passlogic cell
+				-- Колонка PASS LOGIC
 				local passlogic = ""
-				if nodes[nodename]["operator"] then
-					for _, operator in ipairs(nodes[nodename]["operator"]) do
+				if nodedata.reached == false then
+					passlogic = "not reached\n(break above)"
+					ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_DARK_GRAY)
+				elseif nodedata["operator"] then
+					for _, operator in ipairs(nodedata["operator"]) do
 						if "skip" == operator["op_name"] then
 							if operator["value"] then
-								passlogic = "[skip]"
+								passlogic = passlogic .. "[skip]"
 								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 								break
-							else
-								passlogic = ""
-								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
+							end
+						elseif "break" == operator["op_name"] then
+							if operator["value"] then
+								passlogic = passlogic .. "[break]"
+								ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
 							end
 						elseif "frozen" == operator["op_name"] then
 							if operator["value"] and tonumber(operator["value"]) then
-								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(operator["value"]) or operator["value"])
-								--passlogic = string.format("%s[frozen]", passlogic)
+								passlogic = string.format("%s[frozen] %03d", passlogic, tonumber(operator["value"]))
 							end
 						end
 					end
 				end
 
-				check = (not nodes[nodename].noerror) and "✖" or "✔"
-				ftable:write_ln(rule.ruleid, nodename, nodedata["note"], passlogic, nodedata.output.value, check)
-				if nodedata["noerror"] then
-					ftable:set_cell_prop(current_row, 6, ft.CPROP_CONT_FG_COLOR, ft.COLOR_GREEN)
-				else
-					ftable:set_cell_prop(current_row, 6, ft.CPROP_CONT_FG_COLOR, ft.COLOR_RED)
+				local note = nodedata["note"] or ""
+				if ov.error then
+					note = note .. "\noverview error:\n" .. wrap_text(ov.error)
 				end
+				local result = (nodedata.output and nodedata.output.value) or "empty"
+				if nodedata.reached == false then result = "-" end  -- значение с прошлой итерации не показываем
+				local noerror = (nodedata.noerror ~= false) and not ov.error
+				local check = noerror and "✔" or "✖"
 
+				ftable:write_ln(rule.ruleid or ruleid, nodename, note, passlogic, tostring(result), check)
+				ftable:set_cell_prop(current_row, 6, ft.CPROP_CONT_FG_COLOR, noerror and ft.COLOR_GREEN or ft.COLOR_RED)
 			end
-		else
-			-- current_row = current_row + 1
-			-- ftable:write_ln(ruleid, "-", "Nothing to overview..", "-", "-", "")
 		end
 	end
 
-	-- CELL SPANS
-	--ftable:set_cell_span(1, 1, 5) -- rule title row
-
-
+	if current_row == 1 then
+		ftable:write_ln("-", "-", "Nothing to overview: add :debug(overview) to nodes in rule files", "-", "-", "")
+	end
 
 	-- CELLS STYLE
 	ftable:set_cell_prop(1, ft.ANY_COLUMN, ft.CPROP_CONT_TEXT_STYLE, ft.TSTYLE_BOLD)

@@ -67,10 +67,12 @@ debug() {
     uci set applogic.debug_mode.enable='1'
     uci set applogic.debug_mode.rule="$RULE"
 
-    # drop showvars left over from the previous debug session
+    # drop shownodes left over from the previous debug session
+    # (Lua читает список узлов из applogic.debug_mode.shownode, см. src/node/debug_cli.lua)
     uci -q delete applogic.debug_mode.showvar
+    uci -q delete applogic.debug_mode.shownode
     for VAR in "$@"; do
-        uci add_list applogic.debug_mode.showvar="$VAR"
+        uci add_list applogic.debug_mode.shownode="$VAR"
     done
     uci commit applogic
 

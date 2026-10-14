@@ -68,6 +68,7 @@ signal.signal(signal.SIGINT, function(signum)
 	uci:set("applogic", "debug_mode", "level", "ERROR")
 	uci:delete("applogic", "debug_mode", "rule")
 	uci:delete("applogic", "debug_mode", "showvar")
+	uci:delete("applogic", "debug_mode", "shownode")
 	uci:commit("applogic")
 
   io.write("\n")
@@ -233,7 +234,9 @@ function rules:run_all()
 
 		state = rule(self)
 
-		if rule.debug_mode.enabled then
+		-- В режиме overview таблицы отдельных правил не печатаем, иначе они перемешиваются с общей таблицей
+		local overview_mode = (debug_cli.rule == "overview")
+		if rule.debug_mode.enabled and not overview_mode then
 			local rule_has_error = rule.debug_mode.level == "ERROR" and (rule.debug and rule.debug.noerror and rule.debug.noerror == false)
 			local report_anyway_mode = rule.debug_mode.level == "INFO"
 			if rule.debug then

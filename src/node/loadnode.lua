@@ -1,7 +1,6 @@
 local debug_cli = require "applogic.node.debug_cli"
 local util = require "luci.util"
-local substitute = require "applogic.util.substitute"
-local pcallchunk = require "applogic.util.pcallchunk"
+local overview = require "applogic.util.overview"
 -- Moved here (see below)
 local operator_handler = require "applogic.operator.main"
 
@@ -66,14 +65,20 @@ local loadnode_metatable = {
         local op = {}
         local dbg_cached
         function op:run_node()
+            -- Узел не обрабатывается, если раньше в правиле сработал [break]:
+            -- запоминаем это для отчётов (в overview такой узел помечается "not reached")
+            local not_reached = rule.break_in
             operator_handler:run_node(nodename, rule)
+            if rule.debug_mode.enabled and rule.debug and rule.debug.nodes[nodename] then
+                rule.debug.nodes[nodename].reached = not not_reached
+            end
 
             -- rule:load("title"):execute():debug()
             ------------------------------========
             if dbg_cached then return dbg_cached end
             local dbg = {}
             function dbg:debug(...)
-                local level = arg[1]
+                local level = ...
                 local report_by_cli = (debug_cli.rule and debug_cli.rule == rule.ruleid)
                 local overview_by_cli = (debug_cli.rule and debug_cli.rule == "overview")
 
@@ -88,43 +93,10 @@ local loadnode_metatable = {
                          rule.debug.report(rule):print_node(nodename, "INFO", rule.iteration)
                     end
                 elseif overview_by_cli then
-                    if (type(level) == "table") then
-                        local overview_nodes_for_this_rule = util.keys(level)
-                        rule["default"]["overviewed_nodes"] = util.clone(overview_nodes_for_this_rule)
-                        if (util.contains(overview_nodes_for_this_rule, nodename)) then
-                            if(type(level[nodename]) == "string") then
-                                rule.debug.nodes[nodename].overview = level[nodename]
-                            elseif(type(level[nodename]) == "table") then
-                                -- realize colorizing policy of overview report according to subsituted value
-                                rule.debug.nodes[nodename].overview = {}
-                                if(level[nodename].yellow) then
-                                    local luacode = substitute(rule, level[nodename].yellow, true)
-                                    local noerror
-                                    noerror, level[nodename].yellow = pcallchunk(luacode)
-                                    rule.debug.nodes[nodename].overview["yellow"] = level[nodename].yellow
-
-                                    -- if nodename == "set_provider" then
-                                    -- 	print(rule.ruleid .. nodename, level[nodename].yellow, luacode, level[nodename].yellow)
-                                    -- end
-                                    --
-                                    -- if nodename == "sim_ready" then
-                                    -- 	print(rule.ruleid, " : " .. nodename,rule.debug.nodes[nodename].overview["yellow"], luacode)
-                                    -- end
-                                end
-                                if(level[nodename].green) then
-                                    local luacode = substitute(rule, level[nodename].green, true)
-                                    local noerror
-                                    noerror, level[nodename].green = pcallchunk(luacode)
-                                    rule.debug.nodes[nodename].overview["green"] = level[nodename].green
-                                end
-                                if(level[nodename].red) then
-                                    local luacode = substitute(rule, level[nodename].red, true)
-                                    local noerror
-                                    noerror, level[nodename].red = pcallchunk(luacode)
-                                    rule.debug.nodes[nodename].overview["red"] = level[nodename].red
-                                end
-                            end
-                        end
+                    -- "applogic debug overview": узел попадает в общую таблицу,
+                    -- если вызван :debug(overview) и в overview есть запись для этого узла
+                    if type(level) == "table" and level[nodename] ~= nil then
+                        overview.node(rule, nodename, level[nodename])
                     end
                 else
                     local report_only_this_node = level and (level == "INFO" or level == "ERROR") and rule.debug_mode.enabled

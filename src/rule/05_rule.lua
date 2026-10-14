@@ -1,5 +1,6 @@
 local debug_mode = require "applogic.debug_mode"
 local rule_init = require "applogic.util.rule_init"
+local cjson = require "cjson.safe"
 
 
 local rule = {}
@@ -161,23 +162,36 @@ function rule:make()
 	rule.debug_mode = debug_mode
 	local ONLY = rule.debug_mode.level
 
-	-- These variables are included into debug overview (run "applogic debug" to get all rules overview)
-	-- Green, Yellow and Red are measure of importance for Application logic
-	-- Green is for timers and some passive variables,
-	-- Yellow is for that nodes which switches logic - affects to normal application behavior
-	-- Red is for some extraordinal application ehavior, like watchdog, etc.
-	-- local overview = {
-	-- 	["do_switch"] = { ["yellow"] = [[ return ($do_switch == "true") ]] },
-	-- 	["low_signal_timer"] = { ["yellow"] = [[ return (tonumber($low_signal_timer) and tonumber($low_signal_timer) > 0) ]] },
-	-- }
+	-- Если надо вывести отдельные узлы в отладочную таблицу режима "applogic debug overview",
+	-- то добавьте сюда Lua-таблицу для таких узлов и передайте её в :debug(overview).
+	-- Цвет строки применяется, если функция вернула true. Приоритет: red > yellow > green.
+	--   green  - таймеры и пассивные узлы
+	--   yellow - узлы, переключающие логику правила
+	--   red    - нештатное поведение (переключение слота и т.п.)
+	-- nodes - те же значения узлов, что получают операторы ([func], [skip] ...)
+	local overview = {
+		["signal"] = { ["yellow"] = function(nodes)
+				local sig = tonumber(type(nodes.signal) == "table" and nodes.signal.value)
+				local sig_min = tonumber(type(nodes.signal_min_conf) == "table" and nodes.signal_min_conf.signal_min)
+				return (sig ~= nil and sig_min ~= nil and sig < sig_min)
+			end
+		},
+		["switch"] = { ["red"] = function(nodes)
+				-- [frozen] хранит значение узла как JSON-строку, поэтому декодируем
+				local switch = nodes.switch
+				if type(switch) == "string" then switch = cjson.decode(switch) end
+				return (type(switch) == "table" and switch["status"] == "started")
+			end
+		},
+	}
 
 	self:follow("title"):debug()
 	self:follow("slotinfo"):debug()
 	self:follow("sim_found"):debug()
 	self:follow("signal_min_conf"):debug()
-	self:follow("signal"):debug()
+	self:follow("signal"):debug(overview)
 	self:follow("timeout"):debug()
-	self:follow("switch"):debug()
+	self:follow("switch"):debug(overview)
 end
 
 
