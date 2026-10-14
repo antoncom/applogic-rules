@@ -253,6 +253,11 @@ local function one_line(str, max)
 	return (table.concat(chars, "", 1, max - 1):gsub(" $", "")) .. "…"
 end
 
+-- Стиль рамки overview: без линий между строками, чтобы узлы одного правила
+-- выглядели одной группой (libfort не умеет объединять ячейки по вертикали).
+-- Группы правил разделяются линией-сепаратором.
+local OVERVIEW_STYLE = "BOLD_STYLE"
+
 local OVERVIEW_COLORS = {
 	red = ft.COLOR_LIGHT_RED,
 	yellow = ft.COLOR_LIGHT_YELLOW,
@@ -269,9 +274,14 @@ function report:overview(rules, iteration)
 	ftable:write_ln("RULEID", "VARIABLE", "NOTES", "PASS LOGIC", "RESULT", "#"..tostring(iteration))
 	ftable:add_separator()
 
+	local groups = 0
 	for ruleid, rule in util.kspairs(rules) do
 		local dbg = rule.debug
-		if dbg and dbg.overviewed then
+		if dbg and dbg.overviewed and next(dbg.overviewed) then
+			-- Линия между группами правил
+			groups = groups + 1
+			if groups > 1 then ftable:add_separator() end
+
 			local nodes = dbg.nodes
 			local names = {}
 			for nodename in pairs(dbg.overviewed) do
@@ -281,7 +291,7 @@ function report:overview(rules, iteration)
 				return (nodes[a].order or 0) < (nodes[b].order or 0)
 			end)
 
-			for _, nodename in ipairs(names) do
+			for i, nodename in ipairs(names) do
 				local nodedata = nodes[nodename]
 				local ov = nodedata.overview or {}
 				current_row = current_row + 1
@@ -304,7 +314,7 @@ function report:overview(rules, iteration)
 				-- Колонка PASS LOGIC
 				local passlogic = ""
 				if nodedata.reached == false then
-					passlogic = "not reached\n(break above)"
+					passlogic = "not reached"
 					ftable:set_cell_prop(current_row, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_DARK_GRAY)
 				elseif nodedata["operator"] then
 					for _, operator in ipairs(nodedata["operator"]) do
@@ -343,7 +353,9 @@ function report:overview(rules, iteration)
 				local noerror = (nodedata.noerror ~= false) and not ov.error
 				local check = noerror and "✔" or "✖"
 
-				ftable:write_ln(rule.ruleid or ruleid, nodename, note, passlogic, tostring(result), check)
+				-- Имя правила - только в первой строке группы
+				local rule_cell = (i == 1) and (rule.ruleid or ruleid) or ""
+				ftable:write_ln(rule_cell, nodename, note, passlogic, tostring(result), check)
 				ftable:set_cell_prop(current_row, 6, ft.CPROP_CONT_FG_COLOR, noerror and ft.COLOR_GREEN or ft.COLOR_RED)
 			end
 		end
@@ -359,7 +371,7 @@ function report:overview(rules, iteration)
 	ftable:set_cell_prop(1, 4, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_WHITE)
 
 	-- Setup border style
-	ftable:set_border_style(ft[style])
+	ftable:set_border_style(ft[OVERVIEW_STYLE])
 	-- Print ftable
 	print(tostring(ftable))
 
