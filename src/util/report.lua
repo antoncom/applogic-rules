@@ -316,7 +316,14 @@ function report:overview(rules, iteration)
 				if ov.error then
 					note = note .. "\noverview error:\n" .. wrap_text(ov.error)
 				end
-				local result = (nodedata.output and nodedata.output.value) or "empty"
+				-- RESULT: значение, которое вернула функция overview (второе значение после true/false),
+				-- иначе - полное значение узла
+				local result
+				if ov.value ~= nil then
+					result = (type(ov.value) == "table") and util.serialize_json(ov.value) or tostring(ov.value)
+				else
+					result = (nodedata.output and nodedata.output.value) or "empty"
+				end
 				if nodedata.reached == false then result = "-" end  -- значение с прошлой итерации не показываем
 				local noerror = (nodedata.noerror ~= false) and not ov.error
 				local check = noerror and "✔" or "✖"
