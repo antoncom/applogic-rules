@@ -19,6 +19,7 @@
 local debug_cli = require "applogic.node.debug_cli"
 
 local PERF_WINDOW = 10      -- итераций в одном окне усреднения (≈ 10 x (800 мс + итерация))
+local PERF_LEGEND = true    -- выводить под таблицей раздел "КАК ЧИТАТЬ" (пояснения для колонок)
 
 local perf = {}
 perf.enabled = (debug_cli.rule == "perf" or debug_cli.rule == "cpu")
@@ -142,8 +143,15 @@ report = function()
     local row = 0
     -- calls: текст для колонки CALLS (по умолчанию - среднее число выполнений за итерацию);
     -- no_alloc: для строк итерации ALLOC не считается
-    local function line(name, s, calls, note, no_alloc)
+    local wait_example        -- строка с самым большим ожиданием (WALL - CPU) - для примера в легенде
+    local function line(name, s, calls, note, no_alloc, track_wait)
         row = row + 1
+        if s and track_wait then
+            local wait = (s.wall - s.cpu) / n
+            if wait > 0.0005 and (not wait_example or wait > wait_example.wait) then   -- больше 0.5 мс
+                wait_example = { name = name:gsub("^%s+", ""), cpu = s.cpu / n, wall = s.wall / n, wait = wait }
+            end
+        end
         if not s then
             ftable:write_ln(name, "-", "-", "-", "-", "-", note or "")
             return
@@ -184,10 +192,10 @@ report = function()
     -- Операторы, с разбивкой [load-ubus] на ubus.*
     section("ОПЕРАТОРЫ (время входит во время правил)")
     for name, s in util.kspairs(stats.op or {}) do
-        line(name, s)
+        line(name, s, nil, nil, nil, name ~= "load-ubus")
         if name == "load-ubus" then
             for sub, ss in util.kspairs(stats.ubus or {}) do
-                line("  " .. sub, ss)
+                line("  " .. sub, ss, nil, nil, nil, true)
             end
         end
     end
@@ -210,6 +218,35 @@ report = function()
     local alloc = (window.alloc_iters > 0) and string.format("%.0f", window.alloc / window.alloc_iters) or "-"
     ftable:write_ln("heap", string.format("%.0f KB", window.live), "", "", alloc, "",
         string.format("куча Lua после полной сборки (сейчас %.0f KB); ALLOC - выделено за итерацию", window.now))
+
+    -- Пояснения к колонкам - для тех, кто смотрит на таблицу впервые
+    if PERF_LEGEND then
+        local example
+        if wait_example then
+            example = string.format("           Например, %s: CPU %s мс, WALL %s мс - около %s мс applogic ждал ответа.",
+                wait_example.name, ms(wait_example.cpu), ms(wait_example.wall), ms(wait_example.wait))
+        end
+        local legend = {
+            "CPU ms   - сколько процессорного времени потратил сам applogic (в среднем за одну итерацию).",
+            "WALL ms  - сколько прошло времени по часам: CPU + ожидание ответов других сервисов (tsmodem, uci, ...).",
+            "           WALL намного больше CPU - applogic в это время ждёт, а не нагружает процессор.",
+            example or false,
+            "MAX ms   - самое долгое одно выполнение за окно (по часам). Показывает редкие пики,",
+            "           которые в среднем незаметны: например, перечитывание конфигов или полную сборку мусора.",
+            "ALLOC KB - сколько памяти Lua выделено за итерацию (≈). CALLS - сколько раз выполнялось за итерацию.",
+            "load     - доля процессора, которую занимает applogic: CPU / период итерации (100 % = одно ядро целиком).",
+            "Время операторов уже входит во время правил, а ubus.* - во время load-ubus: строки разных секций не складывают.",
+        }
+        section("КАК ЧИТАТЬ")
+        for _, text in ipairs(legend) do
+            if text then
+                row = row + 1
+                ftable:write_ln(text, "", "", "", "", "", "")
+                ftable:set_cell_span(row, 1, 7)
+                ftable:set_cell_prop(row, 1, ft.CPROP_CONT_FG_COLOR, ft.COLOR_LIGHT_GRAY)
+            end
+        end
+    end
 
     ftable:set_border_style(ft.BOLD_STYLE)
     print(tostring(ftable))
